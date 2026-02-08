@@ -1,0 +1,1015 @@
+import React, { useState, useEffect } from 'react';
+import {
+    User,
+    Settings as SettingsIcon,
+    Moon,
+    Sun,
+    Bell,
+    Shield,
+    LogOut,
+    ChevronRight,
+    Camera,
+    Check,
+    Save,
+    Globe,
+    CreditCard,
+    Plus,
+    Trash2,
+    Palette,
+    Menu,
+    X,
+    Layout,
+    LayoutDashboard,
+    Type,
+    Maximize,
+    Box,
+    RefreshCw,
+    Building2,
+    Loader2,
+    CheckCircle2,
+    Sparkles,
+    Zap,
+    ShieldCheck,
+    AlertTriangle,
+    Lock as LockIcon,
+    Key as KeyIcon,
+    Search,
+    Edit2,
+    Upload
+} from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSubscriptionPlans, useAddPlan, useDeletePlan, useUpdatePlan } from '../hooks/useData';
+import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { useCurrency, CURRENCIES, CurrencyCode } from '../context/CurrencyContext';
+import { useTheme, applySettingsToRoot, defaultSettings, GymSettings } from '../context/ThemeContext';
+import { useOutletContext } from 'react-router-dom';
+
+export default function Settings() {
+    const { currency, setCurrency } = useCurrency();
+    const { settings, updateSettings, resetToDefaults } = useTheme();
+    const [isPublishing, setIsPublishing] = useState(false);
+    const [publishProgress, setPublishProgress] = useState(0);
+    const [publishStep, setPublishStep] = useState('');
+    const { t, i18n } = useTranslation();
+    const context = useOutletContext<{ role: string }>() || { role: null };
+    const role = context.role?.toLowerCase()?.trim();
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
+
+    // Draft state for local preview before saving
+    const [draftSettings, setDraftSettings] = useState<GymSettings>(settings);
+
+    // Sync draft with global settings when they change (initial load or external update)
+    useEffect(() => {
+        setDraftSettings(settings);
+    }, [settings]);
+
+    // Live Preview Effect: Apply draft settings to root in real-time
+    useEffect(() => {
+        applySettingsToRoot(draftSettings);
+    }, [draftSettings]);
+
+    const handleSaveTheme = async () => {
+        setIsPublishing(true);
+        setPublishProgress(10);
+        setPublishStep(t('settings.initializingEngine'));
+
+        await new Promise(r => setTimeout(r, 800));
+        setPublishProgress(40);
+        setPublishStep(t('settings.optimizingVariables'));
+
+        await new Promise(r => setTimeout(r, 600));
+        setPublishProgress(70);
+        setPublishStep(t('settings.syncingDatabase'));
+
+        try {
+            // Filter out gym-wide settings to prevent unauthorized update attempts by non-admins
+            // This prevents the "403 Forbidden" error when Coaches save their theme
+            const { academy_name, gym_phone, gym_address, logo_url, ...themeOnlySettings } = draftSettings;
+
+            await updateSettings(themeOnlySettings);
+            setPublishProgress(100);
+            setPublishStep(t('settings.publishSuccess'));
+            await new Promise(r => setTimeout(r, 1200));
+        } catch (error) {
+            toast.error('Publishing failed. Check connection.');
+        } finally {
+            setIsPublishing(false);
+            setPublishProgress(0);
+        }
+    };
+
+    const [activeTab, setActiveTab] = useState<'appearance' | 'profile' | 'academy'>(
+        role === 'admin' ? 'academy' : 'appearance'
+    );
+    const [loading, setLoading] = useState(false);
+    const [profileLoading, setProfileLoading] = useState(false);
+    const [passwordLoading, setPasswordLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
+
+    const [userData, setUserData] = useState({
+        full_name: '',
+        email: ''
+    });
+    const [initialEmail, setInitialEmail] = useState('');
+
+    const [passwordData, setPasswordData] = useState({
+        newPassword: '',
+        confirmPassword: ''
+    });
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', user.id)
+                    .maybeSingle();
+
+                if (profileError) {
+                    console.error('Error fetching profile:', profileError);
+                }
+
+                setUserData({
+                    full_name: profile?.full_name || '',
+                    email: user.email || ''
+                });
+                setInitialEmail(user.email || '');
+            }
+        };
+        fetchProfile();
+    }, []);
+
+    const themes = [
+        { id: 'elite', name: 'Elite Red', primary: '#A30000', secondary: '#0B120F', bg: '#0B120F', accent: '#A30000', surface: 'rgba(21, 31, 28, 0.8)', hover: '#A3000080', input: '#070D0B', font: 'Cairo' },
+        { id: 'midnight', name: 'Midnight', primary: '#818cf8', secondary: '#1e293b', bg: '#0f172a', accent: '#c084fc', surface: 'rgba(30, 41, 59, 0.7)', hover: '#818cf880', input: '#0f172a' },
+        { id: 'noguchi', name: 'Noguchi Pink', primary: '#ff096c', secondary: '#192731', bg: '#192731', accent: '#ff096c', surface: 'rgba(42, 56, 67, 0.7)', hover: '#ff096c80', input: '#111d26' },
+        { id: 'obsidian', name: 'Obsidian', primary: '#a78bfa', secondary: '#18181b', bg: '#000000', accent: '#a78bfa', surface: 'rgba(24, 24, 27, 0.7)', hover: '#a78bfa80', input: '#09090b' },
+        { id: 'emerald', name: 'Emerald', primary: '#34d399', secondary: '#1e3a2f', bg: '#0a1f1a', accent: '#2dd4bf', surface: 'rgba(6, 78, 59, 0.7)', hover: '#34d39980', input: '#061a15' },
+        { id: 'crimson', name: 'Crimson', primary: '#fb7185', secondary: '#3f1d28', bg: '#1a0a0f', accent: '#f43f5e', surface: 'rgba(76, 5, 25, 0.7)', hover: '#fb718580', input: '#14070a' },
+        { id: 'amber', name: 'Amber', primary: '#fbbf24', secondary: '#3f2f1d', bg: '#1a140a', accent: '#f59e0b', surface: 'rgba(6, 26, 3, 0.7)', hover: '#fbbf2480', input: '#140c06' },
+        { id: 'deepsea', name: 'Ocean', primary: '#22d3ee', secondary: '#1e3a3f', bg: '#0a1a1f', accent: '#06b6d4', surface: 'rgba(22, 78, 99, 0.7)', hover: '#22d3ee80', input: '#07151a' },
+        { id: 'royal', name: 'Royal', primary: '#c084fc', secondary: '#2e1f3f', bg: '#14091a', accent: '#a855f7', surface: 'rgba(59, 7, 100, 0.7)', hover: '#c084fc80', input: '#0e0514' },
+        { id: 'sunset', name: 'Sunset', primary: '#f43f5e', secondary: '#4c0519', bg: '#23020b', accent: '#f59e0b', surface: 'rgba(76, 5, 25, 0.7)', hover: '#f43f5e80', input: '#1a0209' },
+        { id: 'forest', name: 'Forest', primary: '#84cc16', secondary: '#14532d', bg: '#052e16', accent: '#34d399', surface: 'rgba(20, 83, 45, 0.7)', hover: '#84cc1680', input: '#042211' },
+        { id: 'lavender', name: 'Lavender', primary: '#d8b4fe', secondary: '#4c1d95', bg: '#2e1065', accent: '#818cf8', surface: 'rgba(76, 29, 149, 0.7)', hover: '#d8b4fe80', input: '#210b4a' },
+        { id: 'coffee', name: 'Coffee', primary: '#d4a373', secondary: '#281b15', bg: '#1a0f0a', accent: '#faedcd', surface: 'rgba(40, 27, 21, 0.7)', hover: '#d4a37380', input: '#1a110d' },
+    ];
+
+    const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('theme') || 'midnight');
+
+    const applyPreset = (theme: typeof themes[0]) => {
+        setCurrentTheme(theme.id);
+        localStorage.setItem('theme', theme.id);
+
+        setDraftSettings(prev => ({
+            ...prev,
+            primary_color: theme.primary,
+            secondary_color: theme.secondary,
+            accent_color: theme.accent || prev.accent_color,
+            surface_color: theme.surface || prev.surface_color,
+            hover_color: (theme as any).hover || prev.hover_color,
+            input_bg_color: (theme as any).input || prev.input_bg_color,
+            font_family: (theme as any).font || prev.font_family,
+        }));
+    };
+
+    const handleSaveProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            await updateSettings({
+                academy_name: draftSettings.academy_name,
+                gym_phone: draftSettings.gym_phone,
+                gym_address: draftSettings.gym_address,
+                logo_url: draftSettings.logo_url
+            });
+            window.dispatchEvent(new Event('gymProfileUpdated'));
+            toast.success(t('common.saveSuccess'));
+        } catch (error: any) {
+            console.error('Failed to save gym profile:', error);
+            toast.error(error.message || 'Failed to save gym profile');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setProfileLoading(true);
+        try {
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) throw new Error('Session expired or security token invalid. Please log in again.');
+
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .upsert({
+                    id: user.id,
+                    full_name: userData.full_name
+                });
+
+            if (profileError) throw profileError;
+
+            const inputEmail = userData.email.trim().toLowerCase();
+            const currentAuthEmail = user.email?.trim().toLowerCase();
+
+            // Only allow admin users to update email
+            if (role === 'admin' && inputEmail && currentAuthEmail && inputEmail !== currentAuthEmail) {
+                const { error: authError } = await supabase.auth.updateUser({
+                    email: inputEmail
+                });
+                if (authError) throw authError;
+                toast.success('Email update started! Follow the link sent to your new email.');
+            } else {
+                toast.success(t('common.saveSuccess'));
+            }
+
+            window.dispatchEvent(new Event('userProfileUpdated'));
+        } catch (error: any) {
+            console.error('Error updating profile:', error);
+            toast.error(error.message || 'Error updating profile');
+        } finally {
+            setProfileLoading(false);
+        }
+    };
+
+    const handleUpdatePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!passwordData.newPassword || !passwordData.confirmPassword) {
+            toast.error('Please fill in both password fields');
+            return;
+        }
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            toast.error('Passwords do not match');
+            return;
+        }
+        if (passwordData.newPassword.length < 6) {
+            toast.error('Password must be at least 6 characters');
+            return;
+        }
+
+        setPasswordLoading(true);
+        try {
+            const { error } = await supabase.auth.updateUser({
+                password: passwordData.newPassword
+            });
+            if (error) throw error;
+            toast.success('Password updated successfully');
+            setPasswordData({ newPassword: '', confirmPassword: '' });
+        } catch (error: any) {
+            console.error('Error updating password:', error);
+            toast.error(error.message || 'Error updating password');
+        } finally {
+            setPasswordLoading(false);
+        }
+    };
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        try {
+            setUploading(true);
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            const fileExt = file.name.split('.').pop();
+            const fileName = `logo_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('logos')
+                .upload(filePath, file);
+
+            if (uploadError) {
+                throw uploadError;
+            }
+
+            const { data } = supabase.storage
+                .from('logos')
+                .getPublicUrl(filePath);
+
+            setDraftSettings(prev => ({ ...prev, logo_url: data.publicUrl }));
+            toast.success('Logo uploaded successfully');
+        } catch (error: any) {
+            console.error('Error uploading logo:', error);
+            toast.error('Error uploading logo');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    return (
+        <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Premium Publishing Overlay */}
+            {isPublishing && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-0">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-3xl animate-in fade-in duration-700"></div>
+                    <div className="relative glass-card p-10 rounded-[3rem] border border-white/10 shadow-[0_0_80px_rgba(var(--color-primary),0.1)] max-w-sm w-full text-center animate-in zoom-in slide-in-from-bottom-12 duration-1000 flex flex-col items-center">
+                        <div className="relative w-36 h-36 mb-8 flex items-center justify-center">
+                            <div className="absolute inset-0 bg-primary/10 rounded-full blur-[40px] animate-pulse scale-75"></div>
+                            <svg viewBox="0 0 192 192" className="absolute inset-0 w-full h-full transform -rotate-90 filter drop-shadow-[0_0_10px_rgba(var(--color-primary),0.2)]">
+                                <circle cx="96" cy="96" r="86" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-white/[0.03]" />
+                                <circle
+                                    cx="96" cy="96" r="86" stroke="currentColor" strokeWidth="6" fill="transparent"
+                                    strokeDasharray={540} strokeDashoffset={540 - (540 * publishProgress) / 100}
+                                    className="transition-all duration-1000 ease-in-out"
+                                    style={{ color: 'var(--color-brand-label)' }}
+                                    strokeLinecap="round"
+                                />
+                            </svg>
+                            <div className="relative z-10 flex items-center justify-center w-24 h-24">
+                                {publishProgress === 100 ? (
+                                    <div className="bg-primary/20 p-4 rounded-full border border-primary/30 animate-in zoom-in spin-in-12 duration-700">
+                                        <CheckCircle2 className="w-8 h-8 text-primary" />
+                                    </div>
+                                ) : (
+                                    <div className="relative flex items-center justify-center">
+                                        <div className="absolute w-14 h-14 border-2 border-primary/20 rounded-full animate-ping duration-[2000ms]"></div>
+                                        <Sparkles className="w-8 h-8 text-primary animate-pulse" />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="space-y-4 w-full">
+                            <div className="space-y-1">
+                                <p className="text-[8px] font-black uppercase tracking-[0.4em] animate-pulse" style={{ color: 'var(--color-brand-label)' }}>
+                                    {publishProgress === 100 ? 'Update Complete' : 'Optimizing'}
+                                </p>
+                                <h3 className="text-2xl font-black text-white uppercase tracking-tighter leading-tight">
+                                    {publishProgress === 100 ? t('settings.publishComplete') : t('settings.publishingDesign')}
+                                </h3>
+                            </div>
+                            <div className="flex flex-col items-center gap-3">
+                                <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.1em] px-5 py-1.5 bg-white/5 rounded-full border border-white/5">
+                                    {publishStep}
+                                </p>
+                                <div className="flex gap-1.5">
+                                    {[1, 2, 3].map((step) => (
+                                        <div
+                                            key={step}
+                                            className={`h-1 rounded-full transition-all duration-500 ${publishProgress >= (step * 33)
+                                                ? 'w-6 bg-primary shadow-[0_0_5px_rgba(var(--color-primary),0.5)]'
+                                                : 'w-1.5 bg-white/10'}`}
+                                        ></div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-10 grid grid-cols-2 gap-3 w-full">
+                            <div className="p-4 rounded-[2rem] bg-white/[0.02] border border-white/5 flex flex-col items-center gap-2">
+                                <ShieldCheck className="w-4 h-4" style={{ color: 'var(--color-brand-label)', opacity: 0.6 }} />
+                                <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.2em] text-center">{t('settings.encryptionNote')}</span>
+                            </div>
+                            <div className="p-4 rounded-[2rem] bg-white/[0.02] border border-white/5 flex flex-col items-center gap-2">
+                                <Zap className="w-4 h-4" style={{ color: 'var(--color-brand-label)', opacity: 0.6 }} />
+                                <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.2em] text-center">{t('settings.syncReadyNote')}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="border-b border-white/5 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl sm:text-4xl font-black premium-gradient-text tracking-tighter uppercase leading-[0.9]">{t('settings.title')}</h1>
+                    <p className="text-white/40 mt-1 text-[10px] sm:text-xs font-bold tracking-wide uppercase opacity-100">{t('settings.subtitle')}</p>
+                </div>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="flex p-1 bg-white/5 rounded-xl w-fit group">
+                {role === 'admin' && (
+                    <button
+                        onClick={() => setActiveTab('academy')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'academy' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                    >
+                        <Building2 className="w-3.5 h-3.5" />
+                        {t('settings.academy')}
+                    </button>
+                )}
+                <button
+                    onClick={() => setActiveTab('appearance')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'appearance' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                >
+                    <Palette className="w-3.5 h-3.5" />
+                    {t('settings.appearance')}
+                </button>
+                <button
+                    onClick={() => setActiveTab('profile')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'profile' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                >
+                    <User className="w-3.5 h-3.5" />
+                    {t('settings.profile')}
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8">
+                {/* Appearance & Branding Settings */}
+                {activeTab === 'appearance' && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 pb-20">
+                        <div className="glass-card p-6 md:p-8 rounded-[2rem] border border-white/10 shadow-premium relative overflow-hidden">
+                            <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
+                            <div className="relative z-10">
+                                <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3 mb-6">
+                                    <div className="p-2.5 bg-primary/20 rounded-xl text-primary">
+                                        <Palette className="w-5 h-5" />
+                                    </div>
+                                    {t('settings.theme')}
+                                </h2>
+
+                                <div className="mb-8 p-4 bg-white/5 rounded-2xl border border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                    <div className="text-center sm:text-left">
+                                        <h3 className="text-xs font-black text-white uppercase tracking-widest">{t('settings.baseAppearance')}</h3>
+                                        <p className="text-[9px] text-white/50 font-bold uppercase tracking-wider mt-0.5">{t('settings.themeDescription')}</p>
+                                    </div>
+                                    <div className="flex bg-black/20 p-1 rounded-xl">
+                                        <button
+                                            onClick={() => setDraftSettings(prev => ({ ...prev, secondary_color: '#F8FAFC', surface_color: '#ffffff', input_bg_color: '#ffffff', search_bg_color: '#f1f5f9', search_text_color: '#0f172a' }))}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${draftSettings.secondary_color === '#F8FAFC' ? 'bg-white text-slate-900 shadow-lg' : 'text-white/40 hover:text-white'}`}
+                                        >
+                                            <Sun className="w-3.5 h-3.5" />
+                                            {t('settings.light')}
+                                        </button>
+                                        <button
+                                            onClick={() => setDraftSettings(prev => ({ ...prev, secondary_color: '#0E1D21', surface_color: 'rgba(18, 46, 52, 0.7)', input_bg_color: '#0f172a', search_bg_color: 'rgba(255, 255, 255, 0.05)', search_text_color: '#ffffff' }))}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${draftSettings.secondary_color !== '#F8FAFC' ? 'bg-secondary text-primary shadow-lg ring-1 ring-white/10' : 'text-white/40 hover:text-white'}`}
+                                        >
+                                            <Moon className="w-3.5 h-3.5" />
+                                            {t('settings.dark')}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                                    {themes.map(theme => (
+                                        <button
+                                            key={theme.id}
+                                            onClick={() => applyPreset(theme)}
+                                            className={`group relative p-3 rounded-2xl border-2 transition-all duration-500 hover:scale-[1.05] active:scale-95 ${currentTheme === theme.id
+                                                ? 'border-primary bg-primary/10 shadow-lg shadow-primary/20'
+                                                : 'border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20'}`}
+                                        >
+                                            <div className="aspect-video rounded-lg mb-2 overflow-hidden border border-white/10 relative">
+                                                <div className="absolute inset-0 flex flex-col">
+                                                    <div className="h-full" style={{ backgroundColor: theme.bg }}></div>
+                                                    <div className="absolute top-0 right-0 w-1/2 h-full opacity-20" style={{ backgroundColor: theme.primary, clipPath: 'polygon(100% 0, 0% 100%, 100% 100%)' }}></div>
+                                                </div>
+                                                <div className="absolute bottom-1.5 left-1.5 w-1 h-1 rounded-full" style={{ backgroundColor: theme.primary }}></div>
+                                                <div className="absolute bottom-1.5 left-3.5 w-1 h-1 rounded-full" style={{ backgroundColor: theme.secondary }}></div>
+                                                <div className="absolute bottom-1.5 left-5.5 w-1 h-1 rounded-full" style={{ backgroundColor: theme.accent }}></div>
+                                            </div>
+                                            <span className={`block text-center font-black text-[7px] uppercase tracking-[0.15em] transition-colors ${currentTheme === theme.id ? 'text-white' : 'text-white/40 group-hover:text-white'}`}>
+                                                {theme.name}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="glass-card p-6 md:p-8 rounded-[2rem] border border-white/10 shadow-premium relative overflow-hidden">
+                            <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3 mb-8">
+                                <div className="p-2.5 bg-purple-500/20 rounded-xl text-purple-500">
+                                    <Palette className="w-5 h-5" />
+                                </div>
+                                {t('settings.designCustomization')}
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                <div className="space-y-10 border-r border-white/5 pr-0 md:pr-12">
+                                    {/* Left Column: ALL Colors */}
+                                    <div>
+                                        <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] border-b border-white/5 pb-2 mb-6">{t('settings.colorsAtmosphere')}</h3>
+                                        <div className="space-y-6">
+                                            <div className="space-y-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="w-1 h-3 bg-primary rounded-full"></div>
+                                                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Core Identity</span>
+                                                </div>
+                                                <PremiumColorPicker label={t('settings.primaryColor')} value={draftSettings.primary_color} onChange={(val) => setDraftSettings({ ...draftSettings, primary_color: val })} />
+                                                <PremiumColorPicker label={t('settings.backgroundColor')} value={draftSettings.secondary_color} onChange={(val) => setDraftSettings({ ...draftSettings, secondary_color: val })} />
+                                                <PremiumColorPicker label={t('settings.accentColor')} value={draftSettings.accent_color} onChange={(val) => setDraftSettings({ ...draftSettings, accent_color: val })} />
+                                            </div>
+
+                                            <div className="pt-4 border-t border-white/5 space-y-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="w-1 h-3 bg-white/20 rounded-full"></div>
+                                                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Interface Elements</span>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <PremiumColorPicker label="Brand Text" value={draftSettings.brand_label_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, brand_label_color: val })} />
+                                                    <PremiumColorPicker label="Surface" value={draftSettings.surface_color} onChange={(val) => setDraftSettings({ ...draftSettings, surface_color: val })} />
+                                                    <PremiumColorPicker label="Input Bg" value={draftSettings.input_bg_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, input_bg_color: val })} />
+                                                    <PremiumColorPicker label="Search Bg" value={draftSettings.search_bg_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, search_bg_color: val })} />
+                                                    <PremiumColorPicker label="Hover" value={draftSettings.hover_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, hover_color: val })} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-10 pl-0 md:pl-4">
+                                    {/* Right Column: Typography & Experience */}
+                                    <div>
+                                        <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] border-b border-white/5 pb-2 mb-6">{t('settings.typographyStyle')}</h3>
+
+                                        <div className="space-y-8">
+                                            {/* Font Selection */}
+                                            <div className="space-y-4">
+                                                <label className="text-[10px] text-white/40 font-black uppercase tracking-widest flex items-center gap-2">
+                                                    <Type className="w-3 h-3" />
+                                                    {t('settings.applicationFont')}
+                                                </label>
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                    {['Cairo', 'Inter', 'Outfit', 'Montserrat', 'Alexandria', 'Kanit', 'Poppins', 'Roboto', 'Lexend', 'Playfair Display'].map(font => (
+                                                        <button
+                                                            key={font}
+                                                            onClick={() => setDraftSettings({ ...draftSettings, font_family: font })}
+                                                            className={`p-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all border border-transparent ${draftSettings.font_family === font ? 'bg-primary text-white shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:border-white/10'}`}
+                                                            style={{ fontFamily: font }}
+                                                        >
+                                                            {font}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Sliders */}
+                                            <div className="grid grid-cols-1 gap-6 bg-white/5 p-6 rounded-3xl border border-white/5">
+                                                <div className="space-y-3">
+                                                    <div className="flex justify-between">
+                                                        <label className="text-[9px] text-white/60 font-black uppercase tracking-widest">{t('settings.fontScale')}</label>
+                                                        <span className="text-[9px] text-primary font-bold">{Math.round(draftSettings.font_scale * 100)}%</span>
+                                                    </div>
+                                                    <input type="range" min="0.8" max="1.2" step="0.05" value={draftSettings.font_scale} onChange={(e) => setDraftSettings({ ...draftSettings, font_scale: parseFloat(e.target.value) })} className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary" />
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <div className="flex justify-between">
+                                                        <label className="text-[9px] text-white/60 font-black uppercase tracking-widest">{t('settings.glassIntensity')}</label>
+                                                        <span className="text-[9px] text-primary font-bold">{Math.round(draftSettings.glass_opacity * 100)}%</span>
+                                                    </div>
+                                                    <input type="range" min="0.2" max="0.9" step="0.05" value={draftSettings.glass_opacity} onChange={(e) => setDraftSettings({ ...draftSettings, glass_opacity: parseFloat(e.target.value) })} className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary" />
+                                                </div>
+                                            </div>
+
+                                            {/* Integration Switches */}
+                                            <div className="space-y-4 pt-2">
+                                                <h4 className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-3">Widgets & Integrations</h4>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <PremiumSwitch label={t('settings.clockIntegration')} checked={draftSettings.clock_position !== 'none'} onChange={(checked) => setDraftSettings({ ...draftSettings, clock_position: checked ? 'header' : 'none' })} />
+                                                    <PremiumSwitch label={t('settings.weatherIntegration')} checked={draftSettings.weather_integration || false} onChange={(checked) => setDraftSettings({ ...draftSettings, weather_integration: checked })} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex justify-center gap-3 mt-8 bg-black/20 p-4 rounded-3xl border border-white/5">
+                                <button onClick={handleSaveTheme} className="relative group overflow-hidden bg-gradient-to-r from-primary via-accent to-primary bg-size-200 bg-pos-0 hover:bg-pos-100 text-white px-12 py-4 rounded-2xl font-black uppercase tracking-[0.25em] text-[11px] flex items-center justify-center transition-all duration-500 shadow-[0_0_30px_rgba(var(--color-primary),0.4)] hover:shadow-[0_0_50px_rgba(var(--color-primary),0.6)] hover:scale-105 active:scale-95 border border-white/20">
+                                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-50"></div>
+                                    <Save className="w-4 h-4 absolute left-5 top-1/2 -translate-y-1/2 z-10 drop-shadow-md opacity-80 group-hover:opacity-100 transition-opacity" />
+                                    <span className="relative z-10 drop-shadow-md">SAVE</span>
+                                </button>
+                                <button onClick={() => setDraftSettings(defaultSettings)} className="bg-white/[0.03] hover:bg-white/[0.08] text-white/40 hover:text-white px-8 py-4 rounded-2xl font-black uppercase tracking-[0.25em] text-[11px] transition-all hover:scale-105 active:scale-95 border border-white/5 hover:border-white/20 backdrop-blur-md flex items-center justify-center min-w-[120px]">
+                                    RESET
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Academy Settings (Admin Only) */}
+                {activeTab === 'academy' && role === 'admin' && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 pb-20">
+                        {/* Currency */}
+                        <div className="glass-card p-6 md:p-8 rounded-[2rem] border border-white/10 shadow-premium relative overflow-hidden">
+                            <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3 mb-6">
+                                <div className="p-2.5 bg-emerald-500/20 rounded-xl text-emerald-500">
+                                    <Globe className="w-5 h-5" />
+                                </div>
+                                Currency
+                            </h2>
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => (
+                                    <button
+                                        key={code}
+                                        onClick={() => setCurrency(code)}
+                                        className={`p-4 rounded-2xl border transition-all ${currency.code === code ? 'bg-emerald-500/20 border-emerald-500/50' : 'bg-white/5 border-white/5'}`}
+                                    >
+                                        <div className="text-lg mb-1 text-white">{CURRENCIES[code].symbol}</div>
+                                        <div className="text-[8px] font-black uppercase tracking-widest text-white/50">{CURRENCIES[code].name}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Gym Profile */}
+                            <div className="glass-card p-6 md:p-8 rounded-[2rem] border border-white/10 shadow-premium">
+                                <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3 mb-6">
+                                    <div className="p-2.5 bg-primary/20 rounded-xl text-primary">
+                                        <Building2 className="w-5 h-5" />
+                                    </div>
+                                    {t('settings.gymProfile')}
+                                </h2>
+
+                                <form onSubmit={handleSaveProfile} className="space-y-4">
+                                    <div className="space-y-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">{t('settings.gymName')}</label>
+                                            <input
+                                                type="text"
+                                                value={draftSettings.academy_name || ''}
+                                                onChange={e => setDraftSettings({ ...draftSettings, academy_name: e.target.value })}
+                                                className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white outline-none focus:border-primary/50 transition-all font-bold text-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">{t('common.phone')}</label>
+                                            <input
+                                                type="text"
+                                                value={draftSettings.gym_phone || ''}
+                                                onChange={e => setDraftSettings({ ...draftSettings, gym_phone: e.target.value })}
+                                                className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white outline-none focus:border-primary/50 transition-all font-bold text-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">{t('settings.address')}</label>
+                                            <input
+                                                type="text"
+                                                value={draftSettings.gym_address || ''}
+                                                onChange={e => setDraftSettings({ ...draftSettings, gym_address: e.target.value })}
+                                                className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white outline-none focus:border-primary/50 transition-all font-bold text-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">Logo URL</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={draftSettings.logo_url || ''}
+                                                    onChange={e => setDraftSettings({ ...draftSettings, logo_url: e.target.value })}
+                                                    className="flex-1 px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white outline-none focus:border-primary/50 transition-all font-bold text-sm"
+                                                    placeholder="https://..."
+                                                />
+                                                <label className="cursor-pointer bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 flex items-center justify-center transition-all group">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={handleLogoUpload}
+                                                        disabled={uploading}
+                                                        className="hidden"
+                                                    />
+                                                    {uploading ? (
+                                                        <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                                                    ) : (
+                                                        <Upload className="w-5 h-5 text-white/40 group-hover:text-white transition-colors" />
+                                                    )}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-primary/20"
+                                    >
+                                        {loading ? 'Saving...' : t('common.save')}
+                                    </button>
+                                </form>
+                            </div>
+
+                            <SubscriptionPlansManager />
+                        </div>
+                    </div>
+                )}
+
+                {/* Profile Settings */}
+                {activeTab === 'profile' && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500 pb-20">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="glass-card p-6 md:p-8 rounded-[2rem] border border-white/10 shadow-premium">
+                                <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3 mb-6">
+                                    <div className="p-2.5 bg-secondary/20 rounded-xl text-primary">
+                                        <User className="w-5 h-5" />
+                                    </div>
+                                    {t('settings.myProfile')}
+                                </h2>
+                                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">{t('settings.displayName')}</label>
+                                        <input
+                                            type="text"
+                                            value={userData.full_name}
+                                            onChange={e => setUserData({ ...userData, full_name: e.target.value })}
+                                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white outline-none font-bold text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">{t('settings.emailAddress')}</label>
+                                        <input
+                                            type="email"
+                                            value={userData.email}
+                                            onChange={e => setUserData({ ...userData, email: e.target.value })}
+                                            disabled={role !== 'admin'}
+                                            className={`w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white outline-none font-bold text-sm ${role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        />
+                                    </div>
+                                    <button type="submit" className="w-full bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl border border-white/10 font-black uppercase tracking-widest text-[10px]">
+                                        {profileLoading ? t('common.saving') : t('settings.updateProfile')}
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div className="glass-card p-6 md:p-8 rounded-[2rem] border border-white/10 shadow-premium">
+                                <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3 mb-6">
+                                    <div className="p-2.5 bg-rose-500/20 rounded-xl text-rose-400">
+                                        <LockIcon className="w-5 h-5" />
+                                    </div>
+                                    {t('settings.changePassword')}
+                                </h2>
+                                <form onSubmit={handleUpdatePassword} className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">{t('settings.newPassword')}</label>
+                                        <input
+                                            type="password"
+                                            value={passwordData.newPassword}
+                                            onChange={e => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white outline-none font-bold text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-white/40 ml-2">{t('settings.confirmPassword')}</label>
+                                        <input
+                                            type="password"
+                                            value={passwordData.confirmPassword}
+                                            onChange={e => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                            className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white outline-none font-bold text-sm"
+                                        />
+                                    </div>
+                                    <button type="submit" className="w-full bg-rose-500 hover:bg-rose-600 text-white py-3 rounded-xl shadow-lg font-black uppercase tracking-widest text-[10px]">
+                                        {passwordLoading ? t('common.saving') : t('settings.changePassword')}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// --- Helper Components & Functions ---
+
+function hexToRgba(hex: string) {
+    let r = 0, g = 0, b = 0, a = 1;
+    if (hex.match(/^#?[0-9a-f]{6}$/i)) {
+        r = parseInt(hex.slice(1, 3), 16);
+        g = parseInt(hex.slice(3, 5), 16);
+        b = parseInt(hex.slice(5, 7), 16);
+    } else if (hex.match(/^#?[0-9a-f]{8}$/i)) {
+        r = parseInt(hex.slice(1, 3), 16);
+        g = parseInt(hex.slice(3, 5), 16);
+        b = parseInt(hex.slice(5, 7), 16);
+        a = Math.round((parseInt(hex.slice(7, 9), 16) / 255) * 100) / 100;
+    }
+    return { r, g, b, a };
+}
+
+function rgbaToHex8(r: number, g: number, b: number, a: number) {
+    const toHex = (n: number) => n.toString(16).padStart(2, '0');
+    const alphaHex = toHex(Math.round(a * 255));
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}${alphaHex}`;
+}
+
+function stripAlpha(hex: string) {
+    return hex.length === 9 || hex.length === 8 ? hex.slice(0, 7) : hex;
+}
+
+function PremiumColorPicker({ label, value, onChange, description }: { label: string; value: string; onChange: (val: string) => void; description?: string }) {
+    const [opacity, setOpacity] = useState(hexToRgba(value || '#000000ff').a);
+    const [baseColor, setBaseColor] = useState(stripAlpha(value || '#000000'));
+    const handleBaseChange = (newHex: string) => {
+        setBaseColor(newHex);
+        const { r: nr, g: ng, b: nb } = hexToRgba(newHex);
+        onChange(rgbaToHex8(nr, ng, nb, opacity));
+    };
+    const handleOpacityChange = (newOpacity: number) => {
+        setOpacity(newOpacity / 100);
+        const { r: nr, g: ng, b: nb } = hexToRgba(baseColor);
+        onChange(rgbaToHex8(nr, ng, nb, newOpacity / 100));
+    };
+    const { r, g, b } = hexToRgba(baseColor);
+    return (
+        <div className="group/picker space-y-2.5 p-3 rounded-[1.5rem] bg-white/5 border border-white/5 hover:border-primary/30 transition-all shadow-premium-subtle">
+            <div className="flex items-center justify-between">
+                <label className="text-[8px] text-white/40 font-black uppercase tracking-[0.2em] group-hover/picker:text-primary transition-colors">{label}</label>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/5 border border-white/5">
+                    <span className="text-[6px] font-black text-white/20 uppercase tracking-widest">Alpha</span>
+                    <span className="text-[7px] font-black text-primary">{Math.round(opacity * 100)}%</span>
+                </div>
+            </div>
+            <div className="flex items-start gap-3">
+                <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-white/10 shrink-0 group-hover/picker:scale-105 transition-transform duration-500">
+                    <div className="absolute inset-0" style={{ backgroundImage: 'conic-gradient(#333 0.25turn, #444 0.25turn 0.5turn, #333 0.5turn 0.75turn, #444 0.75turn)', backgroundSize: '8px 8px' }}></div>
+                    <div className="absolute inset-0" style={{ backgroundColor: value }}></div>
+                    <input type="color" value={baseColor} onChange={(e) => handleBaseChange(e.target.value)} className="absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer opacity-0" />
+                </div>
+                <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex flex-col gap-0.5">
+                        <input type="text" value={baseColor.toUpperCase()} onChange={(e) => { const val = e.target.value; if (val.match(/^#?[0-9a-f]{0,6}$/i)) handleBaseChange(val.startsWith('#') ? val : `#${val}`); }} className="text-xs font-black text-white tracking-[0.15em] font-mono leading-none bg-transparent border-none outline-none focus:text-primary transition-colors w-24" />
+                        <div className="text-[6px] text-white/20 font-bold uppercase tracking-widest truncate">RGBA({r}, {g}, {b}, {opacity})</div>
+                    </div>
+                    <div className="relative group/slider pt-1">
+                        <input type="range" min="0" max="100" value={Math.round(opacity * 100)} onChange={(e) => handleOpacityChange(parseInt(e.target.value))} className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary group-hover/slider:bg-white/20 transition-all" />
+                    </div>
+                </div>
+            </div>
+            {description && <div className="text-[7px] text-white/30 font-bold uppercase tracking-widest border-t border-white/5 pt-2 leading-relaxed">{description}</div>}
+        </div>
+    );
+}
+
+function SubscriptionPlansManager() {
+    const { t } = useTranslation();
+    const { currency } = useCurrency();
+    const queryClient = useQueryClient();
+    const { data: plans, isLoading } = useSubscriptionPlans();
+    const addPlanMutation = useAddPlan();
+    const deletePlanMutation = useDeletePlan();
+    const updatePlanMutation = useUpdatePlan();
+    const [newPlan, setNewPlan] = useState({ name: '', duration_months: '' as any, price: '' as any });
+    const [isAdding, setIsAdding] = useState(false);
+    const [planToDelete, setPlanToDelete] = useState<string | null>(null);
+    const [editingPlan, setEditingPlan] = useState<{ id: string, name: string, duration_months: number, price: number } | null>(null);
+
+    const handleUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingPlan || !editingPlan.name) return;
+        try {
+            await updatePlanMutation.mutateAsync(editingPlan);
+            toast.success('Plan updated successfully');
+            setEditingPlan(null);
+            queryClient.invalidateQueries({ queryKey: ['subscription_plans'] });
+        } catch (error: any) {
+            console.error('Failed to update plan:', error);
+            toast.error(`Error: ${error.message || 'Failed to update plan'}`);
+        }
+    };
+
+    const handleAdd = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newPlan.name) return;
+        try {
+            await addPlanMutation.mutateAsync(newPlan);
+            toast.success('Plan added successfully');
+            setNewPlan({ name: '', duration_months: '' as any, price: '' as any });
+            setIsAdding(false);
+            queryClient.invalidateQueries({ queryKey: ['subscription_plans'] });
+        } catch (error: any) {
+            console.error('Failed to add plan:', error);
+            toast.error(`Error: ${error.message || 'Failed to add plan'}`);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!planToDelete) return;
+        try {
+            await deletePlanMutation.mutateAsync(planToDelete);
+            toast.success('Plan deleted');
+            setPlanToDelete(null);
+            queryClient.invalidateQueries({ queryKey: ['subscription_plans'] });
+        } catch (error: any) {
+            console.error('Failed to delete plan:', error);
+
+            // Check for foreign key constraint violation (Postgres code 23503)
+            if (error?.code === '23503' || error?.message?.includes('foreign key constraint') || error?.details?.includes('still referenced')) {
+                toast.error(t('settings.planInUseError') || 'Cannot delete: Plan is assigned to students/subscriptions.');
+            } else {
+                toast.error(`Error: ${error.message || 'Failed to delete plan'}`);
+            }
+            setPlanToDelete(null);
+        }
+    };
+
+    return (
+        <div className="glass-card p-6 md:p-8 rounded-[2rem] border border-white/10 shadow-premium">
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                    <div className="p-2.5 bg-primary/20 rounded-xl text-primary">
+                        <CreditCard className="w-5 h-5" />
+                    </div>
+                    {t('settings.subscriptionPlans')}
+                </h2>
+                <button onClick={() => setIsAdding(!isAdding)} className="p-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl transition-all">
+                    <Plus className={`w-5 h-5 transition-transform ${isAdding ? 'rotate-45' : ''}`} />
+                </button>
+            </div>
+
+            {isAdding && (
+                <form onSubmit={handleAdd} className="mb-8 p-4 bg-white/5 rounded-[1.5rem] border border-white/5 space-y-4 animate-in zoom-in duration-300">
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 ml-2">{t('settings.planName')}</label>
+                        <input type="text" value={newPlan.name} onChange={e => setNewPlan({ ...newPlan, name: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white outline-none focus:border-primary/50 transition-all font-bold text-sm" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 ml-2">{t('settings.months')}</label>
+                            <input type="number" min="1" value={newPlan.duration_months} onChange={e => setNewPlan({ ...newPlan, duration_months: parseInt(e.target.value) || 1 })} className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white outline-none focus:border-primary/50 transition-all font-bold text-sm" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 ml-2">{t('settings.price')}</label>
+                            <input type="number" value={newPlan.price} onChange={e => setNewPlan({ ...newPlan, price: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white outline-none focus:border-primary/50 transition-all font-bold text-sm" />
+                        </div>
+                    </div>
+                    <button type="submit" className="w-full bg-primary text-white py-3 rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20">{t('settings.saveNewPlan')}</button>
+                </form>
+            )}
+
+            <div className="space-y-3">
+                {isLoading ? (
+                    <div className="py-8 text-center text-white/20 animate-pulse uppercase font-black text-[9px] tracking-widest">{t('settings.loadingPlans')}</div>
+                ) : plans?.length === 0 ? (
+                    <div className="py-8 text-center text-white/20 uppercase font-black text-[9px] tracking-widest">{t('settings.noPlans')}</div>
+                ) : (
+                    plans?.map(plan => (
+                        <div key={plan.id} className="relative p-4 bg-white/5 rounded-[1.5rem] border border-white/5 group hover:border-primary/30 transition-all animate-in slide-in-from-left duration-500">
+                            {editingPlan?.id === plan.id ? (
+                                <form onSubmit={handleUpdate} className="space-y-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40 ml-2">{t('settings.planName')}</label>
+                                        <input type="text" value={editingPlan?.name || ''} onChange={e => editingPlan && setEditingPlan({ ...editingPlan, name: e.target.value })} className="w-full px-4 py-2.5 rounded-lg border border-white/10 bg-white/10 text-white outline-none focus:border-primary/50 transition-all font-bold text-xs" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40 ml-2">{t('settings.months')}</label>
+                                            <input type="number" min="1" value={editingPlan?.duration_months || 1} onChange={e => editingPlan && setEditingPlan({ ...editingPlan, duration_months: parseInt(e.target.value) || 1 })} className="w-full px-4 py-2.5 rounded-lg border border-white/10 bg-white/10 text-white outline-none focus:border-primary/50 transition-all font-bold text-xs" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40 ml-2">{t('settings.price')}</label>
+                                            <input type="number" value={editingPlan?.price || 0} onChange={e => editingPlan && setEditingPlan({ ...editingPlan, price: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-2.5 rounded-lg border border-white/10 bg-white/10 text-white outline-none focus:border-primary/50 transition-all font-bold text-xs" />
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button type="submit" className="flex-1 bg-primary text-white py-2 rounded-lg font-black uppercase tracking-widest text-[8px] hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20">{t('common.save')}</button>
+                                        <button type="button" onClick={() => setEditingPlan(null)} className="px-4 py-2 rounded-lg bg-white/5 text-white/40 font-black uppercase tracking-widest text-[8px] hover:bg-white/10 transition-all">{t('common.cancel')}</button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <div className="flex items-center justify-between">
+                                    <div className="flex-1 cursor-pointer" onClick={() => setEditingPlan(plan)}>
+                                        <div className="text-white text-sm font-black uppercase tracking-wide group-hover:text-primary transition-colors">{plan.name}</div>
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-white/20 mt-0.5">
+                                            {plan.duration_months} {plan.duration_months === 1 ? 'Month' : t('settings.months')} • {plan.price > 0 ? `${plan.price} ${currency.code}` : 'Free Tier'}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <button onClick={() => setEditingPlan(plan)} className="p-2 text-white/60 focus:text-primary hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title={t('common.edit')}><Edit2 className="w-4 h-4" /></button>
+                                        <button onClick={() => setPlanToDelete(plan.id)} className="p-2 text-white/60 focus:text-rose-400 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-all" title={t('common.delete')}><Trash2 className="w-4 h-4" /></button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {planToDelete && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="glass-card max-w-sm w-full p-8 rounded-[2rem] border border-white/10 shadow-2xl relative animate-in zoom-in duration-300">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="p-4 bg-rose-500/20 rounded-full text-rose-500 mb-4 animate-pulse">
+                                <AlertTriangle className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-xl font-black text-white uppercase tracking-tight mb-3">{t('settings.deleteConfirmTitle')}</h3>
+                            <p className="text-white/40 font-bold uppercase text-[9px] tracking-widest leading-relaxed mb-8">{t('settings.deleteConfirmText')}</p>
+                            <div className="flex gap-3 w-full">
+                                <button onClick={() => setPlanToDelete(null)} className="flex-1 px-4 py-3 rounded-xl bg-white/5 text-white/60 font-black uppercase tracking-widest text-[9px] hover:bg-white/10 transition-all">{t('common.cancel')}</button>
+                                <button onClick={handleDelete} className="flex-1 px-4 py-3 rounded-xl bg-rose-500 text-white font-black uppercase tracking-widest text-[9px] shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all hover:scale-105 active:scale-95">{t('common.delete')}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function PremiumSwitch({ label, description, checked, onChange }: { label: string; description?: string; checked: boolean; onChange: (checked: boolean) => void }) {
+    return (
+        <label className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-all cursor-pointer group">
+            <div className="flex-1">
+                <div className="text-[9px] font-black uppercase tracking-widest text-white mb-0.5 group-hover:text-primary transition-colors">{label}</div>
+                {description && <div className="text-[7px] font-bold uppercase tracking-widest text-white/30">{description}</div>}
+            </div>
+            <div className="relative inline-flex items-center cursor-pointer ml-3 rtl:mr-3 rtl:ml-0">
+                <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only peer" />
+                <div className="w-8 h-4 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:bg-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white/20 after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary"></div>
+            </div>
+        </label>
+    );
+}

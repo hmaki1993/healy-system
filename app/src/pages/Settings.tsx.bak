@@ -1,0 +1,1201 @@
+import React, { useState, useEffect } from 'react';
+import {
+    User,
+    Settings as SettingsIcon,
+    Moon,
+    Sun,
+    Bell,
+    Shield,
+    LogOut,
+    ChevronRight,
+    Camera,
+    Check,
+    Save,
+    Globe,
+    CreditCard,
+    Plus,
+    Trash2,
+    Palette,
+    Menu,
+    X,
+    Layout,
+    LayoutDashboard,
+    Type,
+    Maximize,
+    Box,
+    RefreshCw,
+    Building2,
+    Loader2,
+    CheckCircle2,
+    Sparkles,
+    Zap,
+    ShieldCheck,
+    AlertTriangle,
+    Lock as LockIcon,
+    Key as KeyIcon,
+    Search
+} from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSubscriptionPlans, useAddPlan, useDeletePlan } from '../hooks/useData';
+import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { useCurrency, CURRENCIES, CurrencyCode } from '../context/CurrencyContext';
+import { useTheme, applySettingsToRoot, defaultSettings, GymSettings } from '../context/ThemeContext';
+import { useOutletContext } from 'react-router-dom';
+
+export default function Settings() {
+    const { currency, setCurrency } = useCurrency();
+    const { settings, updateSettings, resetToDefaults } = useTheme();
+    const [isPublishing, setIsPublishing] = useState(false);
+    const [publishProgress, setPublishProgress] = useState(0);
+    const [publishStep, setPublishStep] = useState('');
+    const { t, i18n } = useTranslation();
+    const { role } = useOutletContext<{ role: string }>() || { role: null };
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
+
+    // Draft state for local preview before saving
+    const [draftSettings, setDraftSettings] = useState<GymSettings>(settings);
+
+    // Sync draft with global settings when they change (initial load or external update)
+    useEffect(() => {
+        setDraftSettings(settings);
+    }, [settings]);
+
+    // Live Preview Effect: Apply draft settings to root in real-time
+    useEffect(() => {
+        applySettingsToRoot(draftSettings);
+    }, [draftSettings]);
+
+    const handleSaveTheme = async () => {
+        setIsPublishing(true);
+        setPublishProgress(10);
+        setPublishStep('Initializing Design Engine...');
+
+        // Artificial delay for premium feel
+        await new Promise(r => setTimeout(r, 800));
+        setPublishProgress(40);
+        setPublishStep('Optimizing Theme Variables...');
+
+        await new Promise(r => setTimeout(r, 600));
+        setPublishProgress(70);
+        setPublishStep('Syncing with Global Database...');
+
+        try {
+            await updateSettings(draftSettings);
+
+            setPublishProgress(100);
+            setPublishStep('Design Successfully Published!');
+            await new Promise(r => setTimeout(r, 1200));
+        } catch (error) {
+            toast.error('Publishing failed. Check connection.');
+        } finally {
+            setIsPublishing(false);
+            setPublishProgress(0);
+        }
+    };
+
+    const [activeTab, setActiveTab] = useState<'appearance' | 'profile'>('appearance');
+    const [gymProfile, setGymProfile] = useState<{ name: string; phone: string; address: string }>(() => {
+        try {
+            const saved = localStorage.getItem('gymProfile');
+            return saved ? JSON.parse(saved) : {
+                name: 'Epic Gym Academy',
+                phone: '+20 123 456 7890',
+                address: 'Cairo, Egypt',
+            };
+        } catch (e) {
+            console.error('Failed to parse gym profile:', e);
+            return {
+                name: 'Epic Gym Academy',
+                phone: '+20 123 456 7890',
+                address: 'Cairo, Egypt',
+            };
+        }
+    });
+
+    const [loading, setLoading] = useState(false);
+    const [profileLoading, setProfileLoading] = useState(false);
+    const [passwordLoading, setPasswordLoading] = useState(false);
+
+    const [userData, setUserData] = useState({
+        full_name: '',
+        email: ''
+    });
+    const [initialEmail, setInitialEmail] = useState('');
+
+    const [passwordData, setPasswordData] = useState({
+        newPassword: '',
+        confirmPassword: ''
+    });
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', user.id)
+                    .single();
+
+                setUserData({
+                    full_name: profile?.full_name || '',
+                    email: user.email || ''
+                });
+                setInitialEmail(user.email || '');
+            }
+        };
+        fetchProfile();
+    }, []);
+
+    const themes = [
+        { id: 'midnight', name: 'Midnight', primary: '#818cf8', secondary: '#1e293b', bg: '#0f172a', accent: '#c084fc', surface: 'rgba(30, 41, 59, 0.7)', hover: '#818cf880', input: '#0f172a' },
+        { id: 'noguchi', name: 'Noguchi Pink', primary: '#ff096c', secondary: '#192731', bg: '#192731', accent: '#ff096c', surface: 'rgba(42, 56, 67, 0.7)', hover: '#ff096c80', input: '#111d26' },
+        { id: 'obsidian', name: 'Obsidian', primary: '#a78bfa', secondary: '#18181b', bg: '#000000', accent: '#a78bfa', surface: 'rgba(24, 24, 27, 0.7)', hover: '#a78bfa80', input: '#09090b' },
+        { id: 'emerald', name: 'Emerald', primary: '#34d399', secondary: '#1e3a2f', bg: '#0a1f1a', accent: '#2dd4bf', surface: 'rgba(6, 78, 59, 0.7)', hover: '#34d39980', input: '#061a15' },
+        { id: 'crimson', name: 'Crimson', primary: '#fb7185', secondary: '#3f1d28', bg: '#1a0a0f', accent: '#f43f5e', surface: 'rgba(76, 5, 25, 0.7)', hover: '#fb718580', input: '#14070a' },
+        { id: 'amber', name: 'Amber', primary: '#fbbf24', secondary: '#3f2f1d', bg: '#1a140a', accent: '#f59e0b', surface: 'rgba(69, 26, 3, 0.7)', hover: '#fbbf2480', input: '#140c06' },
+        { id: 'ocean', name: 'Ocean', primary: '#22d3ee', secondary: '#1e3a3f', bg: '#0a1a1f', accent: '#06b6d4', surface: 'rgba(22, 78, 99, 0.7)', hover: '#22d3ee80', input: '#07151a' },
+        { id: 'royal', name: 'Royal', primary: '#c084fc', secondary: '#2e1f3f', bg: '#14091a', accent: '#a855f7', surface: 'rgba(59, 7, 100, 0.7)', hover: '#c084fc80', input: '#0e0514' },
+        { id: 'sunset', name: 'Sunset', primary: '#f43f5e', secondary: '#4c0519', bg: '#23020b', accent: '#f59e0b', surface: 'rgba(76, 5, 25, 0.7)', hover: '#f43f5e80', input: '#1a0209' },
+        { id: 'forest', name: 'Forest', primary: '#84cc16', secondary: '#14532d', bg: '#052e16', accent: '#34d399', surface: 'rgba(20, 83, 45, 0.7)', hover: '#84cc1680', input: '#042211' },
+        { id: 'lavender', name: 'Lavender', primary: '#d8b4fe', secondary: '#4c1d95', bg: '#2e1065', accent: '#818cf8', surface: 'rgba(76, 29, 149, 0.7)', hover: '#d8b4fe80', input: '#210b4a' },
+        { id: 'coffee', name: 'Coffee', primary: '#d4a373', secondary: '#281b15', bg: '#1a0f0a', accent: '#faedcd', surface: 'rgba(40, 27, 21, 0.7)', hover: '#d4a37380', input: '#1a110d' },
+    ];
+
+    const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('theme') || 'midnight');
+
+    useEffect(() => {
+        // applyThemeStyles(currentTheme); // Legacy: Handled by settings/draftSettings now
+    }, [currentTheme]);
+
+    const applyPreset = (theme: typeof themes[0]) => {
+        setCurrentTheme(theme.id);
+        localStorage.setItem('theme', theme.id);
+
+        setDraftSettings(prev => ({
+            ...prev,
+            primary_color: theme.primary,
+            secondary_color: theme.secondary,
+            accent_color: theme.accent || prev.accent_color,
+            surface_color: theme.surface || prev.surface_color,
+            hover_color: (theme as any).hover || prev.hover_color,
+            input_bg_color: (theme as any).input || prev.input_bg_color,
+        }));
+    };
+
+    const handleSaveProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        localStorage.setItem('gymProfile', JSON.stringify(gymProfile));
+        window.dispatchEvent(new Event('gymProfileUpdated'));
+        toast.success(t('common.saveSuccess'));
+        setLoading(false);
+    };
+
+
+    const handleUpdateProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setProfileLoading(true);
+        try {
+            // Fetch fresh user data directly from Auth server
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) throw new Error('Session expired or security token invalid. Please log in again.');
+
+            // 1. Update/Create Profile (Name) in Database
+            console.log('Upserting profile for user:', user.id, 'Payload:', { id: user.id, full_name: userData.full_name });
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .upsert({
+                    id: user.id,
+                    full_name: userData.full_name
+                });
+
+            if (profileError) {
+                console.error('Detailed Profile Error:', profileError);
+                throw profileError;
+            }
+
+            // 2. Handle Email Update (Only if different from Auth server's current record)
+            const inputEmail = userData.email.trim().toLowerCase();
+            const currentAuthEmail = user.email?.trim().toLowerCase();
+
+            if (inputEmail && currentAuthEmail && inputEmail !== currentAuthEmail) {
+                try {
+                    const { error: authError } = await supabase.auth.updateUser({
+                        email: inputEmail
+                    });
+
+                    if (authError) throw authError;
+                    toast.success('Email update started! Follow the link sent to your new email.');
+                } catch (authError: any) {
+                    console.error('Email Update Error:', authError);
+                    toast.error(`Could not update email: ${authError.message}`, { duration: 5000 });
+                }
+            } else {
+                toast.success(t('common.saveSuccess'));
+            }
+
+            // Dispatch custom event for real-time header update
+            window.dispatchEvent(new Event('userProfileUpdated'));
+
+        } catch (error: any) {
+            console.error('Error updating profile:', error);
+
+            // Handle specific JWT corruption error with auto-recovery
+            if (error.message?.includes('sub claim') || error.message?.includes('JWT')) {
+                toast.error('Session Error: Your login session is corrupted. Redirecting to login to fix it...', {
+                    duration: 5000,
+                    icon: '🔒'
+                });
+                setTimeout(() => {
+                    supabase.auth.signOut().then(() => {
+                        localStorage.clear();
+                        window.location.href = '/login';
+                    });
+                }, 3000);
+            } else {
+                toast.error(error.message || 'Error updating profile');
+            }
+        } finally {
+            setProfileLoading(false);
+        }
+    };
+
+    const handleUpdatePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!passwordData.newPassword || !passwordData.confirmPassword) {
+            toast.error('Please fill in both password fields');
+            return;
+        }
+
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            toast.error('Passwords do not match');
+            return;
+        }
+
+        if (passwordData.newPassword.length < 6) {
+            toast.error('Password must be at least 6 characters');
+            return;
+        }
+
+        setPasswordLoading(true);
+        try {
+            const { error } = await supabase.auth.updateUser({
+                password: passwordData.newPassword
+            });
+
+            if (error) throw error;
+            toast.success('Password updated successfully');
+            setPasswordData({ newPassword: '', confirmPassword: '' });
+        } catch (error: any) {
+            console.error('Error updating password:', error);
+            toast.error(error.message || 'Error updating password');
+        } finally {
+            setPasswordLoading(false);
+        }
+    };
+
+    // Helper to get input styles that work in both light and dark modes
+    const inputStyle = {
+        backgroundColor: '#FFFFFF',
+        color: '#1F2937',
+        borderColor: 'rgba(128, 128, 128, 0.3)'
+    };
+
+    return (
+        <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Premium Publishing Overlay */}
+            {isPublishing && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-0">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-2xl animate-in fade-in duration-500"></div>
+                    <div className="relative glass-card p-12 rounded-[4rem] border border-white/20 shadow-[0_0_100px_rgba(var(--color-primary),0.2)] max-w-md w-full text-center animate-in zoom-in slide-in-from-bottom-12 duration-700 flex flex-col items-center">
+                        <div className="relative w-40 h-40 mb-10">
+                            {/* Inner Glow */}
+                            <div className="absolute inset-0 bg-primary/20 rounded-full blur-3xl animate-pulse"></div>
+
+                            {/* Progress Ring */}
+                            <svg className="w-full h-full transform -rotate-90">
+                                <circle
+                                    cx="80"
+                                    cy="80"
+                                    r="70"
+                                    stroke="currentColor"
+                                    strokeWidth="8"
+                                    fill="transparent"
+                                    className="text-white/5"
+                                />
+                                <circle
+                                    cx="80"
+                                    cy="80"
+                                    r="70"
+                                    stroke="currentColor"
+                                    strokeWidth="8"
+                                    fill="transparent"
+                                    strokeDasharray={440}
+                                    strokeDashoffset={440 - (440 * publishProgress) / 100}
+                                    className="text-primary transition-all duration-700 ease-out drop-shadow-[0_0_8px_rgba(var(--color-primary),0.5)]"
+                                    strokeLinecap="round"
+                                />
+                            </svg>
+
+                            {/* Icon Center */}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                {publishProgress === 100 ? (
+                                    <CheckCircle2 className="w-16 h-16 text-primary animate-in zoom-in duration-500" />
+                                ) : (
+                                    <div className="relative">
+                                        <Sparkles className="w-12 h-12 text-primary animate-pulse" />
+                                        <Loader2 className="absolute -inset-4 w-20 h-20 text-primary/40 animate-spin" />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                                {publishProgress === 100 ? 'Publishing Complete' : 'Publishing Design'}
+                            </h3>
+                            <div className="flex flex-col items-center gap-2">
+                                <p className="text-xs font-black text-white/40 uppercase tracking-[0.3em] min-h-[1.5em] animate-in fade-in slide-in-from-top-2 duration-300">
+                                    {publishStep}
+                                </p>
+                                <div className="flex gap-1 mt-2">
+                                    {[...Array(3)].map((_, i) => (
+                                        <div key={i} className={`w-1 h-1 rounded-full transition-all duration-300 ${publishProgress % 100 > i * 33 ? 'bg-primary w-4' : 'bg-white/10'}`}></div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Detail Labels */}
+                        <div className="mt-12 grid grid-cols-2 gap-4 w-full">
+                            <div className="p-4 rounded-3xl bg-white/5 border border-white/5 flex flex-col items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-primary/60" />
+                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">End-to-End Encryption</span>
+                            </div>
+                            <div className="p-4 rounded-3xl bg-white/5 border border-white/5 flex flex-col items-center gap-2">
+                                <Zap className="w-4 h-4 text-primary/60" />
+                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Global Sync Ready</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <div className="border-b border-white/5 pb-8">
+                <h1 className="text-3xl sm:text-4xl font-extrabold premium-gradient-text tracking-tight uppercase">{t('settings.title')}</h1>
+                <p className="text-white/60 mt-2 text-sm sm:text-base font-bold tracking-wide uppercase opacity-100">{t('settings.subtitle')}</p>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="flex p-1 bg-white/5 rounded-2xl w-fit group">
+                <button
+                    onClick={() => setActiveTab('appearance')}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'appearance' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                >
+                    <Palette className="w-4 h-4" />
+                    Appearance
+                </button>
+                <button
+                    onClick={() => setActiveTab('profile')}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'profile' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                >
+                    <User className="w-4 h-4" />
+                    Gym Profile
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8">
+                {/* Theme Customization */}
+                <div className="glass-card p-10 rounded-[3rem] border border-white/10 shadow-premium relative overflow-hidden">
+                    <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
+                    <div className="relative z-10">
+                        <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-4 mb-8">
+                            <div className="p-3 bg-primary/20 rounded-2xl text-primary">
+                                <Palette className="w-6 h-6" />
+                            </div>
+                            {t('settings.theme')}
+                        </h2>
+
+                        {/* Base Theme Mode */}
+                        <div className="mb-10 p-6 bg-white/5 rounded-3xl border border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
+                            <div className="text-center sm:text-left">
+                                <h3 className="text-sm font-black text-white uppercase tracking-widest">Base Appearance</h3>
+                                <p className="text-[10px] text-white/50 font-bold uppercase tracking-wider mt-1">Choose your preferred lighting mode</p>
+                            </div>
+                            <div className="flex bg-black/20 p-1.5 rounded-2xl">
+                                <button
+                                    onClick={() => setDraftSettings(prev => ({ ...prev, secondary_color: '#F8FAFC', surface_color: '#ffffff', input_bg_color: '#ffffff', search_bg_color: '#f1f5f9', search_text_color: '#0f172a' }))}
+                                    className={`flex items-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${draftSettings.secondary_color === '#F8FAFC' ? 'bg-white text-slate-900 shadow-lg' : 'text-white/40 hover:text-white'}`}
+                                >
+                                    <Sun className="w-4 h-4" />
+                                    Light
+                                </button>
+                                <button
+                                    onClick={() => setDraftSettings(prev => ({ ...prev, secondary_color: '#0E1D21', surface_color: 'rgba(18, 46, 52, 0.7)', input_bg_color: '#0f172a', search_bg_color: 'rgba(255, 255, 255, 0.05)', search_text_color: '#ffffff' }))}
+                                    className={`flex items-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${draftSettings.secondary_color !== '#F8FAFC' ? 'bg-secondary text-primary shadow-lg ring-1 ring-white/10' : 'text-white/40 hover:text-white'}`}
+                                >
+                                    <Moon className="w-4 h-4" />
+                                    Dark
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                            {themes.map(theme => (
+                                <button
+                                    key={theme.id}
+                                    onClick={() => applyPreset(theme)}
+                                    className={`group relative p-4 rounded-3xl border-2 transition-all duration-500 hover:scale-[1.05] active:scale-95 ${currentTheme === theme.id
+                                        ? 'border-primary bg-primary/10 shadow-lg shadow-primary/20'
+                                        : 'border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20'
+                                        }`}
+                                >
+                                    <div className="aspect-video rounded-xl mb-3 overflow-hidden border border-white/10 relative">
+                                        <div className="absolute inset-0 flex flex-col">
+                                            <div className="h-full" style={{ backgroundColor: theme.bg }}></div>
+                                            <div className="absolute top-0 right-0 w-1/2 h-full opacity-20" style={{ backgroundColor: theme.primary, clipPath: 'polygon(100% 0, 0% 100%, 100% 100%)' }}></div>
+                                        </div>
+                                        <div className="absolute bottom-2 left-2 w-3 h-3 rounded-full shadow-lg" style={{ backgroundColor: theme.primary }}></div>
+                                        <div className="absolute bottom-2 left-6 w-3 h-3 rounded-full shadow-lg" style={{ backgroundColor: theme.secondary }}></div>
+                                        <div className="absolute bottom-2 left-10 w-3 h-3 rounded-full shadow-lg" style={{ backgroundColor: theme.accent }}></div>
+                                        <div className="absolute bottom-2 left-14 w-3 h-3 rounded-full shadow-lg border border-white/20" style={{ backgroundColor: theme.surface }}></div>
+                                    </div>
+                                    <span className={`block text-center font-black text-[9px] uppercase tracking-widest transition-colors ${currentTheme === theme.id ? 'text-white' : 'text-white/40 group-hover:text-white'}`}>
+                                        {theme.name}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Appearance Settings - Visible to All Users */}
+                {activeTab === 'appearance' && (
+                    <div className="space-y-12 animate-in fade-in slide-in-from-right-4 duration-500 pb-20">
+                        {true && (
+                            <div className="glass-card p-10 rounded-[3rem] border border-white/10 shadow-premium relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-8">
+                                    <div className="px-3 py-1 bg-primary/20 rounded-full border border-primary/30 text-[8px] font-black text-primary uppercase tracking-widest animate-pulse">
+                                        Premium Options
+                                    </div>
+                                </div>
+                                <div className="absolute -top-24 -left-24 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl"></div>
+                                <div className="relative z-10">
+                                    <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-4 mb-10">
+                                        <div className="p-3 bg-purple-500/20 rounded-2xl text-purple-500">
+                                            <Palette className="w-6 h-6" />
+                                        </div>
+                                        Design Customization
+                                    </h2>
+
+                                    {/* Full Width Customization Controls */}
+                                    <div className="grid grid-cols-1 gap-12 items-start">
+                                        {/* Left Column: Customization Controls */}
+                                        <div className="space-y-12">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                                {/* Colors & Atmosphere Section */}
+                                                <div className="space-y-8">
+                                                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                                                        <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Colors & Atmosphere</h3>
+                                                        <button
+                                                            onClick={() => setDraftSettings(defaultSettings)}
+                                                            className="text-[9px] font-black text-primary hover:text-white uppercase tracking-widest transition-colors flex items-center gap-2"
+                                                        >
+                                                            <RefreshCw size={10} />
+                                                            Reset to Defaults
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Primary Color */}
+                                                    <PremiumColorPicker
+                                                        label="Primary Brand Color"
+                                                        value={draftSettings.primary_color}
+                                                        onChange={(val: string) => setDraftSettings({ ...draftSettings, primary_color: val })}
+                                                        description="Used for main buttons, interactive elements, and high-visibility indicators."
+                                                    />
+
+                                                    {/* Secondary Color - Background */}
+                                                    <PremiumColorPicker
+                                                        label="Background Base"
+                                                        value={draftSettings.secondary_color}
+                                                        onChange={(val: string) => setDraftSettings({ ...draftSettings, secondary_color: val })}
+                                                        description="Defines the core atmosphere of the app. Darker colors are recommended for a premium feel."
+                                                    />
+
+                                                    {/* Accent Color */}
+                                                    <PremiumColorPicker
+                                                        label="Accent & Glow"
+                                                        value={draftSettings.accent_color}
+                                                        onChange={(val: string) => setDraftSettings({ ...draftSettings, accent_color: val })}
+                                                        description="Used for success states, active pulses, and secondary highlights."
+                                                    />
+
+                                                    {/* Surface Color */}
+                                                    <PremiumColorPicker
+                                                        label="Card & Container Surface"
+                                                        value={draftSettings.surface_color}
+                                                        onChange={(val: string) => setDraftSettings({ ...draftSettings, surface_color: val })}
+                                                        description="Controls the transparency and color of dashboard cards and internal surfaces."
+                                                    />
+
+                                                    {/* Hover & Input Backgrounds */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                        <PremiumColorPicker
+                                                            label="Hover State"
+                                                            value={draftSettings.hover_color || '#10b98180'}
+                                                            onChange={(val: string) => setDraftSettings({ ...draftSettings, hover_color: val })}
+                                                        />
+                                                        <PremiumColorPicker
+                                                            label="Input Background"
+                                                            value={draftSettings.input_bg_color || '#0f172aff'}
+                                                            onChange={(val: string) => setDraftSettings({ ...draftSettings, input_bg_color: val })}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Typography & Visuals */}
+                                                <div className="space-y-12">
+                                                    <div className="space-y-8">
+                                                        <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] border-b border-white/5 pb-2">Typography & Style</h3>
+
+                                                        {/* Font Selection */}
+                                                        <div>
+                                                            <label className="text-[10px] text-white/40 font-black uppercase tracking-widest mb-4 block">Application Font</label>
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                {['Cairo', 'Inter', 'Outfit', 'Montserrat'].map(font => (
+                                                                    <button
+                                                                        key={font}
+                                                                        onClick={() => setDraftSettings({ ...draftSettings, font_family: font })}
+                                                                        className={`p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${draftSettings.font_family === font ? 'bg-primary text-white shadow-xl scale-105' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                                                                        style={{ fontFamily: font }}
+                                                                    >
+                                                                        {font}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Font Scale & Glass Opacity */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                            <div className="space-y-4">
+                                                                <div className="flex items-center justify-between">
+                                                                    <label className="text-[10px] text-white/40 font-black uppercase tracking-widest">Font Scale</label>
+                                                                    <span className="text-[10px] font-mono text-primary font-black">{Math.round(draftSettings.font_scale * 100)}%</span>
+                                                                </div>
+                                                                <input
+                                                                    type="range"
+                                                                    min="0.8"
+                                                                    max="1.2"
+                                                                    step="0.05"
+                                                                    value={draftSettings.font_scale}
+                                                                    onChange={(e) => setDraftSettings({ ...draftSettings, font_scale: parseFloat(e.target.value) })}
+                                                                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-4">
+                                                                <div className="flex items-center justify-between">
+                                                                    <label className="text-[10px] text-white/40 font-black uppercase tracking-widest">Glass Intensity</label>
+                                                                    <span className="text-[10px] font-mono text-primary font-black">{Math.round(draftSettings.glass_opacity * 100)}%</span>
+                                                                </div>
+                                                                <input
+                                                                    type="range"
+                                                                    min="0.2"
+                                                                    max="0.9"
+                                                                    step="0.05"
+                                                                    value={draftSettings.glass_opacity}
+                                                                    onChange={(e) => setDraftSettings({ ...draftSettings, glass_opacity: parseFloat(e.target.value) })}
+                                                                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Roundness */}
+                                                        <div>
+                                                            <label className="text-[10px] text-white/40 font-black uppercase tracking-widest mb-4 block">Interface Roundness</label>
+                                                            <div className="grid grid-cols-3 gap-3">
+                                                                {[
+                                                                    { label: 'Sharp', value: '4px' },
+                                                                    { label: 'Sleek', value: '1.5rem' },
+                                                                    { label: 'Hyper', value: '3rem' }
+                                                                ].map(style => (
+                                                                    <button
+                                                                        key={style.value}
+                                                                        onClick={() => setDraftSettings({ ...draftSettings, border_radius: style.value })}
+                                                                        className={`p-5 transition-all text-[9px] font-black uppercase tracking-widest ${draftSettings.border_radius === style.value ? 'bg-primary text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+                                                                        style={{ borderRadius: style.value === '1.5rem' ? '1rem' : (style.value === '3rem' ? '1.5rem' : '4px') }}
+                                                                    >
+                                                                        {style.label}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        {/* Clock Position Selection */}
+                                                        <div>
+                                                            <label className="text-[10px] text-white/40 font-black uppercase tracking-widest mb-4 block text-center sm:text-left">Dashboard Clock Integration</label>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                                {[
+                                                                    { id: 'header', label: 'Header (Professional)', icon: Layout, desc: 'Always visible in top bar' },
+                                                                    { id: 'dashboard', label: 'Welcome Section', icon: LayoutDashboard, desc: 'Shown next to your name' },
+                                                                    { id: 'none', label: 'Disabled', icon: X, desc: 'Hide the clock entirely' }
+                                                                ].map(pos => (
+                                                                    <button
+                                                                        key={pos.id}
+                                                                        onClick={() => setDraftSettings({ ...draftSettings, clock_position: pos.id as any })}
+                                                                        className={`flex flex-col items-center justify-center p-6 gap-3 rounded-[2rem] border-2 transition-all duration-300 ${draftSettings.clock_position === pos.id ? 'border-primary bg-primary/10 shadow-lg shadow-primary/10 scale-[1.02]' : 'border-white/5 bg-white/5 hover:bg-white/10'}`}
+                                                                    >
+                                                                        <pos.icon className={`w-5 h-5 ${draftSettings.clock_position === pos.id ? 'text-primary' : 'text-white/40'}`} />
+                                                                        <div className="text-center">
+                                                                            <span className={`block text-[9px] font-black uppercase tracking-widest ${draftSettings.clock_position === pos.id ? 'text-white' : 'text-white/40'}`}>{pos.label}</span>
+                                                                            <span className="text-[7px] font-bold text-white/20 uppercase tracking-tighter mt-1">{pos.desc}</span>
+                                                                        </div>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {/* Action Buttons */}
+                                                <div className="flex flex-col sm:flex-row gap-4 pt-12">
+                                                    <button
+                                                        onClick={handleSaveTheme}
+                                                        disabled={loading}
+                                                        className="flex-1 bg-primary hover:bg-primary/90 text-white py-5 rounded-3xl font-black uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-4 shadow-2xl shadow-primary/40 transition-all hover:scale-[1.02] active:scale-95 group/save"
+                                                    >
+                                                        {loading ? (
+                                                            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                                        ) : (
+                                                            <>
+                                                                <Save className="w-4 h-4" />
+                                                                Save My Personal Theme
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setDraftSettings(defaultSettings)}
+                                                        className="px-10 py-5 rounded-3xl bg-white/5 text-white/20 hover:text-white hover:bg-rose-500/20 border border-white/5 hover:border-rose-500/30 text-[10px] font-black uppercase tracking-[0.2em] transition-all"
+                                                    >
+                                                        Discard Changes
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'profile' && (
+                    <div className="space-y-12 animate-in fade-in slide-in-from-left-4 duration-500 pb-20">
+                        {/* Currency Settings - Visible to Admin Only */}
+                        {role === 'admin' && (
+                            <div className="glass-card p-10 rounded-[3rem] border border-white/10 shadow-premium relative overflow-hidden">
+                                <div className="absolute -top-24 -left-24 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl"></div>
+                                <div className="relative z-10">
+                                    <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-4 mb-8">
+                                        <div className="p-3 bg-emerald-500/20 rounded-2xl text-emerald-500">
+                                            <Globe className="w-6 h-6" />
+                                        </div>
+                                        Currency
+                                    </h2>
+
+                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                        {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => (
+                                            <button
+                                                key={code}
+                                                onClick={() => setCurrency(code)}
+                                                className={`relative p-6 rounded-3xl border transition-all duration-300 hover:scale-105 ${currency.code === code
+                                                    ? 'bg-emerald-500/20 border-emerald-500/50 shadow-lg shadow-emerald-500/10'
+                                                    : 'bg-white/5 border-white/5 hover:bg-white/10'
+                                                    }`}
+                                            >
+                                                <div className="text-2xl mb-2 text-white">{CURRENCIES[code].symbol}</div>
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-white/50">{CURRENCIES[code].name}</div>
+                                                {currency.code === code && (
+                                                    <div className="absolute top-4 right-4 w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Gym Profile - Only for Admin */}
+                            {role === 'admin' && (
+                                <div className="glass-card p-10 rounded-[3rem] border border-white/10 shadow-premium lg:col-span-1">
+                                    <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-4 mb-8">
+                                        <div className="p-3 bg-primary/20 rounded-2xl text-primary">
+                                            <Building2 className="w-6 h-6" />
+                                        </div>
+                                        {t('settings.gymProfile')}
+                                    </h2>
+
+                                    <form onSubmit={handleSaveProfile} className="space-y-6">
+                                        <div className="space-y-6">
+                                            <div className="space-y-2 group">
+                                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-2 group-focus-within:text-primary transition-colors">{t('settings.gymName')}</label>
+                                                <input
+                                                    type="text"
+                                                    value={gymProfile.name}
+                                                    onChange={e => setGymProfile({ ...gymProfile, name: e.target.value })}
+                                                    className="w-full px-6 py-4 rounded-2xl border border-white/10 bg-white/5 focus:bg-white/10 focus:border-primary/50 text-white placeholder-white/20 transition-all focus:ring-4 focus:ring-primary/10 outline-none font-bold"
+                                                />
+                                            </div>
+                                            <div className="space-y-2 group">
+                                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-2 group-focus-within:text-primary transition-colors">{t('common.phone')}</label>
+                                                <input
+                                                    type="text"
+                                                    value={gymProfile.phone}
+                                                    onChange={e => setGymProfile({ ...gymProfile, phone: e.target.value })}
+                                                    className="w-full px-6 py-4 rounded-2xl border border-white/10 bg-white/5 focus:bg-white/10 focus:border-primary/50 text-white placeholder-white/20 transition-all focus:ring-4 focus:ring-primary/10 outline-none font-bold"
+                                                />
+                                            </div>
+                                            <div className="space-y-2 group">
+                                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-2 group-focus-within:text-primary transition-colors">{t('settings.address')}</label>
+                                                <input
+                                                    type="text"
+                                                    value={gymProfile.address}
+                                                    onChange={e => setGymProfile({ ...gymProfile, address: e.target.value })}
+                                                    className="w-full px-6 py-4 rounded-2xl border border-white/10 bg-white/5 focus:bg-white/10 focus:border-primary/50 text-white placeholder-white/20 transition-all focus:ring-4 focus:ring-primary/10 outline-none font-bold"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-6 flex justify-end">
+                                            <button
+                                                type="submit"
+                                                disabled={loading}
+                                                className="bg-primary hover:bg-primary/90 text-white px-10 py-4 rounded-2xl shadow-lg shadow-primary/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-3 font-black uppercase tracking-widest text-xs min-w-[180px] group/btn overflow-hidden relative"
+                                            >
+                                                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300"></div>
+                                                {loading ? (
+                                                    <span className="animate-pulse">Saving...</span>
+                                                ) : (
+                                                    <>
+                                                        <Save className="w-4 h-4 relative z-10" />
+                                                        <span className="relative z-10">{t('common.save')}</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            )}
+
+                        </div>
+
+                        {/* Personal Account Settings - Visible to All */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* My Profile */}
+                            <div className="glass-card p-10 rounded-[3rem] border border-white/10 shadow-premium">
+                                <div className="flex items-center justify-between gap-4 mb-8">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 bg-secondary/20 rounded-2xl text-primary">
+                                            <User className="w-6 h-6" />
+                                        </div>
+                                        <h2 className="text-xl font-black text-white uppercase tracking-tight">
+                                            My Profile
+                                        </h2>
+                                    </div>
+                                    <div className="px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20 text-[8px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Sparkles className="w-3 h-3" />
+                                        Premium Member
+                                    </div>
+                                </div>
+
+                                <form onSubmit={handleUpdateProfile} className="space-y-6">
+                                    <div className="space-y-2 group">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-2">Display Name</label>
+                                        <input
+                                            type="text"
+                                            value={userData.full_name}
+                                            onChange={e => setUserData({ ...userData, full_name: e.target.value })}
+                                            className="w-full px-6 py-4 rounded-2xl border border-white/10 bg-white/5 focus:bg-white/10 focus:border-primary/50 text-white transition-all outline-none font-bold"
+                                            placeholder="Your Name"
+                                        />
+                                    </div>
+                                    <div className="space-y-2 group">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-2 group-focus-within:text-primary transition-colors">Email Address</label>
+                                        <input
+                                            type="email"
+                                            value={userData.email}
+                                            onChange={e => setUserData({ ...userData, email: e.target.value })}
+                                            className={`w-full px-6 py-4 rounded-2xl border border-white/10 bg-white/5 focus:bg-white/10 focus:border-primary/50 text-white transition-all outline-none font-bold ${role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            placeholder="your@email.com"
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={profileLoading}
+                                        className="w-full bg-white/5 hover:bg-white/10 text-white px-10 py-4 rounded-2xl border border-white/10 transition-all font-black uppercase tracking-widest text-[10px] hover:border-primary/30"
+                                    >
+                                        {profileLoading ? 'Saving...' : 'Update Profile'}
+                                    </button>
+                                </form>
+                            </div>
+
+                            {/* Change Password */}
+                            <div className="glass-card p-10 rounded-[3rem] border border-white/10 shadow-premium">
+                                <div className="flex items-center justify-between gap-4 mb-8">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 bg-rose-500/20 rounded-2xl text-rose-400">
+                                            <LockIcon className="w-6 h-6" />
+                                        </div>
+                                        <h2 className="text-xl font-black text-white uppercase tracking-tight">
+                                            Change Password
+                                        </h2>
+                                    </div>
+                                    <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20 text-[8px] font-black text-primary uppercase tracking-widest flex items-center gap-2">
+                                        <ShieldCheck className="w-3 h-3" />
+                                        Elite Security
+                                    </div>
+                                </div>
+
+                                <form onSubmit={handleUpdatePassword} className="space-y-6">
+                                    <div className="space-y-2 group">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-2">New Password</label>
+                                        <div className="relative">
+                                            <KeyIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                                            <input
+                                                type="password"
+                                                value={passwordData.newPassword}
+                                                onChange={e => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                                                className="w-full pl-14 pr-6 py-4 rounded-2xl border border-white/10 bg-white/5 focus:bg-white/10 focus:border-rose-500/50 text-white transition-all outline-none font-bold"
+                                                placeholder=""
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2 group">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-2">Confirm New Password</label>
+                                        <div className="relative">
+                                            <LockIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                                            <input
+                                                type="password"
+                                                value={passwordData.confirmPassword}
+                                                onChange={e => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                                className="w-full pl-14 pr-6 py-4 rounded-2xl border border-white/10 bg-white/5 focus:bg-white/10 focus:border-rose-500/50 text-white transition-all outline-none font-bold"
+                                                placeholder=""
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={passwordLoading}
+                                        className="w-full bg-rose-500 hover:bg-rose-600 text-white px-10 py-4 rounded-2xl shadow-lg shadow-rose-500/20 transition-all font-black uppercase tracking-widest text-[10px]"
+                                    >
+                                        {passwordLoading ? 'Updating...' : 'Change Password'}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div >
+    );
+}
+
+
+
+// --- Color Utilities for Premium Customization ---
+
+/**
+ * Converts a hex color (6 or 8 chars) to an RGBA object
+ */
+function hexToRgba(hex: string) {
+    let r = 0, g = 0, b = 0, a = 1;
+    if (hex.match(/^#?[0-9a-f]{6}$/i)) {
+        r = parseInt(hex.slice(1, 3), 16);
+        g = parseInt(hex.slice(3, 5), 16);
+        b = parseInt(hex.slice(5, 7), 16);
+    } else if (hex.match(/^#?[0-9a-f]{8}$/i)) {
+        r = parseInt(hex.slice(1, 3), 16);
+        g = parseInt(hex.slice(3, 5), 16);
+        b = parseInt(hex.slice(5, 7), 16);
+        a = Math.round((parseInt(hex.slice(7, 9), 16) / 255) * 100) / 100;
+    }
+    return { r, g, b, a };
+}
+
+/**
+ * Converts RGBA values to an 8-character hex string
+ */
+function rgbaToHex8(r: number, g: number, b: number, a: number) {
+    const toHex = (n: number) => n.toString(16).padStart(2, '0');
+    const alphaHex = toHex(Math.round(a * 255));
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}${alphaHex}`;
+}
+
+/**
+ * Returns a 6-character hex from an 8-character hex
+ */
+function stripAlpha(hex: string) {
+    return hex.length === 9 ? hex.slice(0, 7) : hex;
+}
+
+function PremiumColorPicker({
+    label,
+    value,
+    onChange,
+    description
+}: {
+    label: string,
+    value: string,
+    onChange: (val: string) => void,
+    description?: string
+}) {
+    const [opacity, setOpacity] = useState(hexToRgba(value || '#000000ff').a);
+    const [baseColor, setBaseColor] = useState(stripAlpha(value || '#000000'));
+
+    const handleBaseChange = (newHex: string) => {
+        setBaseColor(newHex);
+        const { r: nr, g: ng, b: nb } = hexToRgba(newHex);
+        onChange(rgbaToHex8(nr, ng, nb, opacity));
+    };
+
+    const handleOpacityChange = (newOpacity: number) => {
+        setOpacity(newOpacity / 100);
+        const { r: nr, g: ng, b: nb } = hexToRgba(baseColor);
+        onChange(rgbaToHex8(nr, ng, nb, newOpacity / 100));
+    };
+
+    const { r, g, b } = hexToRgba(baseColor);
+
+    return (
+        <div className="group/picker space-y-4 p-5 rounded-[2.5rem] bg-white/5 border border-white/5 hover:border-primary/30 transition-all shadow-premium-subtle">
+            <div className="flex items-center justify-between">
+                <label className="text-[9px] text-white/40 font-black uppercase tracking-[0.2em] group-hover/picker:text-primary transition-colors">
+                    {label}
+                </label>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/5 border border-white/5">
+                    <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">Alpha</span>
+                    <span className="text-[8px] font-black text-primary">
+                        {Math.round(opacity * 100)}%
+                    </span>
+                </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+                {/* Checkerboard Preview Circle - Slightly smaller for better fit */}
+                <div className="relative w-14 h-14 rounded-2xl overflow-hidden shadow-2xl border border-white/10 shrink-0 select-none group-hover/picker:scale-105 transition-transform duration-500">
+                    <div className="absolute inset-0" style={{
+                        backgroundImage: 'conic-gradient(#333 0.25turn, #444 0.25turn 0.5turn, #333 0.5turn 0.75turn, #444 0.75turn)',
+                        backgroundSize: '8px 8px'
+                    }}></div>
+                    <div className="absolute inset-0" style={{ backgroundColor: value }}></div>
+                    <input
+                        type="color"
+                        value={baseColor}
+                        onChange={(e) => handleBaseChange(e.target.value)}
+                        className="absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer opacity-0"
+                    />
+                </div>
+
+                <div className="flex-1 min-w-0 space-y-3">
+                    {/* Vertically stacked info to prevent horizontal collision */}
+                    <div className="flex flex-col gap-0.5">
+                        <div className="text-sm font-black text-white tracking-[0.15em] font-mono leading-none">
+                            {value.toUpperCase()}
+                        </div>
+                        <div className="text-[7px] text-white/20 font-bold uppercase tracking-widest truncate">
+                            RGBA({r}, {g}, {b}, {opacity})
+                        </div>
+                    </div>
+
+                    <div className="relative group/slider pt-2">
+                        <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={Math.round(opacity * 100)}
+                            onChange={(e) => handleOpacityChange(parseInt(e.target.value))}
+                            className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary group-hover/slider:bg-white/20 transition-all"
+                        />
+                        <div className="absolute -top-3 left-0 text-[6px] font-black text-white/20 uppercase tracking-widest pointer-events-none">
+                            Transparency Slider
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {description && (
+                <div className="text-[8px] text-white/30 font-bold uppercase tracking-widest border-t border-white/5 pt-3 leading-relaxed">
+                    {description}
+                </div>
+            )}
+
+        </div>
+    );
+}
+
+function SubscriptionPlansManager() {
+    const { t } = useTranslation();
+    const { currency } = useCurrency();
+    const queryClient = useQueryClient();
+    const { data: plans, isLoading } = useSubscriptionPlans();
+    const addPlanMutation = useAddPlan();
+    const deletePlanMutation = useDeletePlan();
+    const [newPlan, setNewPlan] = useState({ name: '', duration_months: 1, price: 0 });
+    const [isAdding, setIsAdding] = useState(false);
+    const [planToDelete, setPlanToDelete] = useState<string | null>(null);
+
+    const handleAdd = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newPlan.name) return;
+        try {
+            await addPlanMutation.mutateAsync(newPlan);
+            toast.success('Plan added successfully');
+            setNewPlan({ name: '', duration_months: 1, price: 0 });
+            setIsAdding(false);
+            queryClient.invalidateQueries({ queryKey: ['subscription_plans'] });
+        } catch (error: any) {
+            console.error('Failed to add plan:', error);
+            toast.error(`Error: ${error.message || 'Failed to add plan'}`);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!planToDelete) return;
+        try {
+            await deletePlanMutation.mutateAsync(planToDelete);
+            toast.success('Plan deleted');
+            setPlanToDelete(null);
+            queryClient.invalidateQueries({ queryKey: ['subscription_plans'] });
+        } catch (error: any) {
+            console.error('Failed to delete plan:', error);
+            toast.error(`Error: ${error.message || 'Failed to delete plan'}`);
+            setPlanToDelete(null);
+        }
+    };
+
+    return (
+        <div className="glass-card p-10 rounded-[3rem] border border-white/10 shadow-premium lg:col-span-1">
+            <div className="flex items-center justify-between mb-8">
+                <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-4">
+                    <div className="p-3 bg-primary/20 rounded-2xl text-primary">
+                        <CreditCard className="w-6 h-6" />
+                    </div>
+                    Subscription Plans
+                </h2>
+                <button
+                    onClick={() => setIsAdding(!isAdding)}
+                    className="p-3 bg-primary/10 text-primary hover:bg-primary/20 rounded-2xl transition-all"
+                >
+                    <Plus className={`w-6 h-6 transition-transform ${isAdding ? 'rotate-45' : ''}`} />
+                </button>
+            </div>
+
+            {isAdding && (
+                <form onSubmit={handleAdd} className="mb-10 p-6 bg-white/5 rounded-[2rem] border border-white/5 space-y-6 animate-in zoom-in duration-300">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-2">Plan Name</label>
+                        <input
+                            type="text"
+                            placeholder=""
+                            value={newPlan.name}
+                            onChange={e => setNewPlan({ ...newPlan, name: e.target.value })}
+                            className="w-full px-6 py-4 rounded-2xl border border-white/10 bg-white/5 text-white outline-none focus:border-primary/50 transition-all font-bold"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-2">Months</label>
+                            <input
+                                type="number"
+                                min="1"
+                                value={newPlan.duration_months}
+                                onChange={e => setNewPlan({ ...newPlan, duration_months: parseInt(e.target.value) || 1 })}
+                                className="w-full px-6 py-4 rounded-2xl border border-white/10 bg-white/5 text-white outline-none focus:border-primary/50 transition-all font-bold"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-2">Price</label>
+                            <input
+                                type="number"
+                                value={newPlan.price}
+                                onChange={e => setNewPlan({ ...newPlan, price: parseFloat(e.target.value) || 0 })}
+                                className="w-full px-6 py-4 rounded-2xl border border-white/10 bg-white/5 text-white outline-none focus:border-primary/50 transition-all font-bold"
+                            />
+                        </div>
+                    </div>
+                    <button
+                        type="submit"
+                        className="w-full bg-primary text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20"
+                    >
+                        Save New Plan
+                    </button>
+                </form>
+            )}
+
+            <div className="space-y-4">
+                {isLoading ? (
+                    <div className="py-10 text-center text-white/20 animate-pulse uppercase font-black text-[10px] tracking-widest">Loading Plans...</div>
+                ) : plans?.length === 0 ? (
+                    <div className="py-10 text-center text-white/20 uppercase font-black text-[10px] tracking-widest">No custom plans yet</div>
+                ) : (
+                    plans?.map(plan => (
+                        <div key={plan.id} className="flex items-center justify-between p-6 bg-white/5 rounded-[2rem] border border-white/5 group hover:border-primary/30 transition-all animate-in slide-in-from-left duration-500">
+                            <div>
+                                <div className="text-white font-black uppercase tracking-wide">{plan.name}</div>
+                                <div className="text-[10px] font-black uppercase tracking-widest text-white/20 mt-1">
+                                    {plan.duration_months} {plan.duration_months === 1 ? 'Month' : 'Months'} • {plan.price > 0 ? `${plan.price} ${currency.code}` : 'Free Tier'}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setPlanToDelete(plan.id)}
+                                className="p-3 text-white/20 hover:text-rose-400 hover:bg-rose-400/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                            >
+                                <Trash2 className="w-5 h-5" />
+                            </button>
+                        </div>
+                    ))
+                )}
+            </div>
+            <p className="mt-8 text-[10px] font-bold text-white/20 uppercase leading-relaxed px-2">
+                Note: Changing plans will not affect existing gymnasts. New enrollments will see the updated options.
+            </p>
+
+            {/* Custom Premium Modal */}
+            {planToDelete && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="glass-card max-w-md w-full p-10 rounded-[2.5rem] border border-white/10 shadow-2xl relative animate-in zoom-in duration-300">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="p-5 bg-rose-500/20 rounded-full text-rose-500 mb-6 animate-pulse">
+                                <AlertTriangle className="w-10 h-10" />
+                            </div>
+                            <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-4">Are you sure?</h3>
+                            <p className="text-white/40 font-bold uppercase text-[10px] tracking-widest leading-relaxed mb-10">
+                                You are about to delete this plan. Gymnasts currently enrolled in this plan will not be affected, but new gymnasts won't be able to select it.
+                            </p>
+                            <div className="flex gap-4 w-full">
+                                <button
+                                    onClick={() => setPlanToDelete(null)}
+                                    className="flex-1 px-6 py-4 rounded-2xl bg-white/5 text-white/60 font-black uppercase tracking-widest text-[10px] hover:bg-white/10 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    className="flex-1 px-6 py-4 rounded-2xl bg-rose-500 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all hover:scale-105 active:scale-95"
+                                >
+                                    Yes, Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
