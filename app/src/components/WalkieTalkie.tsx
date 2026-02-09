@@ -11,6 +11,8 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
     const mediaRecorder = useRef<MediaRecorder | null>(null);
     const audioChunks = useRef<Blob[]>([]);
     const audioContext = useRef<AudioContext | null>(null);
+    const holdTimer = useRef<any>(null);
+    const isHolding = useRef(false);
 
     // Recording Start Beep
     const playBeep = (type: 'start' | 'end') => {
@@ -53,11 +55,39 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
     };
 
     const stopRecording = () => {
-        if (mediaRecorder.current && isRecording) {
+        if (mediaRecorder.current && mediaRecorder.current.state === 'recording') {
             mediaRecorder.current.stop();
             mediaRecorder.current.stream.getTracks().forEach(track => track.stop());
             setIsRecording(false);
             playBeep('end');
+        }
+    };
+
+    const handlePressStart = (e: React.MouseEvent | React.TouchEvent) => {
+        if (role !== 'admin') return;
+        e.preventDefault();
+        isHolding.current = true;
+        holdTimer.current = setTimeout(() => {
+            if (isHolding.current && !isRecording) {
+                startRecording();
+            }
+        }, 200); // Threshold for PTT
+    };
+
+    const handlePressEnd = () => {
+        isHolding.current = false;
+        if (holdTimer.current) clearTimeout(holdTimer.current);
+        if (isRecording) {
+            stopRecording();
+        }
+    };
+
+    const handleToggle = () => {
+        if (role !== 'admin') return;
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
         }
     };
 
@@ -148,15 +178,21 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
         <div className="flex items-center gap-3">
             {role === 'admin' && (
                 <button
-                    onMouseDown={startRecording}
-                    onMouseUp={stopRecording}
-                    onTouchStart={startRecording}
-                    onTouchEnd={stopRecording}
+                    onMouseDown={handlePressStart}
+                    onMouseUp={handlePressEnd}
+                    onTouchStart={handlePressStart}
+                    onTouchEnd={handlePressEnd}
+                    onClick={(e) => {
+                        // If it wasn't a long press, treat as toggle
+                        if (!isRecording || !isHolding.current) {
+                            handleToggle();
+                        }
+                    }}
                     className={`relative w-11 h-11 flex items-center justify-center rounded-full transition-all duration-300 border-2 ${isRecording
                         ? 'bg-red-500/20 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] scale-110'
                         : 'bg-primary/5 border-primary/20 hover:border-primary/50 text-primary'
                         }`}
-                    title="Push to Talk (Hoki Toki)"
+                    title={isRecording ? "Click to Stop" : "Hold to Talk or Click to Toggle"}
                 >
                     {isUploading ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
