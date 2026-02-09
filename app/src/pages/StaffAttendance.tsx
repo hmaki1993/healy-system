@@ -5,6 +5,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday
 import { Users, Search, ChevronLeft, Calendar, ChevronRight, X, XCircle, CheckCircle, Clock, LogIn, LogOut } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext'; // Assuming this provides generic user info if needed
+import ImageLightbox from '../components/ImageLightbox';
 import toast from 'react-hot-toast';
 
 export default function StaffAttendance() {
@@ -18,7 +19,8 @@ export default function StaffAttendance() {
 
     // History Modal State
     const [showHistoryModal, setShowHistoryModal] = useState(false);
-    const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null);
+    const [ptAttendance, setPtAttendance] = useState<any[]>([]);
+    const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
     const fetchCoachesStatus = async () => {
         try {
@@ -265,7 +267,15 @@ export default function StaffAttendance() {
                                             coach.status === 'absent' ? 'border-rose-500/50 shadow-rose-900/50' :
                                                 'border-white/10 bg-white/5'}`}>
                                         {coach.avatar_url ? (
-                                            <img src={coach.avatar_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                            <img
+                                                src={coach.avatar_url}
+                                                alt=""
+                                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-zoom-in"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setEnlargedImage(coach.avatar_url);
+                                                }}
+                                            />
                                         ) : (
                                             <span className="font-black text-white/50 text-4xl">{coach.full_name[0]}</span>
                                         )}
@@ -394,6 +404,11 @@ export default function StaffAttendance() {
                 )
             }
 
+            {/* Image Lightbox Modal */}
+            <ImageLightbox
+                imageUrl={enlargedImage}
+                onClose={() => setEnlargedImage(null)}
+            />
         </div >
     );
 }

@@ -1,5 +1,5 @@
 -- Create Test Admin User
--- Email: admin@epicgym.com
+-- Email: admin@healy.com
 -- Password: admin123
 -- This SQL should be run in Supabase SQL Editor
 
@@ -10,13 +10,13 @@
 -- 1. Go to your app's Register page: http://localhost:5173/register
 -- 2. Create an account with:
 --    - Full Name: Admin User
---    - Email: admin@epicgym.com
+--    - Email: admin@healy.com
 --    - Password: admin123
 --    - Account Type: Admin
 --
 -- 3. Create another account for testing:
 --    - Full Name: Coach User
---    - Email: coach@epicgym.com
+--    - Email: coach@healy.com
 --    - Password: coach123
 --    - Account Type: Coach
 
@@ -32,4 +32,4 @@
 --     '{role}', 
 --     '"admin"'
 -- )
--- WHERE email = 'admin@epicgym.com';
+-- WHERE email = 'admin@healy.com';

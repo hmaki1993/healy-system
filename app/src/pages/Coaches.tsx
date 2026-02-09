@@ -6,6 +6,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import ManualAttendanceModal from '../components/ManualAttendanceModal';
 import Payroll from '../components/Payroll';
 import { useTranslation } from 'react-i18next';
+import ImageLightbox from '../components/ImageLightbox';
 import { useCoaches } from '../hooks/useData';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../context/CurrencyContext';
@@ -35,11 +36,12 @@ interface CoachCardProps {
     onDelete: () => void;
     onAttendance: () => void;
     onManualAttendance?: () => void;
+    onEnlargeImage?: (url: string) => void;
     isPremium?: boolean;
     isCompact?: boolean;
 }
 
-const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendance, onManualAttendance, isPremium, isCompact }: CoachCardProps) => {
+const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendance, onManualAttendance, onEnlargeImage, isPremium, isCompact }: CoachCardProps) => {
     const isWorking = (coach as any).attendance_status === 'working';
     const isDone = (coach as any).attendance_status === 'done';
     const coachRole = coach.role?.toLowerCase().trim();
@@ -90,9 +92,13 @@ const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendan
                             <img
                                 src={coach.avatar_url}
                                 alt={coach.full_name}
-                                className={`relative rounded-[1.5rem] md:rounded-[1.8rem] object-cover border-2 border-white/10 shadow-xl transition-all duration-700 group-hover:scale-105 group-hover:border-primary/30
+                                className={`relative rounded-[1.5rem] md:rounded-[1.8rem] object-cover border-2 border-white/10 shadow-xl transition-all duration-700 group-hover:scale-105 group-hover:border-primary/30 cursor-zoom-in
                                     ${isCompact ? 'w-14 h-14' : isPremium ? 'w-24 h-24' : 'w-20 h-20'}`}
                                 style={{ objectPosition: `${coach.image_pos_x ?? 50}% ${coach.image_pos_y ?? 50}%` }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEnlargeImage?.(coach.avatar_url!);
+                                }}
                             />
                             {isWorking && (
                                 <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-2 border-black rounded-full animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
@@ -248,6 +254,7 @@ export default function Coaches() {
     const { role } = useOutletContext<{ role: string }>() || { role: null };
     const { data: coachesData, isLoading: loading, refetch } = useCoaches();
     const [searchQuery, setSearchQuery] = useState('');
+    const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
     // Filter coaches based on current user role and search query
     const coaches = (coachesData || []).filter(coach => {
@@ -441,6 +448,7 @@ export default function Coaches() {
                                                 onEdit={() => { setEditingCoach(coach); setShowAddModal(true); }}
                                                 onDelete={() => confirmDelete(coach.id)}
                                                 onAttendance={() => { setSelectedCoachForAttendance(coach); setShowAttendanceModal(true); fetchAttendance(coach.id); }}
+                                                onEnlargeImage={(url) => setEnlargedImage(url)}
                                             />
                                         ))}
                                 </div>
@@ -468,6 +476,7 @@ export default function Coaches() {
                                                 onEdit={() => { setEditingCoach(coach); setShowAddModal(true); }}
                                                 onDelete={() => confirmDelete(coach.id)}
                                                 onAttendance={() => { setSelectedCoachForAttendance(coach); setShowAttendanceModal(true); fetchAttendance(coach.id); }}
+                                                onEnlargeImage={(url) => setEnlargedImage(url)}
                                             />
                                         ))}
                                 </div>
@@ -497,6 +506,7 @@ export default function Coaches() {
                                                 onDelete={() => confirmDelete(coach.id)}
                                                 onAttendance={() => { setSelectedCoachForAttendance(coach); setShowAttendanceModal(true); fetchAttendance(coach.id); }}
                                                 onManualAttendance={() => { setSelectedCoachForManual(coach); setShowManualAttendance(true); }}
+                                                onEnlargeImage={(url) => setEnlargedImage(url)}
                                             />
                                         ))}
                                 </div>
@@ -621,6 +631,11 @@ export default function Coaches() {
                     }}
                 />
             )}
+
+            <ImageLightbox
+                imageUrl={enlargedImage}
+                onClose={() => setEnlargedImage(null)}
+            />
         </div >
     );
 }
