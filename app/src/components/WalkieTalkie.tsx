@@ -7,6 +7,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
     const [isRecording, setIsRecording] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
+    const [isIncoming, setIsIncoming] = useState(false);
     const mediaRecorder = useRef<MediaRecorder | null>(null);
     const audioChunks = useRef<Blob[]>([]);
     const audioContext = useRef<AudioContext | null>(null);
@@ -102,9 +103,39 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                 { event: 'INSERT', schema: 'public', table: 'voice_broadcasts' },
                 async (payload) => {
                     const newBroadcast = payload.new as any;
+                    console.log('📡 WalkieTalkie: Received broadcast:', newBroadcast);
+
                     if (newBroadcast.sender_id !== userId && !isMuted) {
+                        setIsIncoming(true);
+
+                        // Play Beep first
+                        playBeep('start');
+
                         const audio = new Audio(newBroadcast.audio_url);
-                        audio.play().catch(e => console.error('Auto-play blocked:', e));
+                        audio.crossOrigin = "anonymous";
+
+                        audio.play().catch(e => {
+                            console.error('🚫 WalkieTalkie: Auto-play blocked:', e);
+                            toast((t) => (
+                                <span className="flex items-center gap-2">
+                                    🎙️ {role === 'admin' ? 'New Broadcast' : 'Admin Speaking...'}
+                                    <button
+                                        onClick={() => {
+                                            audio.play();
+                                            toast.dismiss(t.id);
+                                        }}
+                                        className="bg-primary text-black px-2 py-1 rounded-md text-[10px] font-bold"
+                                    >
+                                        Listen
+                                    </button>
+                                </span>
+                            ), { duration: 10000 });
+                        });
+
+                        audio.onended = () => {
+                            setIsIncoming(false);
+                            playBeep('end');
+                        };
                     }
                 }
             )
@@ -122,8 +153,8 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                     onTouchStart={startRecording}
                     onTouchEnd={stopRecording}
                     className={`relative w-11 h-11 flex items-center justify-center rounded-full transition-all duration-300 border-2 ${isRecording
-                            ? 'bg-red-500/20 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] scale-110'
-                            : 'bg-primary/5 border-primary/20 hover:border-primary/50 text-primary'
+                        ? 'bg-red-500/20 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] scale-110'
+                        : 'bg-primary/5 border-primary/20 hover:border-primary/50 text-primary'
                         }`}
                     title="Push to Talk (Hoki Toki)"
                 >
@@ -138,13 +169,23 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
             )}
 
             <button
-                onClick={() => setIsMuted(!isMuted)}
+                onClick={() => {
+                    setIsMuted(!isMuted);
+                    // Unlock audio context on toggle if it's suspended
+                    if (audioContext.current?.state === 'suspended') {
+                        audioContext.current.resume();
+                    }
+                }}
                 className={`w-10 h-10 flex items-center justify-center rounded-full border transition-all ${isMuted
-                        ? 'bg-rose-500/10 border-rose-500/20 text-rose-500'
-                        : 'bg-white/5 border-white/10 text-white/40 hover:text-white'
-                    }`}
+                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-500'
+                    : 'bg-white/5 border-white/10 text-white/40 hover:text-white'
+                    } ${isIncoming ? 'animate-bounce border-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]' : ''}`}
+                title={isIncoming ? "Admin is Speaking..." : "Mute/Unmute Hoki Toki"}
             >
                 {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                {isIncoming && !isMuted && (
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-ping"></span>
+                )}
             </button>
         </div>
     );
