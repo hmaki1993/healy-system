@@ -70,7 +70,7 @@ export default function HealyLogin() {
                         <img
                             src={logoPath}
                             alt="Healy Academy"
-                            className="w-36 h-36 object-contain relative z-10 opacity-60 group-hover:opacity-90 transition-all duration-700 drop-shadow-xl"
+                            className="w-36 h-36 object-contain relative z-10 opacity-90 md:opacity-60 md:group-hover:opacity-90 transition-all duration-700 drop-shadow-xl"
                             onError={(e) => {
                                 e.currentTarget.style.display = 'none';
                                 e.currentTarget.nextElementSibling?.classList.remove('hidden');
@@ -82,8 +82,8 @@ export default function HealyLogin() {
                     </div>
                 </div>
 
-                {/* Login Card - Wider and Shorter Layout (Refined) */}
-                <div className="group/card opacity-15 hover:opacity-100 bg-black/40 hover:bg-black/60 backdrop-blur-md hover:backdrop-blur-3xl border border-white/[0.05] hover:border-[#D4AF37]/30 rounded-[3rem] p-8 md:px-12 md:py-8 shadow-none hover:shadow-[0_50px_140px_rgba(0,0,0,0.9)] transition-all duration-1000 ease-out">
+                {/* Login Card - High Contrast Design */}
+                <div className="group/card bg-zinc-950/90 md:bg-black/40 hover:bg-black/60 backdrop-blur-3xl border border-[#D4AF37]/30 md:border-white/[0.05] hover:border-[#D4AF37]/50 rounded-[3rem] p-8 md:px-12 md:py-8 shadow-[0_0_50px_rgba(0,0,0,1)] md:shadow-none hover:shadow-[0_50px_140px_rgba(0,0,0,0.9)] transition-all duration-700 ease-out">
 
                     {/* Header - Inside Card */}
                     <div className="text-center mb-6">
@@ -108,7 +108,7 @@ export default function HealyLogin() {
                     <form onSubmit={handleLogin} className="space-y-5" noValidate>
                         {/* Access ID Field */}
                         <div className="space-y-1.5">
-                            <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-6">
+                            <label className="block text-[10px] font-black text-white md:text-white/30 uppercase tracking-[0.2em] ml-6">
                                 Access ID
                             </label>
                             <input
@@ -117,7 +117,7 @@ export default function HealyLogin() {
                                 dir="ltr"
                                 spellCheck={false}
                                 autoComplete="off"
-                                className="w-full px-8 py-3.5 bg-transparent border border-[#D4AF37]/30 rounded-2xl focus:border-[#D4AF37]/60 outline-none transition-all text-white text-sm font-bold shadow-none focus:ring-0"
+                                className="w-full px-8 py-3.5 bg-white/[0.03] border border-[#D4AF37] md:border-[#D4AF37]/30 rounded-2xl focus:border-[#D4AF37] outline-none transition-all text-white text-sm font-bold shadow-none"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                             />
@@ -125,7 +125,7 @@ export default function HealyLogin() {
 
                         {/* Secret Key Field */}
                         <div className="space-y-1.5">
-                            <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-6">
+                            <label className="block text-[10px] font-black text-white md:text-white/30 uppercase tracking-[0.2em] ml-6">
                                 Secret Key
                             </label>
                             <input
@@ -134,7 +134,7 @@ export default function HealyLogin() {
                                 dir="ltr"
                                 spellCheck={false}
                                 autoComplete="off"
-                                className="w-full px-8 py-3.5 bg-transparent border border-[#D4AF37]/30 rounded-2xl focus:border-[#D4AF37]/60 outline-none transition-all text-white text-sm font-bold shadow-none focus:ring-0"
+                                className="w-full px-8 py-3.5 bg-white/[0.03] border border-[#D4AF37] md:border-[#D4AF37]/30 rounded-2xl focus:border-[#D4AF37] outline-none transition-all text-white text-sm font-bold shadow-none"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />

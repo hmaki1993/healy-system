@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Globe, Sparkles, Award } from 'lucide-react';
+import { Loader2, Globe, Sparkles, Award, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 
@@ -13,6 +13,26 @@ export default function Login() {
     const navigate = useNavigate();
     const { t, i18n } = useTranslation();
     const { updateSettings, settings } = useTheme();
+
+
+    // Remove Resize Listener to avoid jarring layout shifts, rely on CSS.
+    useEffect(() => {
+        // Optional: We could update on resize, but pure CSS is smoother.
+    }, []);
+
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+        // Force body background to black to hide any teal/blue "broad strips" on mobile/tablet browser safe areas
+        const originalBg = document.body.style.backgroundColor;
+        document.body.style.backgroundColor = '#000000';
+
+        return () => {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            document.body.style.backgroundColor = originalBg;
+        };
+    }, []);
 
     const logoPath = "/Whisk_00abd08a154989ca599400ffd45cb917dr-removebg-preview.jbj";
     const bgPath = "/Tom Roberton Images _ Balance-and-Form _ 2.jpg";
@@ -47,10 +67,10 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden font-cairo">
+        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 md:p-6 relative overflow-x-hidden font-cairo select-none">
 
             {/* Dynamic Background with Natural Scaling */}
-            <div className="absolute inset-0 z-0">
+            <div className="fixed inset-0 z-0">
                 <div
                     className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 transition-transform duration-1000"
                     style={{ backgroundImage: `url('${bgPath}')` }}
@@ -61,7 +81,7 @@ export default function Login() {
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
             </div>
 
-            <div className="w-full max-w-md relative z-10 group/page">
+            <div className="w-full max-w-md relative z-10 group/page scale-90 md:scale-100 -mt-8 md:mt-0">
 
                 {/* Prominent Logo - Faded as requested */}
                 <div className="flex justify-center mb-8 relative group">
@@ -70,7 +90,7 @@ export default function Login() {
                         <img
                             src={logoPath}
                             alt="Healy Academy"
-                            className="w-36 h-36 object-contain relative z-10 opacity-60 group-hover:opacity-90 transition-all duration-700 drop-shadow-xl"
+                            className="w-20 h-20 md:w-36 md:h-36 object-contain relative z-10 opacity-100 md:opacity-60 md:group-hover:opacity-90 transition-all duration-700 drop-shadow-xl"
                             onError={(e) => {
                                 e.currentTarget.style.display = 'none';
                                 e.currentTarget.nextElementSibling?.classList.remove('hidden');
@@ -82,8 +102,14 @@ export default function Login() {
                     </div>
                 </div>
 
-                {/* Login Card - Wider and Shorter Layout (Refined) */}
-                <div className="group/card opacity-15 hover:opacity-100 bg-black/40 hover:bg-black/60 backdrop-blur-md hover:backdrop-blur-3xl border border-white/[0.05] hover:border-[#D4AF37]/30 rounded-[3rem] p-8 md:px-12 md:py-8 shadow-none hover:shadow-[0_50px_140px_rgba(0,0,0,0.9)] transition-all duration-1000 ease-out">
+                {/* Login Card - Ultra Compact & Responsive */}
+                {/* Login Card - Guaranteed Visibility with Inline 5% Transparency */}
+                {/* Login Card - SPLIT VIEW: Solid Black Mobile / Premium Faded Desktop */}
+                {/* Login Card - V2.1 Smart Hover & Toggle */}
+                {/* Login Card - Clean Universal Glass View (Matched to Epic) */}
+                <div
+                    className="group/card border-2 border-[#D4AF37] md:border-white/[0.05] rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-[0_0_100px_rgba(0,0,0,1)] transition-all duration-700 ease-out bg-black glass-effect"
+                >
 
                     {/* Header - Inside Card */}
                     <div className="text-center mb-6">
@@ -108,7 +134,7 @@ export default function Login() {
                     <form onSubmit={handleLogin} className="space-y-5" noValidate>
                         {/* Access ID Field */}
                         <div className="space-y-1.5">
-                            <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-6">
+                            <label className="block text-[10px] font-black text-white uppercase tracking-[0.2em] ml-6">
                                 Access ID
                             </label>
                             <input
@@ -117,7 +143,7 @@ export default function Login() {
                                 dir="ltr"
                                 spellCheck={false}
                                 autoComplete="off"
-                                className="w-full px-8 py-3.5 bg-transparent border border-[#D4AF37]/30 rounded-2xl focus:border-[#D4AF37]/60 outline-none transition-all text-white text-sm font-bold shadow-none focus:ring-0"
+                                className="w-full px-8 py-3.5 bg-black/40 border-2 border-[#D4AF37] md:border md:border-[#D4AF37]/30 rounded-2xl focus:border-[#D4AF37] outline-none transition-all text-white text-sm font-bold shadow-none"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                             />
@@ -125,7 +151,7 @@ export default function Login() {
 
                         {/* Secret Key Field */}
                         <div className="space-y-1.5">
-                            <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-6">
+                            <label className="block text-[10px] font-black text-white uppercase tracking-[0.2em] ml-6">
                                 Secret Key
                             </label>
                             <input
@@ -134,7 +160,7 @@ export default function Login() {
                                 dir="ltr"
                                 spellCheck={false}
                                 autoComplete="off"
-                                className="w-full px-8 py-3.5 bg-transparent border border-[#D4AF37]/30 rounded-2xl focus:border-[#D4AF37]/60 outline-none transition-all text-white text-sm font-bold shadow-none focus:ring-0"
+                                className="w-full px-8 py-3.5 bg-black/40 border-2 border-[#D4AF37] md:border md:border-[#D4AF37]/30 rounded-2xl focus:border-[#D4AF37] outline-none transition-all text-white text-sm font-bold shadow-none"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
@@ -144,7 +170,7 @@ export default function Login() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full relative py-3.5 mt-2 rounded-full font-black text-[11px] uppercase tracking-[0.5em] bg-black text-[#D4AF37] border border-[#D4AF37]/40 shadow-[0_15px_30px_rgba(0,0,0,0.4)] hover:shadow-[0_20px_40px_rgba(212,175,55,0.1)] hover:bg-[#D4AF37]/5 transition-all active:scale-[0.98] group/btn overflow-hidden"
+                            className="w-full relative py-3 md:py-3.5 mt-1 rounded-full font-black text-[11px] uppercase tracking-[0.5em] bg-black text-[#D4AF37] border border-[#D4AF37]/40 shadow-xl hover:bg-[#D4AF37]/5 transition-all active:scale-[0.98] group/btn overflow-hidden"
                         >
                             <span className="relative z-10 flex items-center justify-center gap-3">
                                 {loading ? (
@@ -160,17 +186,18 @@ export default function Login() {
                     </form>
 
                     {/* Pill Language Switcher */}
-                    <div className="mt-7 flex flex-col items-center gap-4">
+                    <div className="mt-4 md:mt-7 flex flex-col items-center gap-3">
+
                         <button
                             onClick={toggleLanguage}
-                            className="flex items-center gap-3 px-8 py-2.5 rounded-full bg-white/[0.03] border border-white/10 text-white/40 hover:text-white hover:border-[#D4AF37]/40 transition-all text-[10px] font-black uppercase tracking-[0.3em]"
+                            className="flex items-center gap-3 px-6 py-2 rounded-full bg-white/[0.05] border border-white/20 text-white hover:text-[#D4AF37] hover:border-[#D4AF37] transition-all text-[9px] font-black uppercase tracking-[0.3em]"
                         >
                             <Globe className="w-3.5 h-3.5" />
                             {i18n.language === 'en' ? 'Switch to Arabic' : 'Switch to English'}
                         </button>
 
                         {/* Copyright Footer */}
-                        <span className="text-[9px] font-black text-white/10 uppercase tracking-[0.4em]">
+                        <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">
                             © 2026 Healy Academy
                         </span>
                     </div>
@@ -185,18 +212,54 @@ export default function Login() {
                     -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
                     transition: background-color 5000s ease-in-out 0s;
                 }
+                /* Universal Glass Effect */
+                .glass-effect {
+                    background-color: rgba(0, 0, 0, 0.4) !important;
+                    backdrop-filter: blur(64px) !important;
+                    opacity: 0.5 !important;
+                    border-color: rgba(255, 255, 255, 0.05) !important;
+                    transition: all 0.7s ease-out;
+                }
+
+                @media (min-width: 1024px) {
+                    .glass-effect {
+                        opacity: 0.3 !important;
+                    }
+                }
+
+                @media (hover: hover) {
+                    .glass-effect:hover, .glass-effect:focus-within {
+                        opacity: 1 !important;
+                        background-color: rgba(0, 0, 0, 0.8) !important;
+                        border-color: rgba(212, 175, 55, 0.5) !important;
+                    }
+                }
+                
+                /* For all devices (including touch): make solid when typing/focused */
+                .glass-effect:focus-within {
+                    opacity: 1 !important;
+                    background-color: #000000 !important;
+                    backdrop-filter: none !important;
+                    border-color: #D4AF37 !important;
+                }
                 input {
                     background-color: transparent !important;
                     box-shadow: none !important;
-                    border-color: #D4AF374d !important;
+                    border-color: #D4AF37 !important;
+                }
+                /* Removed hardcoded media queries in favor of state-based logic */
+                @media (min-width: 768px) {
+                    input {
+                        border-color: #D4AF374d !important;
+                    }
                 }
                 input:focus {
-                    border-color: #D4AF3799 !important;
+                    border-color: #D4AF37 !important;
                     box-shadow: none !important;
                 }
                 input:invalid, input:focus:invalid, input:hover:invalid {
                     box-shadow: none !important;
-                    border-color: #D4AF374d !important;
+                    border-color: #D4AF37 !important;
                     outline: none !important;
                 }
             `}</style>
