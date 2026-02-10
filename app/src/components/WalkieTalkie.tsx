@@ -66,6 +66,12 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
 
     const handlePressStart = (e: React.MouseEvent | React.TouchEvent) => {
         if (role !== 'admin') return;
+
+        // Prevent synthetic mouse events on touch devices
+        if (e.type === 'touchstart') {
+            // e.preventDefault(); // Don't prevent default to allow potential scrolling if button is large, but here it's small
+        }
+
         mouseDownTime.current = Date.now();
         isHolding.current = true;
 
@@ -75,37 +81,39 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
             if (isHolding.current && !isRecording) {
                 startRecording();
             }
-        }, 250); // Slightly longer threshold for stability
+        }, 250);
     };
 
     const handlePressEnd = (e: React.MouseEvent | React.TouchEvent) => {
         if (!isHolding.current) return;
         isHolding.current = false;
 
+        const pressDuration = Date.now() - mouseDownTime.current;
+
         if (holdTimer.current) {
             clearTimeout(holdTimer.current);
             holdTimer.current = null;
         }
 
-        // If we were recording (PTT session), stop it
         if (isRecording) {
-            stopRecording();
+            // If we were in PTT mode (long press), stop now
+            if (pressDuration >= 250) {
+                stopRecording();
+            }
+        } else if (pressDuration < 250) {
+            // If it was a short tap and we weren't recording, start toggle mode
+            startRecording();
         }
     };
 
-    const handleToggle = (e: React.MouseEvent) => {
+    const handleToggle = (e: React.MouseEvent | React.TouchEvent) => {
+        // This is only for the "Stop" action in toggle mode 
+        // OR if the user just taps the button.
         if (role !== 'admin') return;
 
-        const pressDuration = Date.now() - mouseDownTime.current;
-
-        // If it was a long press (PTT), handlePressEnd already stopped it.
-        // We only toggle if it was a quick "tap"
-        if (pressDuration < 250) {
-            if (isRecording) {
-                stopRecording();
-            } else {
-                startRecording();
-            }
+        // If we are already recording and it's a tap, stop it
+        if (isRecording && (Date.now() - mouseDownTime.current < 250)) {
+            stopRecording();
         }
     };
 
@@ -200,7 +208,10 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                     onMouseUp={handlePressEnd}
                     onMouseLeave={handlePressEnd}
                     onTouchStart={handlePressStart}
-                    onTouchEnd={handlePressEnd}
+                    onTouchEnd={(e) => {
+                        handlePressEnd(e);
+                        handleToggle(e as any); // Check for toggle-stop on mobile
+                    }}
                     onClick={handleToggle}
                     className={`relative w-11 h-11 flex items-center justify-center rounded-full transition-all duration-300 border-2 ${isRecording
                         ? 'bg-red-500/20 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] scale-110'
