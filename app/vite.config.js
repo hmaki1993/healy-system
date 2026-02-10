@@ -14,9 +14,11 @@ export default defineConfig({
         },
     },
     server: {
-        host: true, // Listen on all local IPs
+        host: '0.0.0.0', // Listen on all network interfaces
+        port: 3000,      // Use a more common port
+        strictPort: true,
         hmr: {
-            overlay: false, // Disable the error overlay if it's annoying
+            overlay: false,
         },
     },
 });
