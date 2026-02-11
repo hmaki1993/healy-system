@@ -203,8 +203,13 @@ export default function HeadCoachDashboard() {
                 <div className="absolute top-0 right-0 w-64 h-64 bg-accent/10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10 animate-in fade-in slide-in-from-left duration-700">
-                    <div>
-                        <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em] mb-2">{format(new Date(), 'EEEE, dd MMMM yyyy')}</p>
+                    <div className="flex flex-col items-start gap-1">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em]">{format(new Date(), 'EEEE, dd MMMM yyyy')}</p>
+                            <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-500 text-[8px] font-black uppercase tracking-[0.2em] border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+                                LEADER
+                            </span>
+                        </div>
                         <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tighter flex items-center gap-4">
                             <span className="text-white/40 font-medium lowercase italic">{t('dashboard.welcome')},</span>
                             <span className="premium-gradient-text">{fullName || t('roles.head_coach')}</span>
@@ -213,23 +218,15 @@ export default function HeadCoachDashboard() {
 
                     {/* Compact Date & Clock Widget */}
                     <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => navigate('/evaluations')}
-                            className="hidden sm:flex items-center gap-2 px-6 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-lg shadow-primary/5 group/eval"
-                        >
-                            <ClipboardCheck className="w-4 h-4 group-hover/eval:scale-110 transition-transform" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Master Eval Hub</span>
-                        </button>
 
                         {settings.clock_position === 'dashboard' && (
-                            <div className="flex items-center gap-4 p-2 pr-6 bg-black/20 border border-white/5 rounded-full shadow-inner backdrop-blur-xl">
-                                <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-accent/20 border border-accent/20 text-accent">
-                                    <Calendar className="w-4 h-4" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">{format(new Date(), 'hh:mm a')}</span>
+                            <div className="flex items-center gap-3 p-1.5 pr-4 bg-white/[0.03] border border-white/10 rounded-full backdrop-blur-xl shadow-lg transition-all hover:bg-white/[0.05]">
+                                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-accent">
+                                    <Calendar className="w-3.5 h-3.5" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest">{format(new Date(), 'hh:mm a')}</span>
                                 </div>
 
-                                <div className="h-6 w-px bg-white/10"></div>
-                                <div className="scale-95 origin-left">
+                                <div className="scale-90 origin-left">
                                     <PremiumClock className="!bg-transparent !border-none !shadow-none !p-0" />
                                 </div>
                             </div>

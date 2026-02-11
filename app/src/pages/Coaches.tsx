@@ -64,10 +64,18 @@ const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendan
     }, [isWorking]);
 
     return (
-        <div className={`glass-card ${isHeadCoach ? 'p-8' : 'p-4'} rounded-2xl border transition-all duration-500 flex flex-col h-full bg-[#0a0c10]/40 overflow-hidden group hover:-translate-y-1 relative
-            ${isHeadCoach ? 'border-primary/30 shadow-[0_0_30px_rgba(var(--color-primary-rgb),0.1)]' : 'border-white/10'}`}>
-            {/* Background Effects */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl pointer-events-none"></div>
+        <div className={`glass-card rounded-[1.5rem] md:rounded-[2rem] border transition-all duration-700 relative overflow-hidden group 
+            ${isHeadCoach
+                ? 'p-8 border-primary/30 bg-primary/5 hover:border-primary/50 shadow-[0_0_30px_rgba(var(--color-primary-rgb),0.2)]'
+                : isCompact
+                    ? 'p-3 border-white/5 bg-white/[0.01] hover:border-white/10'
+                    : 'p-4 border-white/10 bg-white/[0.02] hover:border-white/30 shadow-premium'
+            } hover:scale-[1.02] hover:-translate-y-1`}>
+            {/* Premium Glow Effect for Head Coach */}
+            {isHeadCoach && (
+                <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[100px] group-hover:bg-primary/20 transition-all duration-700"></div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-[1.5rem] md:rounded-[2rem] pointer-events-none"></div>
 
             <div className="relative z-10 flex flex-col h-full">
                 {/* Header Row: Badge & Top Actions */}
@@ -111,40 +119,50 @@ const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendan
                 </div>
 
                 {/* Main Content: Avatar & Name */}
-                <div className={`flex items-start ${isHeadCoach ? 'gap-6 mb-6' : 'gap-4 mb-4'}`}>
+                <div className={`flex flex-col items-center text-center ${isHeadCoach ? 'gap-6 mb-8' : 'gap-4 mb-4'}`}>
                     {/* Avatar */}
                     <div className="relative shrink-0 group/avatar cursor-zoom-in" onClick={() => onEnlargeImage?.(coach.avatar_url!)}>
-                        <div className={`absolute -inset-4 bg-gradient-to-tr from-primary/30 to-accent/30 rounded-2xl blur-xl opacity-0 ${isHeadCoach ? 'opacity-20' : 'group-hover/avatar:opacity-100'} transition-all duration-500`}></div>
+                        {/* Gold Ribbon for Head Coach */}
+                        {isHeadCoach && (
+                            <div className="absolute -top-2 -left-2 z-30 bg-gradient-to-r from-amber-400 to-primary text-black text-[9px] font-black px-3 py-1 rounded-full shadow-lg shadow-amber-500/20 uppercase tracking-[0.2em] transform -rotate-12 border border-amber-200/50">
+                                LEADER
+                            </div>
+                        )}
+
+                        <div className={`absolute -inset-4 bg-gradient-to-tr from-primary/40 to-accent/40 rounded-full blur-2xl opacity-0 ${isHeadCoach ? 'opacity-30' : 'group-hover/avatar:opacity-100'} transition-all duration-500`}></div>
+
                         {coach.avatar_url ? (
-                            <img
-                                src={coach.avatar_url}
-                                alt={coach.full_name}
-                                className={`relative ${isHeadCoach ? 'w-24 h-24' : 'w-14 h-14'} rounded-xl object-cover border border-white/10 shadow-lg group-hover/avatar:scale-105 transition-all duration-500`}
-                                style={{ objectPosition: `${coach.image_pos_x ?? 50}% ${coach.image_pos_y ?? 50}%` }}
-                            />
+                            <div className={`relative ${isHeadCoach ? 'w-32 h-32' : 'w-14 h-14'} p-[1px] bg-gradient-to-tr from-primary/40 to-transparent rounded-[1.5rem] overflow-hidden shadow-2xl group-hover/avatar:scale-105 transition-all duration-500`}>
+                                <img
+                                    src={coach.avatar_url}
+                                    alt={coach.full_name}
+                                    className="w-full h-full rounded-[1.4rem] object-cover"
+                                    style={{ objectPosition: `${coach.image_pos_x ?? 50}% ${coach.image_pos_y ?? 50}%` }}
+                                />
+                            </div>
                         ) : (
-                            <div className={`relative ${isHeadCoach ? 'w-24 h-24' : 'w-14 h-14'} rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 shadow-inner group-hover/avatar:text-primary transition-colors`}>
-                                <Medal className={`${isHeadCoach ? 'w-10 h-10' : 'w-6 h-6'}`} />
+                            <div className={`relative ${isHeadCoach ? 'w-32 h-32' : 'w-14 h-14'} rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 shadow-inner group-hover/avatar:text-primary transition-colors`}>
+                                <Medal className={`${isHeadCoach ? 'w-12 h-12' : 'w-6 h-6'}`} />
                             </div>
                         )}
                         {isWorking && (
-                            <div className={`absolute -bottom-1 -right-1 ${isHeadCoach ? 'w-5 h-5' : 'w-3.5 h-3.5'} bg-emerald-500 border-2 border-[#0a0c10] rounded-full animate-pulse z-20`}></div>
+                            <div className={`absolute -bottom-1 -right-1 ${isHeadCoach ? 'w-6 h-6' : 'w-3.5 h-3.5'} bg-emerald-500 border-2 border-[#0a0c10] rounded-full animate-pulse z-40 shadow-[0_0_15px_rgba(16,185,129,0.5)]`}></div>
                         )}
                     </div>
 
                     {/* Name & Role */}
-                    <div className="min-w-0 pt-1">
-                        <h3 className={`${isHeadCoach ? 'text-2xl mb-2' : 'text-base mb-1'} font-black text-white tracking-wide leading-tight group-hover:text-primary transition-colors truncate`} title={coach.full_name}>
+                    <div className="w-full">
+                        <h3 className={`${isHeadCoach ? 'text-3xl mb-3' : 'text-base mb-1'} font-black text-white tracking-tighter leading-tight group-hover:text-primary transition-colors`} title={coach.full_name}>
                             {coach.full_name}
                         </h3>
-                        <div className="flex flex-col gap-0.5">
+                        <div className="flex flex-col items-center gap-1">
                             {coach.role && (
-                                <p className={`${isHeadCoach ? 'text-[11px]' : 'text-[9px]'} font-black uppercase tracking-[0.2em]`} style={{ color: 'var(--color-brand-label)', opacity: 0.7 }}>
+                                <p className={`${isHeadCoach ? 'text-[11px] px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20 text-primary' : 'text-[9px] text-white/40'} font-black uppercase tracking-[0.3em]`}>
                                     {t(`roles.${coach.role}`)}
                                 </p>
                             )}
                             {coach.specialty && !['reception', 'cleaner'].includes(coachRole || '') && (
-                                <p className="text-[9px] font-bold uppercase tracking-wider text-white/30 truncate">
+                                <p className={`${isHeadCoach ? 'text-[10px]' : 'text-[9px]'} font-bold uppercase tracking-wider text-white/20 mt-1`}>
                                     {coach.specialty}
                                 </p>
                             )}
@@ -404,7 +422,7 @@ export default function Coaches() {
                                     <h2 className="text-xs font-black text-primary uppercase tracking-[0.5em]">{t('roles.head_coach')}</h2>
                                     <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
                                 </div>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-10 lg:gap-12">
                                     {coaches
                                         .filter(c => ['head_coach', 'admin'].includes(c.role?.toLowerCase() || ''))
                                         .map(coach => (
