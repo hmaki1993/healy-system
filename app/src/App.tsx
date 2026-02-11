@@ -24,6 +24,7 @@ const PersonalDashboard = lazy(() => import('./pages/PersonalDashboard'));
 const StudentAttendance = lazy(() => import('./pages/StudentAttendance'));
 const StaffAttendance = lazy(() => import('./pages/StaffAttendance'));
 const PTAttendance = lazy(() => import('./pages/PTAttendance'));
+const Evaluations = lazy(() => import('./pages/Evaluations'));
 
 // Premium Loading Fallback
 const PageLoader = () => (
@@ -134,6 +135,7 @@ function App() {
                   <Route path="attendance/students" element={<StudentAttendance />} />
                   <Route path="attendance/staff" element={<StaffAttendance />} />
                   <Route path="attendance/pt" element={<PTAttendance />} />
+                  <Route path="evaluations" element={<Evaluations />} />
                 </Route>
               </Route>
 

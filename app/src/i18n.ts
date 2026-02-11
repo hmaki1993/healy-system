@@ -48,7 +48,7 @@ i18n
                         deleteConfirm: 'Are you sure you want to delete this?',
                         deleteError: 'Error occurred while deleting',
                         deleteSelected: 'Delete Selected Items',
-                        confirmDeleteSelectedMessage: 'Are you sure you want to delete {{count}} students? This action cannot be undone.',
+                        confirmDeleteSelectedMessage: 'Are you sure you want to delete {{count}} gymnasts? This action cannot be undone.',
                         noResults: 'No results found',
                         daysLeft: '{{count}} days left',
                         cameras: 'Live Cameras',
@@ -108,7 +108,11 @@ i18n
                         sync: 'Sync Data',
                         guest: 'Guest',
                         method: 'Method',
-                        amount: 'Amount'
+                        amount: 'Amount',
+                        active: 'Active',
+                        inactive: 'Inactive',
+                        father: 'Father',
+                        mother: 'Mother'
                     },
                     cameras: {
                         subtitle: 'Monitor gym activities in real-time',
@@ -257,6 +261,7 @@ i18n
                         age: 'Age',
                         birthDate: 'Birth Date',
                         contact: 'Contact Info',
+                        whatsapp: 'WhatsApp for Reports',
                         subscription: 'Subscription',
                         expiry: 'Expires',
                         active: 'Active',
@@ -277,9 +282,19 @@ i18n
                             fri: 'Fri'
                         },
                         addStudent: 'Add Gymnast',
+                        generateReport: 'Generate Monthly Report',
+                        plan: 'Plan',
                         addSubscription: 'Add Subscription',
                         joinDate: 'Join Date',
-                        expected: 'Expected'
+                        expected: 'Expected',
+                        filter: 'Filter',
+                        allStatus: 'All Statuses',
+                        allCoaches: 'All Coaches',
+                        allGroups: 'All Groups',
+                        activeOnly: 'Active Only',
+                        inactiveOnly: 'Inactive Only',
+                        expiringOnly: 'Expiring Soon',
+                        clearFilters: 'Clear Filters'
                     },
                     coaches: {
                         title: 'Coaches',
@@ -448,7 +463,7 @@ i18n
                         deleteConfirm: 'هل أنت متأكد من عملية الحذف؟',
                         deleteError: 'حدث خطأ أثناء الحذف',
                         deleteSelected: 'حذف العناصر المحددة',
-                        confirmDeleteSelectedMessage: 'هل أنت متأكد من حذف {{count}} طلاب؟ لا يمكن التراجع عن هذا الإجراء.',
+                        confirmDeleteSelectedMessage: 'هل أنت متأكد من حذف {{count}} لاعبين؟ لا يمكن التراجع عن هذا الإجراء.',
                         noResults: 'لا توجد نتائج',
                         daysLeft: 'متبقي {{count}} يوم',
                         cameras: 'كاميرات المراقبة',
@@ -514,7 +529,11 @@ i18n
                         hdFeed: 'بث أمني عالي الدقة 01',
                         stableConnection: 'اتصال مستقر',
                         method: 'طريقة الدفع',
-                        amount: 'المبلغ'
+                        amount: 'المبلغ',
+                        active: 'نشط',
+                        inactive: 'غير نشط',
+                        father: 'الأب',
+                        mother: 'الأم'
                     },
                     dashboard: {
                         welcome: 'مرحباً بك',
@@ -671,9 +690,19 @@ i18n
                             fri: 'الجمعة'
                         },
                         addStudent: 'إضافة لاعب',
+                        generateReport: 'إنشاء تقرير شهري',
+                        plan: 'الخطة',
                         addSubscription: 'إضافة اشتراك',
                         joinDate: 'تاريخ الاشتراك',
-                        expected: 'متوقع حضوره'
+                        expected: 'متوقع حضوره',
+                        filter: 'تصفية',
+                        allStatus: 'جميع الحالات',
+                        allCoaches: 'جميع المدربين',
+                        allGroups: 'جميع المجموعات',
+                        activeOnly: 'النشطين فقط',
+                        inactiveOnly: 'غير النشطين فقط',
+                        expiringOnly: 'المنتهي قريباً',
+                        clearFilters: 'مسح التصفية'
                     },
                     coaches: {
                         title: 'المدربين',

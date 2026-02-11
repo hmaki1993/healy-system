@@ -15,6 +15,7 @@ export default defineConfig({
         },
     },
     server: {
+        port: 5173,
         host: true, // Listen on all local IPs
         hmr: {
             overlay: false, // Disable the error overlay if it's annoying

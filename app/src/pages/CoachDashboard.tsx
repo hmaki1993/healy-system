@@ -13,6 +13,8 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useCurrency } from '../context/CurrencyContext';
 import PremiumClock from '../components/PremiumClock';
 import { useTheme } from '../context/ThemeContext';
+import BatchAssessmentModal from '../components/BatchAssessmentModal';
+import AssessmentHistoryModal from '../components/AssessmentHistoryModal';
 
 export default function CoachDashboard() {
     const { t, i18n } = useTranslation();
@@ -35,7 +37,11 @@ export default function CoachDashboard() {
     const [showClearModal, setShowClearModal] = useState(false);
     const [showClearHistoryModal, setShowClearHistoryModal] = useState(false);
     const [showGroupForm, setShowGroupForm] = useState(false);
+    const [showBatchTest, setShowBatchTest] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
     const [editingGroup, setEditingGroup] = useState<any>(null);
+    const [pendingAssignments, setPendingAssignments] = useState<any[]>([]);
+    const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
 
     // No longer need interval here as PremiumClock handles it
     // But we might need currentTime for the date display if we don't want it to be static
@@ -137,6 +143,7 @@ export default function CoachDashboard() {
                         // 3. Fetch PT data
                         fetchTodaySessions(coachData.id);
                         fetchPTSubscriptions(coachData.id, coachData.pt_rate || 0);
+                        fetchAssignments(coachData.id);
                     } else {
                         console.warn('No coach profile found for user:', user.id);
                         // 🛡️ ENHANCED SAFETY: Only show error if:
@@ -320,6 +327,55 @@ export default function CoachDashboard() {
             }
         } catch (error) {
             console.error('Error fetching PT subscriptions:', error);
+        }
+    };
+
+    const fetchAssignments = async (coachId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('skill_assessments')
+                .select(`
+                    id,
+                    title,
+                    date,
+                    coach_id,
+                    skills,
+                    students(id, full_name, photo_url, coaches(full_name))
+                `)
+                .eq('coach_id', coachId)
+                .eq('evaluation_status', 'assigned')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            if (data) {
+                const grouped = data.reduce((acc: any, curr: any) => {
+                    const key = `${curr.title}-${curr.date}`;
+                    if (!acc[key]) {
+                        acc[key] = {
+                            key,
+                            title: curr.title,
+                            date: curr.date,
+                            assessorId: curr.coach_id,
+                            skills: curr.skills,
+                            students: []
+                        };
+                    }
+                    acc[key].students.push({
+                        id: curr.students?.id,
+                        assessment_id: curr.id, // Track the specific record ID
+                        full_name: curr.students?.full_name,
+                        photo_url: curr.students?.photo_url,
+                        coach_name: (curr.students?.coaches as any)?.[0]?.full_name || (curr.students?.coaches as any)?.full_name || '',
+                        status: 'present'
+                    });
+                    return acc;
+                }, {});
+
+                setPendingAssignments(Object.values(grouped));
+            }
+        } catch (err) {
+            console.error('Error fetching assignments:', err);
         }
     };
 
@@ -714,10 +770,21 @@ export default function CoachDashboard() {
 
             {/* My Groups Section */}
             <div className="glass-card p-8 rounded-[2.5rem] border border-white/10 shadow-premium">
-                <h2 className="text-xl font-black text-white uppercase tracking-tight mb-4 flex items-center gap-3">
-                    <div className="p-2.5 bg-accent/20 rounded-xl text-accent"><User className="w-5 h-5" /></div>
-                    {t('dashboard.myGroups', 'My Groups')}
-                </h2>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                        <div className="p-2.5 bg-accent/20 rounded-xl text-accent"><User className="w-5 h-5" /></div>
+                        {t('dashboard.myGroups', 'My Groups')}
+                    </h2>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setShowHistory(true)}
+                            className="bg-white/5 hover:bg-white/10 text-white/60 hover:text-white border border-white/5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+                        >
+                            <Clock className="w-4 h-4" />
+                            History
+                        </button>
+                    </div>
+                </div>
                 <GroupsList
                     coachId={coachId || undefined}
                     onEdit={(role === 'admin' || role === 'head_coach') ? (group) => {
@@ -727,17 +794,39 @@ export default function CoachDashboard() {
                 />
             </div>
 
-            {showGroupForm && (
-                <GroupFormModal
-                    initialData={editingGroup}
-                    onClose={() => setShowGroupForm(false)}
-                    onSuccess={() => {
-                        // Success handled by realtime or implicit refetch if needed
-                        // But let's trigger a hard refresh if we want consistency
-                        window.location.reload();
-                    }}
-                />
-            )}
+            {
+                showGroupForm && (
+                    <GroupFormModal
+                        initialData={editingGroup}
+                        onClose={() => setShowGroupForm(false)}
+                        onSuccess={() => {
+                            // Success handled by realtime or implicit refetch if needed
+                            // But let's trigger a hard refresh if we want consistency
+                            window.location.reload();
+                        }}
+                    />
+                )
+            }
+
+            <BatchAssessmentModal
+                isOpen={showBatchTest}
+                onClose={() => {
+                    setShowBatchTest(false);
+                    setSelectedAssignment(null);
+                }}
+                onSuccess={() => {
+                    toast.success('Batch test saved successfully');
+                    if (coachId) fetchAssignments(coachId);
+                }}
+                currentCoachId={coachId}
+                initialAssignment={selectedAssignment}
+            />
+
+            <AssessmentHistoryModal
+                isOpen={showHistory}
+                onClose={() => setShowHistory(false)}
+                currentCoachId={coachId}
+            />
 
             {/* My PT Students Section & Live Floor */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -904,34 +993,86 @@ export default function CoachDashboard() {
                     )}
                 </div>
 
+                {/* Pending Assignments Section */}
+                {pendingAssignments.length > 0 && (
+                    <div className="xl:col-span-2 glass-card p-8 rounded-[2.5rem] border border-amber-500/20 shadow-[0_20px_50px_rgba(245,158,11,0.1)] relative overflow-hidden group bg-amber-500/[0.02]">
+                        <div className="flex items-center justify-between mb-6 relative z-10">
+                            <div>
+                                <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                                    <div className="p-2.5 bg-amber-500/20 rounded-xl text-amber-500"><Calendar className="w-5 h-5" /></div>
+                                    Pending Assessments
+                                </h2>
+                                <p className="text-[10px] font-black text-amber-500/60 uppercase tracking-[0.2em] mt-1">Assigned by admin</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-10">
+                            {pendingAssignments.map((assignment) => (
+                                <div
+                                    key={assignment.key}
+                                    onClick={() => {
+                                        setSelectedAssignment(assignment);
+                                        setShowBatchTest(true);
+                                    }}
+                                    className="p-5 rounded-[2rem] bg-white/[0.03] border border-white/5 hover:border-amber-500/30 transition-all cursor-pointer group/assignment"
+                                >
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="font-black text-white uppercase tracking-tight text-sm truncate">{assignment.title}</h3>
+                                        <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
+                                            <ChevronRight className="w-4 h-4" />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-white/40">
+                                        <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest">
+                                            <Users className="w-3.5 h-3.5" />
+                                            {assignment.students.length} Students
+                                        </div>
+                                        <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest">
+                                            <TrendingUp className="w-3.5 h-3.5" />
+                                            {assignment.skills.length} Skills
+                                        </div>
+                                    </div>
+                                    <button className="w-full mt-4 py-2.5 rounded-xl bg-amber-500/10 text-amber-500 text-[9px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-all">
+                                        Grade Now
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* Live Floor Widget - Takes up 1 column on large screens */}
                 <div className="xl:col-span-1 h-full min-h-[500px]">
                     <LiveStudentsWidget coachId={coachId} />
                 </div>
             </div>
 
-            {showClearModal && (
-                <ConfirmModal
-                    isOpen={showClearModal}
-                    onClose={() => {
-                        setShowClearModal(false);
-                        setSubToClear(null);
-                    }}
-                    onConfirm={handleClearSessions}
-                    title="Clear All Sessions"
-                    message={`Are you sure you want to clear all remaining sessions for ${subToClear?.students?.full_name || subToClear?.student_name || 'this student'}? This will mark the subscription as completed.`}
-                />
-            )}
+            {
+                showClearModal && (
+                    <ConfirmModal
+                        isOpen={showClearModal}
+                        onClose={() => {
+                            setShowClearModal(false);
+                            setSubToClear(null);
+                        }}
+                        onConfirm={handleClearSessions}
+                        title="Clear All Sessions"
+                        message={`Are you sure you want to clear all remaining sessions for ${subToClear?.students?.full_name || subToClear?.student_name || 'this student'}? This will mark the subscription as completed.`}
+                    />
+                )
+            }
 
-            {showClearHistoryModal && (
-                <ConfirmModal
-                    isOpen={showClearHistoryModal}
-                    onClose={() => setShowClearHistoryModal(false)}
-                    onConfirm={handleClearHistory}
-                    title="Clear Session History"
-                    message="Are you sure you want to clear ALL recorded PT sessions? This action cannot be undone and will affect earnings calculations."
-                />
-            )}
+            {
+                showClearHistoryModal && (
+                    <ConfirmModal
+                        isOpen={showClearHistoryModal}
+                        onClose={() => setShowClearHistoryModal(false)}
+                        onConfirm={handleClearHistory}
+                        title="Clear Session History"
+                        message="Are you sure you want to clear ALL recorded PT sessions? This action cannot be undone and will affect earnings calculations."
+                    />
+                )
+            }
         </div>
     );
 }

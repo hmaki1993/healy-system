@@ -1,8 +1,20 @@
 import { useState, useEffect } from 'react';
-import { User, Calendar, Phone, CheckCircle, TrendingUp, Sparkles, ChevronRight, Mail, MapPin, Clock, ArrowLeft } from 'lucide-react';
+import { User, Calendar, Phone, CheckCircle, TrendingUp, Sparkles, ChevronRight, ChevronDown, Mail, MapPin, Clock, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { format, parseISO, addMonths } from 'date-fns';
+
+const COUNTRIES = [
+    { code: 'KW', dial_code: '+965', flag: '🇰🇼', name: 'Kuwait' },
+    { code: 'SA', dial_code: '+966', flag: '🇸🇦', name: 'Saudi Arabia' },
+    { code: 'AE', dial_code: '+971', flag: '🇦🇪', name: 'UAE' },
+    { code: 'QA', dial_code: '+974', flag: '🇶🇦', name: 'Qatar' },
+    { code: 'BH', dial_code: '+973', flag: '🇧🇭', name: 'Bahrain' },
+    { code: 'OM', dial_code: '+968', flag: '🇴🇲', name: 'Oman' },
+    { code: 'EG', dial_code: '+20', flag: '🇪🇬', name: 'Egypt' },
+    { code: 'US', dial_code: '+1', flag: '🇺🇸', name: 'USA' },
+    { code: 'UK', dial_code: '+44', flag: '🇬🇧', name: 'UK' },
+];
 
 export default function PublicRegistration() {
     const [loading, setLoading] = useState(false);
@@ -18,7 +30,9 @@ export default function PublicRegistration() {
         training_type: '',
         birth_date: '',
         gender: 'male',
+        country_code_student: '+965',
         contact_number: '',       // Student Phone
+        country_code_parent: '+965',
         parent_contact: '',       // Parent Phone Whatsapp
         email: '',
         address: '',
@@ -108,8 +122,8 @@ export default function PublicRegistration() {
                     mother_name: formData.mother_name,
                     birth_date: formData.birth_date,
                     age: age,
-                    parent_contact: formData.parent_contact,
-                    contact_number: formData.contact_number, // Student phone
+                    parent_contact: `${formData.country_code_parent} ${formData.parent_contact}`,
+                    contact_number: `${formData.country_code_student} ${formData.contact_number}`, // Student phone
                     email: formData.email,
                     address: formData.address,
                     coach_id: formData.coach_id || null,
@@ -198,6 +212,8 @@ export default function PublicRegistration() {
                     training_type: '',
                     birth_date: '',
                     gender: 'male',
+                    country_code_student: '+965',
+                    country_code_parent: '+965',
                     contact_number: '',
                     parent_contact: '',
                     email: '',
@@ -353,15 +369,58 @@ export default function PublicRegistration() {
                                     Connectivity
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="group">
-                                        <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">Primary Contact</label>
-                                        <input type="tel" value={formData.contact_number} onChange={e => setFormData({ ...formData, contact_number: e.target.value })} className="input-mind" placeholder="" required />
+                                    {/* Mobile Number */}
+                                    <div className="group z-30">
+                                        <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">Mobile Number</label>
+                                        <div className="flex gap-3 relative">
+                                            <div className="relative group/dropdown">
+                                                <button type="button" className="h-full pl-4 pr-3 bg-[#0E1D21] border border-[#677E8A]/15 rounded-[2rem] flex items-center gap-2 hover:border-[#D4AF37] transition-all min-w-[110px]">
+                                                    <span className="text-xl filter drop-shadow-lg">{COUNTRIES.find(c => c.dial_code === formData.country_code_student)?.flag}</span>
+                                                    <span className="text-xs font-black text-white tracking-widest">{COUNTRIES.find(c => c.dial_code === formData.country_code_student)?.dial_code}</span>
+                                                    <ChevronDown className="w-3 h-3 text-[#677E8A]/50 group-hover/dropdown:text-[#D4AF37] transition-colors" />
+                                                </button>
+                                                <div className="absolute top-[110%] left-0 w-64 bg-[#0B1518]/95 backdrop-blur-xl border border-[#677E8A]/20 rounded-2xl overflow-hidden hidden group-hover/dropdown:block shadow-2xl max-h-64 overflow-y-auto no-scrollbar z-50">
+                                                    {COUNTRIES.map(c => (
+                                                        <button key={c.code} type="button" onClick={() => setFormData({ ...formData, country_code_student: c.dial_code })} className="flex items-center gap-3 w-full px-5 py-4 hover:bg-[#D4AF37]/10 transition-all text-left border-b border-white/5 last:border-0 group/item">
+                                                            <span className="text-xl">{c.flag}</span>
+                                                            <span className="text-xs font-bold text-[#ABAFB5] group-hover/item:text-white flex-1 uppercase tracking-wider">{c.name}</span>
+                                                            <span className="text-[10px] font-black text-[#D4AF37]">{c.dial_code}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <input type="tel" value={formData.contact_number} onChange={e => setFormData({ ...formData, contact_number: e.target.value })} className="input-mind flex-1" placeholder="" required />
+                                        </div>
                                     </div>
-                                    <div className="group">
-                                        <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">Secondary / WhatsApp</label>
-                                        <input type="tel" value={formData.parent_contact} onChange={e => setFormData({ ...formData, parent_contact: e.target.value })} className="input-mind" placeholder="" required />
+
+                                    {/* WhatsApp */}
+                                    <div className="group z-20">
+                                        <label className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-3 ml-6 block flex items-center gap-2">
+                                            WhatsApp for Reports
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        </label>
+                                        <div className="flex gap-3 relative">
+                                            <div className="relative group/dropdown">
+                                                <button type="button" className="h-full pl-4 pr-3 bg-[#0E1D21] border border-[#677E8A]/15 rounded-[2rem] flex items-center gap-2 hover:border-emerald-500/50 transition-all min-w-[110px]">
+                                                    <span className="text-xl filter drop-shadow-lg">{COUNTRIES.find(c => c.dial_code === formData.country_code_parent)?.flag}</span>
+                                                    <span className="text-xs font-black text-white tracking-widest">{COUNTRIES.find(c => c.dial_code === formData.country_code_parent)?.dial_code}</span>
+                                                    <ChevronDown className="w-3 h-3 text-[#677E8A]/50 group-hover/dropdown:text-emerald-500 transition-colors" />
+                                                </button>
+                                                <div className="absolute top-[110%] left-0 w-64 bg-[#0B1518]/95 backdrop-blur-xl border border-[#677E8A]/20 rounded-2xl overflow-hidden hidden group-hover/dropdown:block shadow-2xl max-h-64 overflow-y-auto no-scrollbar z-50">
+                                                    {COUNTRIES.map(c => (
+                                                        <button key={c.code} type="button" onClick={() => setFormData({ ...formData, country_code_parent: c.dial_code })} className="flex items-center gap-3 w-full px-5 py-4 hover:bg-emerald-500/10 transition-all text-left border-b border-white/5 last:border-0 group/item">
+                                                            <span className="text-xl">{c.flag}</span>
+                                                            <span className="text-xs font-bold text-[#ABAFB5] group-hover/item:text-white flex-1 uppercase tracking-wider">{c.name}</span>
+                                                            <span className="text-[10px] font-black text-emerald-500">{c.dial_code}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <input type="tel" value={formData.parent_contact} onChange={e => setFormData({ ...formData, parent_contact: e.target.value })} className="input-mind flex-1 focus:!border-emerald-500/50 focus:!shadow-[0_0_40px_rgba(16,185,129,0.1)]" placeholder="" required />
+                                        </div>
                                     </div>
-                                    <div className="group md:col-span-2">
+
+                                    <div className="group md:col-span-2 z-10">
                                         <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">Physical Address</label>
                                         <div className="relative">
                                             <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[#D4AF37]" />
@@ -370,6 +429,7 @@ export default function PublicRegistration() {
                                     </div>
                                 </div>
                             </div>
+
 
                             {/* Section: Training & Subscription */}
                             <div className="space-y-8 pt-4">

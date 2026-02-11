@@ -5,6 +5,18 @@ import { X, Save, UserPlus, Upload, ChevronDown } from 'lucide-react';
 import { parseISO, addMonths, format } from 'date-fns';
 import toast from 'react-hot-toast';
 
+const COUNTRIES = [
+    { code: 'KW', dial_code: '+965', flag: '🇰🇼', name: 'Kuwait' },
+    { code: 'SA', dial_code: '+966', flag: '🇸🇦', name: 'Saudi Arabia' },
+    { code: 'AE', dial_code: '+971', flag: '🇦🇪', name: 'UAE' },
+    { code: 'QA', dial_code: '+974', flag: '🇶🇦', name: 'Qatar' },
+    { code: 'BH', dial_code: '+973', flag: '🇧🇭', name: 'Bahrain' },
+    { code: 'OM', dial_code: '+968', flag: '🇴🇲', name: 'Oman' },
+    { code: 'EG', dial_code: '+20', flag: '🇪🇬', name: 'Egypt' },
+    { code: 'US', dial_code: '+1', flag: '🇺🇸', name: 'USA' },
+    { code: 'UK', dial_code: '+44', flag: '🇬🇧', name: 'UK' },
+];
+
 import { useQueryClient } from '@tanstack/react-query';
 import { useSubscriptionPlans, useCoaches } from '../hooks/useData';
 import { useCurrency } from '../context/CurrencyContext';
@@ -33,9 +45,11 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
         gender: initialData?.gender || 'male',
         training_type: initialData?.training_type || '',
         contact_number: initialData?.contact_number || '',
+        country_code_student: '+965',
         parent_contact: initialData?.parent_contact || '',
-        subscription_type: initialData?.subscription_type || '', // Initialize empty, will be set by effect
-        subscription_start: format(new Date(), 'yyyy-MM-dd'),
+        country_code_parent: '+965',
+        subscription_type: initialData?.subscription_plan_id || '', // Correctly map plan ID
+        subscription_start: initialData?.subscription_start || format(new Date(), 'yyyy-MM-dd'),
         subscription_expiry: initialData?.subscription_expiry || '', // Manual expiry date
         training_days: initialData?.training_days || [],
         training_schedule: initialData?.training_schedule || [],
@@ -156,8 +170,8 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                 gender: formData.gender,
                 training_type: formData.training_type,
                 age: calculateAge(formData.birth_date),
-                contact_number: formData.contact_number,
-                parent_contact: formData.parent_contact,
+                contact_number: `${formData.country_code_student} ${formData.contact_number}`,
+                parent_contact: `${formData.country_code_parent} ${formData.parent_contact}`,
                 subscription_expiry: expiry,
                 training_days: formData.training_days,
                 training_schedule: formData.training_schedule,
@@ -410,15 +424,32 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                             />
                         </div>
                         <div className="space-y-3 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">{t('common.fatherPhone', "Guardian Contact")}</label>
-                            <input
-                                required
-                                type="tel"
-                                placeholder=""
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-sm"
-                                value={formData.contact_number}
-                                onChange={e => setFormData({ ...formData, contact_number: e.target.value })}
-                            />
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">{t('common.phoneNumber', "Phone Number")}</label>
+                            <div className="flex gap-3 relative">
+                                <div className="relative group/dropdown">
+                                    <button type="button" className="h-full pl-4 pr-3 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-2 hover:border-primary/40 transition-all min-w-[100px]">
+                                        <span className="text-xl filter drop-shadow-lg">{COUNTRIES.find(c => c.dial_code === formData.country_code_student)?.flag}</span>
+                                        <ChevronDown className="w-3 h-3 text-white/20 group-hover/dropdown:text-primary transition-colors" />
+                                    </button>
+                                    <div className="absolute top-[110%] left-0 w-64 bg-[#0a0a0f] border border-white/10 rounded-2xl overflow-hidden hidden group-hover/dropdown:block shadow-2xl max-h-64 overflow-y-auto no-scrollbar z-50">
+                                        {COUNTRIES.map(c => (
+                                            <button key={c.code} type="button" onClick={() => setFormData({ ...formData, country_code_student: c.dial_code })} className="flex items-center gap-3 w-full px-5 py-3 hover:bg-white/5 transition-all text-left border-b border-white/5 last:border-0 group/item">
+                                                <span className="text-xl">{c.flag}</span>
+                                                <span className="text-[10px] font-bold text-white/40 group-hover/item:text-white flex-1 uppercase tracking-wider">{c.name}</span>
+                                                <span className="text-[9px] font-black text-primary">{c.dial_code}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <input
+                                    required
+                                    type="tel"
+                                    placeholder=""
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-sm"
+                                    value={formData.contact_number}
+                                    onChange={e => setFormData({ ...formData, contact_number: e.target.value })}
+                                />
+                            </div>
                         </div>
 
                         {/* Secondary Guardian */}
@@ -433,14 +464,31 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                             />
                         </div>
                         <div className="space-y-3 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Secondary Contact</label>
-                            <input
-                                type="tel"
-                                placeholder=""
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-sm"
-                                value={formData.parent_contact}
-                                onChange={e => setFormData({ ...formData, parent_contact: e.target.value })}
-                            />
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400 ml-1 group-focus-within/field:text-emerald-300 transition-colors">WhatsApp for Reports</label>
+                            <div className="flex gap-3 relative">
+                                <div className="relative group/dropdown">
+                                    <button type="button" className="h-full pl-4 pr-3 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-2 hover:border-emerald-500/40 transition-all min-w-[100px]">
+                                        <span className="text-xl filter drop-shadow-lg">{COUNTRIES.find(c => c.dial_code === formData.country_code_parent)?.flag}</span>
+                                        <ChevronDown className="w-3 h-3 text-white/20 group-hover/dropdown:text-emerald-400 transition-colors" />
+                                    </button>
+                                    <div className="absolute top-[110%] left-0 w-64 bg-[#0a0a0f] border border-white/10 rounded-2xl overflow-hidden hidden group-hover/dropdown:block shadow-2xl max-h-64 overflow-y-auto no-scrollbar z-50">
+                                        {COUNTRIES.map(c => (
+                                            <button key={c.code} type="button" onClick={() => setFormData({ ...formData, country_code_parent: c.dial_code })} className="flex items-center gap-3 w-full px-5 py-3 hover:bg-emerald-500/10 transition-all text-left border-b border-white/5 last:border-0 group/item">
+                                                <span className="text-xl">{c.flag}</span>
+                                                <span className="text-[10px] font-bold text-white/40 group-hover/item:text-white flex-1 uppercase tracking-wider">{c.name}</span>
+                                                <span className="text-[9px] font-black text-emerald-500">{c.dial_code}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <input
+                                    type="tel"
+                                    placeholder=""
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-emerald-500/40 outline-none transition-all text-white placeholder:text-white/10 text-sm"
+                                    value={formData.parent_contact}
+                                    onChange={e => setFormData({ ...formData, parent_contact: e.target.value })}
+                                />
+                            </div>
                         </div>
 
                         {/* Contact Info */}

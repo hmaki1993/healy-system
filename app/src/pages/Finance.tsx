@@ -14,6 +14,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import PremiumCheckbox from '../components/PremiumCheckbox';
 
 interface Payment {
     id: string;
@@ -496,11 +497,15 @@ export default function Finance() {
                                     }}
                                 >
                                     <div className="pt-1">
-                                        <input
-                                            type="checkbox"
+                                        <PremiumCheckbox
                                             checked={isSelected}
-                                            readOnly
-                                            className="w-5 h-5 rounded-lg border-2 border-white/10 bg-white/5 checked:bg-primary checked:border-primary transition-all cursor-pointer accent-primary"
+                                            onChange={() => {
+                                                setSelectedItems(prev =>
+                                                    prev.includes(payment.id)
+                                                        ? prev.filter(id => id !== payment.id)
+                                                        : [...prev, payment.id]
+                                                );
+                                            }}
                                         />
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -548,17 +553,15 @@ export default function Finance() {
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-white/[0.02] backdrop-blur-md">
                                 <th className="px-6 py-4">
-                                    <input
-                                        type="checkbox"
+                                    <PremiumCheckbox
                                         checked={payments.length > 0 && selectedItems.length === payments.length}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setSelectedItems(payments.map(p => p.id));
-                                            } else {
+                                        onChange={() => {
+                                            if (selectedItems.length === payments.length) {
                                                 setSelectedItems([]);
+                                            } else {
+                                                setSelectedItems(payments.map(p => p.id));
                                             }
                                         }}
-                                        className="w-4 h-4 rounded border-2 border-white/10 bg-white/5 checked:bg-primary checked:border-primary transition-all cursor-pointer accent-primary"
                                     />
                                 </th>
                                 <th className="pl-16 pr-6 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">{t('common.student')}</th>
@@ -580,8 +583,7 @@ export default function Finance() {
                                     return (
                                         <tr key={payment.id} className={`group hover:bg-white/[0.04] transition-all duration-500 ${isSelected ? 'bg-primary/5' : ''}`}>
                                             <td className="px-6 py-4">
-                                                <input
-                                                    type="checkbox"
+                                                <PremiumCheckbox
                                                     checked={isSelected}
                                                     onChange={() => {
                                                         setSelectedItems(prev =>
@@ -590,7 +592,6 @@ export default function Finance() {
                                                                 : [...prev, payment.id]
                                                         );
                                                     }}
-                                                    className="w-4 h-4 rounded border-2 border-white/10 bg-white/5 checked:bg-primary checked:border-primary transition-all cursor-pointer accent-primary"
                                                 />
                                             </td>
                                             <td className="px-6 py-4">

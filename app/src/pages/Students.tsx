@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { debounce } from 'lodash';
 import { supabase } from '../lib/supabase';
-import { Plus, Search, X, Smile, Edit, Trash2, TrendingUp, User as UserIcon, Calendar, RefreshCw, Users, FileSpreadsheet } from 'lucide-react';
+import { Plus, Search, X, Smile, Edit, Trash2, TrendingUp, User as UserIcon, Calendar, RefreshCw, Users, FileSpreadsheet, Filter, ChevronDown, Check, FileText } from 'lucide-react';
 import { differenceInDays, format } from 'date-fns';
 import AddStudentForm from '../components/AddStudentForm';
 import AddPTSubscriptionForm from '../components/AddPTSubscriptionForm';
@@ -10,10 +10,13 @@ import RenewPTSubscriptionForm from '../components/RenewPTSubscriptionForm';
 import ConfirmModal from '../components/ConfirmModal';
 import ImportStudentsModal from '../components/ImportStudentsModal';
 import { useTranslation } from 'react-i18next';
-import { useStudents } from '../hooks/useData';
+import { useStudents, useCoaches, useGroups } from '../hooks/useData';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../context/CurrencyContext';
 import { useOutletContext } from 'react-router-dom';
+import GymnastProfileModal from '../components/GymnastProfileModal';
+import PremiumCheckbox from '../components/PremiumCheckbox';
+import MonthlyReportModal from '../components/MonthlyReportModal';
 
 interface Student {
     id: number;
@@ -47,15 +50,16 @@ const StudentRow = memo(({
     onToggleStatus,
     currency,
     t,
-    subscriptionStatus
+    subscriptionStatus,
+    onViewProfile,
+    role,
+    onGenerateReport
 }: any) => {
     return (
         <tr className={`group border-b border-white/[0.02] last:border-0 transition-all duration-300 ${isSelected ? 'bg-primary/10' : 'hover:bg-gradient-to-r hover:from-white/5 hover:to-transparent'}`}>
-            <td className="px-5 py-8 text-center">
+            <td className="px-5 py-8">
                 <div className="flex items-center justify-center">
-                    <input
-                        type="checkbox"
-                        className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary focus:ring-primary/50 focus:ring-offset-0 transition-all cursor-pointer"
+                    <PremiumCheckbox
                         checked={isSelected}
                         onChange={() => onSelect(student.id)}
                     />
@@ -66,7 +70,10 @@ const StudentRow = memo(({
             </td>
             <td className="px-5 py-8">
                 <div className="flex items-center gap-5">
-                    <div className="relative">
+                    <div
+                        className="relative cursor-pointer"
+                        onClick={() => onViewProfile(student)}
+                    >
                         <div className="absolute -inset-2 bg-gradient-to-tr from-primary/20 to-accent/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
                         <div className={`relative w-12 h-12 rounded-2xl bg-[#0a0c10] border border-white/10 flex items-center justify-center text-primary font-black text-lg shadow-2xl shadow-black/50 group-hover:scale-105 transition-transform duration-500 ${!student.is_active && 'opacity-40 grayscale'}`}>
                             {student.full_name?.[0] || '?'}
@@ -74,7 +81,10 @@ const StudentRow = memo(({
                     </div>
                     <div className="flex-1">
                         <div className="flex items-center gap-3">
-                            <div className={`font-black text-white text-lg group-hover:text-primary transition-colors duration-300 ${!student.is_active && 'opacity-40'}`}>
+                            <div
+                                className={`font-black text-white text-lg group-hover:text-primary transition-colors duration-300 cursor-pointer ${!student.is_active && 'opacity-40'}`}
+                                onClick={() => onViewProfile(student)}
+                            >
                                 {student.full_name || <span className="text-white/20 italic font-medium">{t('common.unknown')}</span>}
                             </div>
                             {!student.is_active && (
@@ -147,20 +157,6 @@ const StudentRow = memo(({
                     </div>
                 </div>
             </td>
-            <td className="px-5 py-8">
-                <div className="flex flex-col gap-1.5">
-                    <div className="flex flex-col">
-                        <span className="text-white font-mono text-[11px] tracking-tight">{student.contact_number || <span className="text-white/10">-</span>}</span>
-                        <span className="text-[8px] font-black uppercase tracking-[0.1em] text-white/20">Father</span>
-                    </div>
-                    {student.parent_contact && (
-                        <div className="flex flex-col border-t border-white/[0.05] pt-1.5">
-                            <span className="text-white font-mono text-[11px] tracking-tight">{student.parent_contact}</span>
-                            <span className="text-[8px] font-black uppercase tracking-[0.1em] text-white/20">Mother</span>
-                        </div>
-                    )}
-                </div>
-            </td>
             <td className="px-5 py-8 text-right">
                 <div className="flex items-center justify-end gap-3">
                     {(() => {
@@ -175,6 +171,15 @@ const StudentRow = memo(({
                             </button>
                         );
                     })()}
+                    {(role === 'admin' || role === 'head_coach') && (
+                        <button
+                            onClick={() => onGenerateReport(student)}
+                            className="p-3 rounded-xl bg-white/5 hover:bg-emerald-500/20 text-white/40 hover:text-emerald-500 transition-all duration-300"
+                            title={t('students.generateReport')}
+                        >
+                            <FileText className="w-4 h-4" />
+                        </button>
+                    )}
                     <button
                         onClick={() => onEdit(student)}
                         className="p-3 rounded-xl bg-white/5 hover:bg-primary/20 text-white/40 hover:text-primary transition-all duration-300"
@@ -214,7 +219,18 @@ export default function Students() {
     const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+    const [viewingProfileStudent, setViewingProfileStudent] = useState<Student | null>(null);
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [studentForReport, setStudentForReport] = useState<any>(null);
     const [showImportModal, setShowImportModal] = useState(false);
+    const { data: coachesData } = useCoaches();
+    const { data: groupsData } = useGroups();
+    const [showFilters, setShowFilters] = useState(false);
+    const [filters, setFilters] = useState({
+        status: 'all',
+        coachId: 'all',
+        groupId: 'all'
+    });
 
     // Low-level debounced search to avoid heavy processing on every character
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -236,16 +252,53 @@ export default function Students() {
     }, [students]);
 
     const filteredStudents = useMemo(() => {
-        if (!debouncedSearch.trim()) return indexedStudents;
-        const lowTerm = debouncedSearch.toLowerCase();
-        return indexedStudents.filter(s => s._searchIndex.includes(lowTerm));
-    }, [indexedStudents, debouncedSearch]);
+        let result = indexedStudents;
 
-    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.checked) {
-            setSelectedStudentIds(filteredStudents.map(s => s.id));
-        } else {
+        // Search filter
+        if (debouncedSearch.trim()) {
+            const lowTerm = debouncedSearch.toLowerCase();
+            result = result.filter(s => s._searchIndex.includes(lowTerm));
+        }
+
+        // Status filter
+        if (filters.status !== 'all') {
+            if (filters.status === 'active') result = result.filter(s => s.is_active);
+            else if (filters.status === 'inactive') result = result.filter(s => !s.is_active);
+            else if (filters.status === 'expiring') {
+                result = result.filter(s => {
+                    if (!s.subscription_expiry) return false;
+                    const days = differenceInDays(new Date(s.subscription_expiry), new Date());
+                    return days >= 0 && days <= 7;
+                });
+            }
+        }
+
+        // Coach filter
+        if (filters.coachId !== 'all') {
+            result = result.filter(s => s.coach_id === filters.coachId);
+        }
+
+        // Group filter
+        if (filters.groupId !== 'all') {
+            result = result.filter(s => s.group_id === Number(filters.groupId));
+        }
+
+        return result;
+    }, [indexedStudents, debouncedSearch, filters]);
+
+    const activeFilterCount = useMemo(() => {
+        let count = 0;
+        if (filters.status !== 'all') count++;
+        if (filters.coachId !== 'all') count++;
+        if (filters.groupId !== 'all') count++;
+        return count;
+    }, [filters]);
+
+    const handleSelectAll = () => {
+        if (selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0) {
             setSelectedStudentIds([]);
+        } else {
+            setSelectedStudentIds(filteredStudents.map(s => s.id));
         }
     };
 
@@ -703,6 +756,20 @@ export default function Students() {
                         </button>
                     )}
 
+                    {/* Filter Toggle Button */}
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`p-3 px-5 rounded-full border transition-all duration-300 flex items-center gap-2 group/filter ${showFilters ? 'bg-primary/20 border-primary/50 text-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)]' : 'bg-white/[0.03] border-white/5 text-white/40 hover:text-white hover:border-white/20'}`}
+                    >
+                        <Filter className={`w-4 h-4 ${showFilters ? 'animate-pulse' : 'group-hover/filter:rotate-12 transition-transform'}`} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">{t('students.filter')}</span>
+                        {activeFilterCount > 0 && (
+                            <span className="w-5 h-5 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-black animate-in zoom-in duration-300">
+                                {activeFilterCount}
+                            </span>
+                        )}
+                    </button>
+
                     <button
                         onClick={() => setShowImportModal(true)}
                         className="bg-gradient-to-r from-[#622347] to-[#8B3A62] hover:from-[#622347]/90 hover:to-[#8B3A62]/90 text-white px-6 py-3 rounded-full shadow-lg shadow-[#622347]/20 transition-all hover:scale-105 active:scale-95 whitespace-nowrap flex items-center gap-2 font-black uppercase tracking-widest text-xs"
@@ -723,15 +790,88 @@ export default function Students() {
                     </button>
                 </div>
 
+                {/* Filter Bar */}
+                {showFilters && (
+                    <div className="px-6 pb-6 animate-in slide-in-from-top-4 duration-500">
+                        <div className="glass-card p-6 rounded-[2rem] border border-white/10 shadow-xl flex flex-wrap items-end gap-6 bg-white/[0.02]">
+                            {/* Status Filter */}
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] ml-2">{t('common.status')}</label>
+                                <div className="flex items-center p-1 bg-[#0a0c10] rounded-xl border border-white/5">
+                                    {[
+                                        { id: 'all', label: t('students.allStatus') },
+                                        { id: 'active', label: t('students.activeOnly') },
+                                        { id: 'inactive', label: t('students.inactiveOnly') },
+                                        { id: 'expiring', label: t('students.expiringOnly') }
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.id}
+                                            onClick={() => setFilters(prev => ({ ...prev, status: opt.id }))}
+                                            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap ${filters.status === opt.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Coach Filter */}
+                            <div className="flex flex-col gap-2 min-w-[200px]">
+                                <label className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] ml-2">{t('students.assignedCoach')}</label>
+                                <div className="relative group/select">
+                                    <select
+                                        value={filters.coachId}
+                                        onChange={(e) => setFilters(prev => ({ ...prev, coachId: e.target.value }))}
+                                        className="w-full bg-[#0a0c10] border border-white/5 rounded-xl py-2.5 px-4 text-[10px] font-black uppercase tracking-wider text-white focus:outline-none focus:border-primary/50 transition-all appearance-none cursor-pointer"
+                                    >
+                                        <option value="all">{t('students.allCoaches')}</option>
+                                        {coachesData?.map((coach: any) => (
+                                            <option key={coach.id} value={coach.id}>{coach.full_name}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-3 h-3 text-white/20 group-hover/select:text-primary transition-colors pointer-events-none" />
+                                </div>
+                            </div>
+
+                            {/* Group Filter */}
+                            <div className="flex flex-col gap-2 min-w-[200px]">
+                                <label className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] ml-2">{t('dashboard.allGroups')}</label>
+                                <div className="relative group/select">
+                                    <select
+                                        value={filters.groupId}
+                                        onChange={(e) => setFilters(prev => ({ ...prev, groupId: e.target.value }))}
+                                        className="w-full bg-[#0a0c10] border border-white/5 rounded-xl py-2.5 px-4 text-[10px] font-black uppercase tracking-wider text-white focus:outline-none focus:border-primary/50 transition-all appearance-none cursor-pointer"
+                                    >
+                                        <option value="all">{t('students.allGroups')}</option>
+                                        {groupsData?.map((group: any) => (
+                                            <option key={group.id} value={group.id}>{group.name}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-3 h-3 text-white/20 group-hover/select:text-primary transition-colors pointer-events-none" />
+                                </div>
+                            </div>
+
+                            {/* Clear All */}
+                            {activeFilterCount > 0 && (
+                                <button
+                                    onClick={() => setFilters({ status: 'all', coachId: 'all', groupId: 'all' })}
+                                    className="px-4 py-2.5 text-rose-500/60 hover:text-rose-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-colors group/clear ml-auto"
+                                >
+                                    <X className="w-3.5 h-3.5 group-hover/clear:rotate-90 transition-transform" />
+                                    {t('students.clearFilters')}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-[#0a0c10] text-white/40 font-black text-[9px] uppercase tracking-[0.2em] border-b border-white/5 sticky top-0 z-10 backdrop-blur-xl">
-                                <th className="px-6 py-6 text-center w-16">
+                                <th className="px-6 py-6 w-16">
                                     <div className="flex items-center justify-center">
-                                        <input
-                                            type="checkbox"
-                                            className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary focus:ring-primary/50 focus:ring-offset-0 transition-all cursor-pointer"
+                                        <PremiumCheckbox
                                             checked={filteredStudents.length > 0 && selectedStudentIds.length === filteredStudents.length}
                                             onChange={handleSelectAll}
                                         />
@@ -743,14 +883,13 @@ export default function Students() {
                                 <th className="px-6 py-6">{t('students.assignedCoach')}</th>
                                 <th className="px-6 py-6">{t('students.plan')}</th>
                                 <th className="px-6 py-6">{t('students.joinDate')}</th>
-                                <th className="px-6 py-6">{t('students.contact')}</th>
                                 <th className="px-6 py-6 text-right">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/[0.02]">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={9} className="px-5 py-20 text-center">
+                                    <td colSpan={8} className="px-5 py-20 text-center">
                                         <div className="flex flex-col items-center gap-5">
                                             <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
                                             <span className="text-white/20 font-black uppercase tracking-widest text-[10px] animate-pulse">{t('common.loading')}</span>
@@ -759,7 +898,7 @@ export default function Students() {
                                 </tr>
                             ) : filteredStudents.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="px-5 py-20 text-center">
+                                    <td colSpan={8} className="px-5 py-20 text-center">
                                         <div className="flex flex-col items-center gap-5 grayscale opacity-30">
                                             <Users className="w-12 h-12 text-white" />
                                             <p className="text-white font-black uppercase tracking-widest text-xs">{t('common.noResults')}</p>
@@ -787,6 +926,12 @@ export default function Students() {
                                         currency={currency}
                                         t={t}
                                         subscriptionStatus={getSubscriptionStatus(student.subscription_expiry)}
+                                        onViewProfile={setViewingProfileStudent}
+                                        role={role}
+                                        onGenerateReport={(s: any) => {
+                                            setStudentForReport(s);
+                                            setShowReportModal(true);
+                                        }}
                                     />
                                 ))
                             )}
@@ -902,6 +1047,24 @@ export default function Students() {
                 onClose={() => setShowImportModal(false)}
                 onSuccess={() => refetch()}
             />
+
+            {viewingProfileStudent && (
+                <GymnastProfileModal
+                    student={viewingProfileStudent}
+                    onClose={() => setViewingProfileStudent(null)}
+                />
+            )}
+            {studentForReport && (
+                <MonthlyReportModal
+                    isOpen={showReportModal}
+                    onClose={() => {
+                        setShowReportModal(false);
+                        setStudentForReport(null);
+                    }}
+                    student={studentForReport}
+                    currentUserRole={role}
+                />
+            )}
         </div >
     );
 }

@@ -8,9 +8,11 @@ interface ConfirmModalProps {
     title: string;
     message: string;
     type?: 'danger' | 'warning' | 'info';
+    confirmText?: string;
+    cancelText?: string;
 }
 
-export default function ConfirmModal({ isOpen, onClose, onConfirm, title, message, type = 'danger' }: ConfirmModalProps) {
+export default function ConfirmModal({ isOpen, onClose, onConfirm, title, message, type = 'danger', confirmText, cancelText }: ConfirmModalProps) {
     const { t } = useTranslation();
 
     if (!isOpen) return null;
@@ -47,7 +49,7 @@ export default function ConfirmModal({ isOpen, onClose, onConfirm, title, messag
                         onClick={onClose}
                         className="px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-all bg-white/5 hover:bg-white/10 rounded-2xl"
                     >
-                        {t('common.cancel', 'Cancel')}
+                        {cancelText || t('common.cancel', 'Cancel')}
                     </button>
                     <button
                         onClick={() => {
@@ -58,7 +60,7 @@ export default function ConfirmModal({ isOpen, onClose, onConfirm, title, messag
                             }`}
                     >
                         <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300"></div>
-                        <span className="relative z-10">{t('common.confirm', 'Confirm')}</span>
+                        <span className="relative z-10">{confirmText || t('common.confirm', 'Confirm')}</span>
                     </button>
                 </div>
             </div>

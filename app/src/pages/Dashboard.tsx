@@ -1,6 +1,7 @@
-import { Users, DollarSign, Medal, Calendar, TrendingUp, TrendingDown, Clock, Scale, ArrowUpRight, UserPlus, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { Users, DollarSign, Medal, Calendar, TrendingUp, TrendingDown, Clock, Scale, ArrowUpRight, UserPlus, Sparkles, ClipboardCheck } from 'lucide-react';
 import { format } from 'date-fns';
-import { useOutletContext, Navigate } from 'react-router-dom';
+import { useOutletContext, Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useDashboardStats } from '../hooks/useData';
 
@@ -9,15 +10,20 @@ import HeadCoachDashboard from './HeadCoachDashboard';
 import ReceptionDashboard from './ReceptionDashboard';
 import LiveStudentsWidget from '../components/LiveStudentsWidget';
 import GroupsList from '../components/GroupsList';
+import BatchAssessmentModal from '../components/BatchAssessmentModal';
+import AssessmentHistoryModal from '../components/AssessmentHistoryModal';
 import { useCurrency } from '../context/CurrencyContext';
 import PremiumClock from '../components/PremiumClock';
 import { useTheme } from '../context/ThemeContext';
 
 export default function Dashboard() {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const { settings } = useTheme(); // Init hook
-    const { role, fullName } = useOutletContext<{ role: string, fullName: string }>() || { role: null, fullName: null };
+    const { role, fullName, userId } = useOutletContext<{ role: string, fullName: string, userId: string | null }>() || { role: null, fullName: null, userId: null };
     const { formatPrice } = useCurrency();
+    const [showBatchTest, setShowBatchTest] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
 
     const { data: stats, isLoading: loading } = useDashboardStats();
 
@@ -112,20 +118,30 @@ export default function Dashboard() {
                     </div>
 
                     {/* Compact Date & Clock Widget */}
-                    <div className="flex items-center gap-4 p-2 pr-6 bg-white/5 border border-white/10 rounded-full shadow-inner backdrop-blur-xl">
-                        <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-primary shadow-lg">
-                            <Calendar className="w-4 h-4 drop-shadow-[0_0_8px_currentColor]" strokeWidth={1.5} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">{format(new Date(), 'MMM dd, yyyy')}</span>
-                        </div>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate('/evaluations')}
+                            className="hidden sm:flex items-center gap-2 px-6 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-lg shadow-primary/5 group/eval"
+                        >
+                            <ClipboardCheck className="w-4 h-4 group-hover/eval:scale-110 transition-transform" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Evaluations Hub</span>
+                        </button>
 
-                        {settings.clock_position === 'dashboard' && (
-                            <>
-                                <div className="h-6 w-px bg-white/10"></div>
-                                <div className="scale-95 origin-left">
-                                    <PremiumClock className="!bg-transparent !border-none !shadow-none !p-0 !backdrop-blur-none" />
-                                </div>
-                            </>
-                        )}
+                        <div className="flex items-center gap-4 p-2 pr-6 bg-white/5 border border-white/10 rounded-full shadow-inner backdrop-blur-xl">
+                            <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-primary shadow-lg">
+                                <Calendar className="w-4 h-4 drop-shadow-[0_0_8px_currentColor]" strokeWidth={1.5} />
+                                <span className="text-[10px] font-black uppercase tracking-widest">{format(new Date(), 'MMM dd, yyyy')}</span>
+                            </div>
+
+                            {settings.clock_position === 'dashboard' && (
+                                <>
+                                    <div className="h-6 w-px bg-white/10"></div>
+                                    <div className="scale-95 origin-left">
+                                        <PremiumClock className="!bg-transparent !border-none !shadow-none !p-0 !backdrop-blur-none" />
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -173,13 +189,22 @@ export default function Dashboard() {
             </div>
 
             {/* Groups Section */}
-            <div className="glass-card p-12 rounded-[3.5rem] border border-white/10 shadow-premium">
+            <div className="glass-card p-12 rounded-[3.5rem] border border-white/10 shadow-premium relative">
                 <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-8 flex items-center gap-4">
                     <div className="p-3 bg-white/5 backdrop-blur-md rounded-2xl text-accent border border-white/10 shadow-lg">
                         <Users className="w-6 h-6 drop-shadow-[0_0_8px_currentColor]" strokeWidth={1.5} />
                     </div>
                     {t('dashboard.trainingGroups', 'Training Groups')}
                 </h2>
+                <div className="absolute top-8 right-8 flex gap-3">
+                    <button
+                        onClick={() => setShowHistory(true)}
+                        className="bg-white/5 hover:bg-white/10 text-white/60 hover:text-white border border-white/5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+                    >
+                        <Clock className="w-4 h-4" />
+                        History
+                    </button>
+                </div>
                 <GroupsList showAll={true} />
             </div>
 
@@ -224,6 +249,21 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
+
+            <BatchAssessmentModal
+                isOpen={showBatchTest}
+                onClose={() => setShowBatchTest(false)}
+                onSuccess={() => {
+                    // Refetch data/stats if needed
+                }}
+                currentCoachId={null} // Pass null for admin to allow selecting any group
+            />
+
+            <AssessmentHistoryModal
+                isOpen={showHistory}
+                onClose={() => setShowHistory(false)}
+                currentCoachId={null}
+            />
         </div>
     );
 }

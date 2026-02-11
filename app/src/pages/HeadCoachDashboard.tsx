@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, Calendar, CheckCircle, XCircle, User, Plus, Users, Wallet } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, XCircle, User, Plus, Users, Wallet, ClipboardCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -212,19 +212,29 @@ export default function HeadCoachDashboard() {
                     </div>
 
                     {/* Compact Date & Clock Widget */}
-                    {settings.clock_position === 'dashboard' && (
-                        <div className="flex items-center gap-4 p-2 pr-6 bg-black/20 border border-white/5 rounded-full shadow-inner backdrop-blur-xl">
-                            <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-accent/20 border border-accent/20 text-accent">
-                                <Calendar className="w-4 h-4" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">{format(new Date(), 'hh:mm a')}</span>
-                            </div>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate('/evaluations')}
+                            className="hidden sm:flex items-center gap-2 px-6 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-lg shadow-primary/5 group/eval"
+                        >
+                            <ClipboardCheck className="w-4 h-4 group-hover/eval:scale-110 transition-transform" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Master Eval Hub</span>
+                        </button>
 
-                            <div className="h-6 w-px bg-white/10"></div>
-                            <div className="scale-95 origin-left">
-                                <PremiumClock className="!bg-transparent !border-none !shadow-none !p-0" />
+                        {settings.clock_position === 'dashboard' && (
+                            <div className="flex items-center gap-4 p-2 pr-6 bg-black/20 border border-white/5 rounded-full shadow-inner backdrop-blur-xl">
+                                <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-accent/20 border border-accent/20 text-accent">
+                                    <Calendar className="w-4 h-4" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">{format(new Date(), 'hh:mm a')}</span>
+                                </div>
+
+                                <div className="h-6 w-px bg-white/10"></div>
+                                <div className="scale-95 origin-left">
+                                    <PremiumClock className="!bg-transparent !border-none !shadow-none !p-0" />
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -291,10 +301,19 @@ export default function HeadCoachDashboard() {
                             <span className="text-[10px] font-black text-white uppercase tracking-widest text-center">Add Student</span>
                         </button>
                         <button
-                            onClick={() => setShowGroupModal(true)}
+                            onClick={() => navigate('/evaluations')}
                             className="p-8 rounded-[2rem] bg-primary/5 hover:bg-primary/20 border border-primary/10 hover:border-primary/40 transition-all flex flex-col items-center justify-center gap-4 group/action"
                         >
                             <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary group-hover/action:scale-110 transition-transform shadow-lg shadow-primary/20">
+                                <ClipboardCheck className="w-6 h-6" />
+                            </div>
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest text-center">Evaluation Hub</span>
+                        </button>
+                        <button
+                            onClick={() => setShowGroupModal(true)}
+                            className="p-8 rounded-[2rem] bg-indigo-500/5 hover:bg-indigo-500/20 border border-indigo-500/10 hover:border-indigo-500/40 transition-all flex flex-col items-center justify-center gap-4 group/action"
+                        >
+                            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover/action:scale-110 transition-transform shadow-lg shadow-indigo-500/20">
                                 <Users className="w-6 h-6" />
                             </div>
                             <span className="text-[10px] font-black text-white uppercase tracking-widest text-center">Create Group</span>

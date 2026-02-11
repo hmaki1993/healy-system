@@ -342,6 +342,21 @@ export function useMonthlyPayroll(month: string) {
     });
 }
 
+export function useGroups() {
+    return useQuery({
+        queryKey: ['groups'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('training_groups')
+                .select('*')
+                .order('name', { ascending: true });
+            if (error) throw error;
+            return data;
+        },
+        staleTime: 1000 * 60 * 5,
+    });
+}
+
 // --- Refunds Hooks ---
 export function useRefunds() {
     return useQuery({

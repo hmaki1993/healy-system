@@ -142,29 +142,37 @@ export default function LiveStudentsWidget({ coachId }: { coachId?: string | nul
 
     return (
         <div className="glass-card p-8 rounded-[2.5rem] border border-white/10 shadow-premium relative overflow-hidden flex flex-col h-full bg-[#122E34]/30 backdrop-blur-3xl">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4 relative z-10">
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-500 relative">
-                        <Activity className="w-5 h-5 relative z-10" />
-                        <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full animate-pulse"></div>
+            <div className="flex items-center justify-between mb-8 relative z-10">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 relative shrink-0 border border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
+                        <Activity className="w-6 h-6 relative z-10" />
+                        <div className="absolute inset-0 bg-emerald-500/20 blur-2xl rounded-full animate-pulse"></div>
                     </div>
-                    <div>
-                        <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2 leading-none">
+                    <div className="min-w-0">
+                        <h2 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-2 leading-none">
                             {t('dashboard.liveFloor', 'Live Floor')}
-                            <span className="flex h-2 w-2 relative">
+                            <span className="flex h-2 w-2 relative shrink-0">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                             </span>
                         </h2>
-                        <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mt-1">
-                            {attendance.length} {t('dashboard.gymnastsOnFloor', 'Gymnasts on Floor')}
+                        <p className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em] mt-1.5 truncate">
+                            {attendance.length} {t('dashboard.gymnastsOnFloor', 'Gymnasts')}
                         </p>
                     </div>
                 </div>
-                <div className="px-4 py-2 bg-white/5 rounded-2xl border border-white/10 flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-emerald-500/60" />
-                    <span className="text-xs font-mono font-bold text-white/80">{format(currentTime, 'hh:mm a')}</span>
+
+                <div className="relative group/clock flex items-center gap-3 px-4 py-2 bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 shadow-[0_10px_25px_rgba(0,0,0,0.4)] hover:border-emerald-500/30 transition-all duration-500">
+                    <div className="flex flex-col items-end">
+                        <span className="text-[13px] font-black text-white tracking-widest leading-none">
+                            {format(currentTime, 'HH:mm')}
+                        </span>
+                        <span className="text-[8px] font-bold text-emerald-400/60 uppercase tracking-[0.2em] mt-1">
+                            {format(currentTime, 'aa')}
+                        </span>
+                    </div>
+                    <div className="w-[1px] h-6 bg-white/10" />
+                    <Clock className="w-4 h-4 text-emerald-500 group-hover/clock:animate-spin-slow transition-transform" />
                 </div>
             </div>
 
@@ -249,35 +257,6 @@ export default function LiveStudentsWidget({ coachId }: { coachId?: string | nul
                                 </div>
                             </div>
                         ))}
-
-                        {/* Other Present Students */}
-                        {otherCheckedIn.length > 0 && (
-                            <div className="pt-6 border-t border-white/5">
-                                <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-4 ml-1">
-                                    {t('dashboard.otherAthletes', 'Other Athletes on Floor')}
-                                </h4>
-                                <div className="space-y-2">
-                                    {otherCheckedIn.map((record) => (
-                                        <div key={record.student_id} className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/5 transition-all group/item translate-y-0 hover:-translate-y-0.5 shadow-sm">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-black text-sm">
-                                                    {record.students?.full_name?.charAt(0) || '?'}
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-white group-hover/item:text-emerald-400 transition-colors">{record.students?.full_name}</p>
-                                                    <p className="text-[10px] font-black text-white/30 uppercase mt-0.5 tracking-wider">
-                                                        {record.students?.training_groups?.[0]?.name || 'Private Session'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="text-[10px] font-mono font-black text-emerald-500/60 bg-emerald-500/5 px-3 py-1.5 rounded-xl border border-emerald-500/10">
-                                                {record.check_in_time ? format(parseISO(record.check_in_time), 'hh:mm a') : '--:--'}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </>
                 )}
             </div>
@@ -285,7 +264,7 @@ export default function LiveStudentsWidget({ coachId }: { coachId?: string | nul
             {/* Decorative Background Effects */}
             <div className={`absolute -bottom-24 -left-24 w-80 h-80 rounded-full blur-[100px] pointer-events-none transition-opacity duration-1000 bg-emerald-500/5 opacity-50`}></div>
             <div className={`absolute -top-24 -right-24 w-80 h-80 rounded-full blur-[100px] pointer-events-none transition-opacity duration-1000 bg-emerald-400/5 opacity-30`}></div>
-        </div>
+        </div >
     );
 }
 
