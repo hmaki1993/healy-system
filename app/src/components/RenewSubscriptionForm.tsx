@@ -102,142 +102,144 @@ export default function RenewSubscriptionForm({ student, onClose, onSuccess }: R
     };
 
     return (
-        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 backdrop-blur-xl animate-in fade-in duration-300">
-            <div className="glass-card rounded-[3rem] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 border border-white/20">
-                {/* Header */}
-                <div className="px-6 py-4 flex items-center justify-between border-b border-white/5 bg-gradient-to-r from-accent/20 to-primary/20">
-                    <div>
-                        <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3">
-                            <div className="p-2 bg-accent/20 rounded-xl text-accent">
-                                <RefreshCw className="w-6 h-6" />
-                            </div>
-                            Renew Subscription
-                        </h2>
-                        <p className="text-sm text-white/60 mt-1 font-bold">{student.full_name}</p>
-                    </div>
-                    <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-2xl transition-all text-white/40 hover:text-white">
-                        <X className="w-6 h-6" />
-                    </button>
-                </div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-hidden">
+            {/* Ultra-Neutral Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-1000"
+                onClick={onClose}
+            />
 
-                {/* Current Status */}
-                <div className="px-8 py-4 bg-red-500/10 border-b border-red-500/20">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-wider text-red-400">Current Expiry</p>
-                            <p className="text-sm font-black text-red-500 mt-1">
-                                {student.subscription_expiry ? format(parseISO(student.subscription_expiry), 'MMM dd, yyyy') : 'N/A'}
+            <div className="w-full max-w-[450px] bg-black/60 backdrop-blur-3xl rounded-[3rem] border border-white/5 shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-700 relative flex flex-col max-h-[90vh]">
+                {/* Dynamic Glass Shimmer */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent pointer-events-none"></div>
+
+                {/* Header Section */}
+                <div className="relative z-10 px-8 pt-10 pb-6 border-b border-white/5 flex-shrink-0 bg-primary/5">
+                    <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0 pr-4">
+                            <h2 className="text-xl font-black text-white tracking-widest uppercase mb-1 drop-shadow-lg leading-tight truncate">
+                                Renew Subscription
+                            </h2>
+                            <p className="text-[9px] font-black text-primary uppercase tracking-widest">
+                                {student.full_name} • Extension Protocol
                             </p>
                         </div>
-                        <div className="px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-full">
-                            <span className="text-xs font-black text-red-500 uppercase">Expired</span>
-                        </div>
+                        <button
+                            onClick={onClose}
+                            className="p-3 rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/5 active:scale-90"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
                     </div>
                 </div>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                {/* Expiration Banner */}
+                <div className="relative z-10 px-8 py-3 bg-rose-500/10 border-b border-white/5 flex items-center justify-between">
+                    <div>
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-rose-500/60">Current Expiry</p>
+                        <p className="text-[11px] font-black text-rose-500 tracking-wider">
+                            {student.subscription_expiry ? format(parseISO(student.subscription_expiry), 'MMM dd, yyyy') : 'N/A'}
+                        </p>
+                    </div>
+                    <div className="px-3 py-1 rounded-full bg-rose-500/20 border border-rose-500/20">
+                        <span className="text-[8px] font-black text-rose-500 uppercase tracking-widest animate-pulse">Cycle Expired</span>
+                    </div>
+                </div>
+
+                {/* Scrollable Form Body */}
+                <form onSubmit={handleSubmit} className="relative z-10 px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+
                     {/* Plan Selection */}
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between ml-1">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">New Plan</label>
-                            {selectedPlan && (
-                                <div className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
-                                    <DollarSign className="w-3 h-3 text-primary" />
-                                    <span className="text-[10px] font-black text-primary uppercase">{selectedPlan.price} {currency.code}</span>
-                                </div>
-                            )}
+                    <div className="space-y-2 group/field">
+                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Target Service Tier</label>
+                        <div className="relative">
+                            <select
+                                required
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs font-bold tracking-wide"
+                                value={formData.subscription_plan_id}
+                                onChange={e => setFormData({ ...formData, subscription_plan_id: e.target.value })}
+                            >
+                                {plans.map(plan => (
+                                    <option key={plan.id} value={plan.id} className="bg-[#0a0a0f]">
+                                        {plan.name} — {plan.price} {currency.code}
+                                    </option>
+                                ))}
+                            </select>
+                            <RefreshCw className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/10 pointer-events-none group-focus-within/field:text-primary transition-colors" />
                         </div>
-                        <select
-                            required
-                            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-2xl focus:ring-4 focus:ring-accent/20 focus:border-accent outline-none transition-all text-white appearance-none cursor-pointer"
-                            value={formData.subscription_plan_id}
-                            onChange={e => setFormData({ ...formData, subscription_plan_id: e.target.value })}
-                        >
-                            {plans.map(plan => (
-                                <option key={plan.id} value={plan.id}>
-                                    {plan.name} - {plan.price} {currency.code}
-                                </option>
-                            ))}
-                        </select>
                     </div>
 
-                    {/* Start Date */}
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-1 flex items-center gap-2">
-                            <Calendar className="w-3 h-3" />
-                            Start Date
-                        </label>
-                        <input
-                            required
-                            type="date"
-                            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-2xl focus:ring-4 focus:ring-accent/20 focus:border-accent outline-none transition-all text-white"
-                            value={formData.start_date}
-                            onChange={e => setFormData({ ...formData, start_date: e.target.value })}
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Start Date */}
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Activation Date</label>
+                            <div className="relative">
+                                <input
+                                    required
+                                    type="date"
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center"
+                                    value={formData.start_date}
+                                    onChange={e => setFormData({ ...formData, start_date: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Expiry Date */}
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Renewal Expiry</label>
+                            <div className="relative">
+                                <input
+                                    required
+                                    type="date"
+                                    className="w-full px-5 py-3 bg-primary/5 border border-primary/20 rounded-2xl focus:ring-4 focus:ring-primary/10 outline-none transition-all text-primary font-black text-[10px] tracking-widest text-center"
+                                    value={formData.expiry_date}
+                                    onChange={e => setFormData({ ...formData, expiry_date: e.target.value })}
+                                />
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Expiry Date */}
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-1 flex items-center gap-2">
-                            <Calendar className="w-3 h-3" />
-                            New Expiry Date
-                            <span className="px-2 py-0.5 bg-accent/10 text-accent text-[8px] rounded-full border border-accent/20">Editable</span>
-                        </label>
-                        <input
-                            required
-                            type="date"
-                            className="w-full px-4 py-2 bg-accent/5 border border-accent/20 rounded-2xl focus:ring-4 focus:ring-accent/20 focus:border-accent outline-none transition-all text-accent font-black"
-                            value={formData.expiry_date}
-                            onChange={e => setFormData({ ...formData, expiry_date: e.target.value })}
-                        />
-                    </div>
-
-                    {/* Summary */}
+                    {/* Investment Summary */}
                     {selectedPlan && (
-                        <div className="p-4 bg-accent/5 border border-accent/20 rounded-2xl space-y-2">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-accent/60">Renewal Summary</p>
+                        <div className="p-6 bg-white/[0.01] border border-white/5 rounded-[2rem] space-y-4">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-white/60">Plan</span>
-                                <span className="text-sm font-black text-white">{selectedPlan.name}</span>
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">Active Lifecycle</span>
+                                <span className="text-[10px] font-black text-white/80 uppercase tracking-widest">{selectedPlan.duration_months} Month(s)</span>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-white/60">Duration</span>
-                                <span className="text-sm font-black text-white">{selectedPlan.duration_months} Month(s)</span>
-                            </div>
-                            <div className="flex items-center justify-between pt-2 border-t border-white/10">
-                                <span className="text-sm font-black text-accent">Total Amount</span>
-                                <span className="text-lg font-black text-accent">{selectedPlan.price} {currency.code}</span>
+                            <div className="flex items-center justify-between pt-4 border-t border-white/[0.05]">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Renewal Total</span>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-2xl font-black text-white tracking-tighter">{selectedPlan.price}</span>
+                                    <span className="text-[10px] font-black text-white/20 uppercase">{currency.code}</span>
+                                </div>
                             </div>
                         </div>
                     )}
-
-                    {/* Buttons */}
-                    <div className="flex justify-end gap-4 pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-all bg-white/5 hover:bg-white/10 rounded-2xl"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="px-8 py-3 bg-gradient-to-r from-accent to-accent/80 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-accent/30 hover:shadow-accent/50 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 relative overflow-hidden group/btn"
-                        >
-                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300"></div>
-                            {loading ? (
-                                <span className="animate-pulse">Renewing...</span>
-                            ) : (
-                                <>
-                                    <RefreshCw className="w-4 h-4 relative z-10" />
-                                    <span className="relative z-10">Renew Subscription</span>
-                                </>
-                            )}
-                        </button>
-                    </div>
                 </form>
+
+                {/* Footer Section - Single Premium Button */}
+                <div className="relative z-10 px-8 py-8 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-6">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 whitespace-nowrap"
+                    >
+                        Discard
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="flex-1 py-4 rounded-3xl bg-primary text-white hover:bg-primary/90 transition-all duration-500 shadow-[0_20px_40px_rgba(var(--primary-rgb),0.2)] active:scale-95 flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                        {loading ? (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Processing...</span>
+                        ) : (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] group-hover:tracking-[0.5em] transition-all duration-500">
+                                Authorize Renewal
+                            </span>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     );

@@ -84,121 +84,133 @@ export default function RenewPTSubscriptionForm({ subscription, onClose, onSucce
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#0a0a0f]/80 backdrop-blur-md">
-            <div className="w-full max-w-lg max-h-[90vh] bg-[#0a0a0f]/95 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] shadow-2xl shadow-black/50 flex flex-col relative overflow-hidden animate-in fade-in zoom-in-95 duration-500">
-                {/* Decorative gradients */}
-                <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
-                <div className="absolute bottom-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/10 to-transparent"></div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-hidden">
+            {/* Ultra-Neutral Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-1000"
+                onClick={onClose}
+            />
 
-                {/* Header */}
-                <div className="p-8 border-b border-white/[0.03] flex items-center justify-between relative z-10">
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full bg-accent/40 animate-pulse"></div>
-                            <h2 className="text-xl font-black text-white uppercase tracking-[0.2em]">
-                                Renew PT
+            <div className="w-full max-w-lg bg-black/60 backdrop-blur-3xl rounded-[3rem] border border-white/5 shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-700 relative flex flex-col max-h-[90vh]">
+                {/* Dynamic Glass Shimmer */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent pointer-events-none"></div>
+
+                {/* Header Section */}
+                <div className="relative z-10 px-8 pt-10 pb-6 border-b border-white/5 flex-shrink-0 bg-accent/5">
+                    <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0 pr-4">
+                            <h2 className="text-xl font-black text-white tracking-widest uppercase mb-1 drop-shadow-lg leading-tight truncate">
+                                Renew Professional Training
                             </h2>
+                            <p className="text-[9px] font-black text-accent uppercase tracking-widest">
+                                {subscription.students?.full_name || subscription.student_name} • Extension Protocol
+                            </p>
                         </div>
-                        <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] ml-5">
-                            {subscription.students?.full_name || subscription.student_name}
-                        </p>
+                        <button
+                            onClick={onClose}
+                            className="p-3 rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/5 active:scale-90"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="group relative p-2 overflow-hidden rounded-full transition-all duration-500"
-                    >
-                        <div className="absolute inset-0 bg-white/5 group-hover:bg-white/10 transition-colors"></div>
-                        <X className="w-5 h-5 text-white/30 group-hover:text-white group-hover:rotate-90 transition-all duration-500 relative z-10" />
-                    </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-10 space-y-10 overflow-y-auto flex-1 custom-scrollbar relative z-10">
-                    {/* Coach Display (Read-only) */}
-                    <div className="space-y-3 group/field opacity-60">
+                {/* Scrollable Form Body */}
+                <form onSubmit={handleSubmit} className="relative z-10 px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-8">
+
+                    {/* Specialist Info */}
+                    <div className="space-y-2 group/field opacity-60">
                         <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1">Current Specialist</label>
                         <div className="flex items-center gap-3 px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl text-white/40">
-                            <User className="w-4 h-4" />
-                            <span className="text-sm font-bold tracking-wide">{subscription.coaches?.full_name || 'N/A'}</span>
+                            <User className="w-3.5 h-3.5" />
+                            <span className="text-xs font-bold tracking-wide">{subscription.coaches?.full_name || 'N/A'}</span>
                         </div>
                     </div>
 
-                    {/* Sessions to Add */}
-                    <div className="space-y-6 text-center py-4 bg-white/[0.01] border border-white/[0.03] rounded-[2rem]">
-                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 block">Add Training Volume</label>
-                        <div className="flex items-center justify-center gap-8">
+                    {/* Sessions to Add - Premium Counter */}
+                    <div className="space-y-6 text-center py-8 bg-white/[0.01] border border-white/[0.03] rounded-[2.5rem] relative overflow-hidden group/counter">
+                        <div className="absolute inset-0 bg-gradient-to-b from-accent/[0.02] to-transparent pointer-events-none"></div>
+                        <label className="relative z-10 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 block mb-4">Add Training Volume</label>
+
+                        <div className="relative z-10 flex items-center justify-center gap-10">
                             <button
                                 type="button"
                                 onClick={() => setFormData(prev => ({ ...prev, sessions_to_add: Math.max(0, prev.sessions_to_add - 1) }))}
-                                className="w-14 h-14 rounded-full border border-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 transition-all text-2xl font-black"
+                                className="w-14 h-14 rounded-full border border-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-accent hover:border-accent transition-all text-2xl font-black active:scale-90 shadow-xl"
                             >-</button>
-                            <input
-                                required
-                                type="number"
-                                className="w-24 bg-transparent border-none text-center text-4xl font-black text-primary outline-none appearance-none"
-                                value={formData.sessions_to_add}
-                                onChange={e => setFormData({ ...formData, sessions_to_add: parseInt(e.target.value) || 0 })}
-                            />
+
+                            <div className="flex flex-col items-center">
+                                <input
+                                    required
+                                    type="number"
+                                    className="w-24 bg-transparent border-none text-center text-5xl font-black text-white outline-none appearance-none tracking-tighter"
+                                    value={formData.sessions_to_add}
+                                    onChange={e => setFormData({ ...formData, sessions_to_add: parseInt(e.target.value) || 0 })}
+                                />
+                                <span className="text-[8px] font-black uppercase tracking-widest text-accent mt-2">Units</span>
+                            </div>
+
                             <button
                                 type="button"
                                 onClick={() => setFormData(prev => ({ ...prev, sessions_to_add: prev.sessions_to_add + 1 }))}
-                                className="w-14 h-14 rounded-full border border-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 transition-all text-2xl font-black"
+                                className="w-14 h-14 rounded-full border border-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-accent hover:border-accent transition-all text-2xl font-black active:scale-90 shadow-xl"
                             >+</button>
                         </div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-white/10">Sessions to be credited</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="grid grid-cols-2 gap-6">
                         {/* Renewal Price */}
-                        <div className="space-y-3 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-accent transition-colors">Renewal Cost</label>
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-accent transition-colors">Renewal Commitment</label>
                             <div className="relative">
                                 <input
                                     required
                                     type="number"
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-accent/40 outline-none transition-all text-white font-black text-sm"
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-accent/40 outline-none transition-all text-white text-xs font-bold"
                                     value={formData.renewal_price}
                                     onChange={e => setFormData({ ...formData, renewal_price: parseFloat(e.target.value) || 0 })}
                                 />
-                                <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/20 uppercase tracking-widest">{currency.code}</div>
+                                <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[9px] font-black text-white/20 uppercase tracking-widest">{currency.code}</div>
                             </div>
                         </div>
 
                         {/* New Expiry Date */}
-                        <div className="space-y-3 group/field">
+                        <div className="space-y-2 group/field">
                             <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-accent transition-colors">Lifecycle Extension</label>
                             <input
                                 required
                                 type="date"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-accent/40 outline-none transition-all text-white font-black text-sm [color-scheme:dark]"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-accent/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center"
                                 value={formData.expiry_date}
                                 onChange={e => setFormData({ ...formData, expiry_date: e.target.value })}
                             />
                         </div>
                     </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center justify-end gap-6 pt-10 border-t border-white/[0.03] mt-10">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-8 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500"
-                        >
-                            {t('common.cancel', 'Discard')}
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading || formData.sessions_to_add <= 0}
-                            className="px-12 py-4 bg-accent text-white text-[9px] font-black uppercase tracking-[0.3em] rounded-2xl shadow-xl shadow-accent/10 hover:shadow-accent/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-500 flex items-center justify-center gap-4 relative overflow-hidden group/btn disabled:opacity-50"
-                        >
-                            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500"></div>
-                            {loading ? (
-                                <span className="animate-pulse">Processing...</span>
-                            ) : (
-                                <span className="relative z-10">Complete Extension</span>
-                            )}
-                        </button>
-                    </div>
                 </form>
+
+                {/* Footer Section - Single Premium Button */}
+                <div className="relative z-10 px-8 py-8 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-6">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 whitespace-nowrap"
+                    >
+                        Discard
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={loading || formData.sessions_to_add <= 0}
+                        className="flex-1 py-4 rounded-3xl bg-accent text-white hover:bg-accent/90 transition-all duration-500 shadow-[0_20px_40px_rgba(var(--accent-rgb),0.2)] active:scale-95 flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                        {loading ? (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Processing...</span>
+                        ) : (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] group-hover:tracking-[0.5em] transition-all duration-500">
+                                Authorize Extension
+                            </span>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     );

@@ -1,0 +1,5 @@
+﻿
+> healy-academy@0.1.0 build
+> tsc -b && vite build
+
+src/components/AddAssessmentModal.tsx(172,42): error TS2304: Cannot find name 'ChevronDown'.

@@ -59,92 +59,121 @@ export default function ManualAttendanceModal({ coach, onClose, onSuccess }: Man
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full max-w-md bg-[#1a1f37] rounded-3xl border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                <form onSubmit={handleSubmit}>
-                    <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-                        <h2 className="text-xl font-black text-white uppercase tracking-tight">
-                            {t('coaches.markAttendance')}
-                        </h2>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-hidden">
+            {/* Ultra-Neutral Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-1000"
+                onClick={onClose}
+            />
+
+            <div className="w-full max-w-[450px] bg-black/60 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-700 relative flex flex-col max-h-[90vh]">
+                {/* Dynamic Glass Shimmer */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent pointer-events-none"></div>
+
+                {/* Header Section */}
+                <div className="relative z-10 px-8 pt-10 pb-6 border-b border-white/5 flex-shrink-0">
+                    <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                            <h2 className="text-xl font-black text-white tracking-widest uppercase mb-1 drop-shadow-lg leading-tight">
+                                {t('coaches.markAttendance')}
+                            </h2>
+                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                Personnel Verification Protocol
+                            </p>
+                        </div>
                         <button
-                            type="button"
                             onClick={onClose}
-                            className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                            className="p-3 rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/5 active:scale-90"
                         >
-                            <X className="w-5 h-5" />
+                            <X className="w-3.5 h-3.5" />
                         </button>
                     </div>
+                </div>
 
-                    <div className="p-6 space-y-6">
-                        <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
-                            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-black text-lg">
-                                {coach.full_name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-white">{coach.full_name}</h3>
-                                <p className="text-xs text-white/40 uppercase tracking-widest">{t(`roles.${coach.role}`)}</p>
-                            </div>
+                {/* Scrollable Form Body */}
+                <form onSubmit={handleSubmit} className="relative z-10 px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-8">
+
+                    {/* Coach Profile Card */}
+                    <div className="p-5 bg-white/[0.03] border border-white/5 rounded-[2rem] flex items-center gap-5">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary font-black text-xl shadow-lg shadow-primary/5">
+                            {coach.full_name.charAt(0).toUpperCase()}
                         </div>
-
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-white/40 uppercase tracking-widest pl-1">{t('common.date')}</label>
-                            <div className="relative">
-                                <input
-                                    type="date"
-                                    required
-                                    value={date}
-                                    onChange={e => setDate(e.target.value)}
-                                    className="w-full bg-[#0d1321] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 font-bold"
-                                />
-                                <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <button
-                                type="button"
-                                onClick={() => setStatus('present')}
-                                className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${status === 'present'
-                                    ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.2)]'
-                                    : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
-                                    }`}
-                            >
-                                <Check className="w-8 h-8" />
-                                <span className="font-black uppercase tracking-widest text-xs">{t('coaches.present')}</span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setStatus('absent')}
-                                className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${status === 'absent'
-                                    ? 'bg-rose-500/20 border-rose-500 text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.2)]'
-                                    : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
-                                    }`}
-                            >
-                                <XCircle className="w-8 h-8" />
-                                <span className="font-black uppercase tracking-widest text-xs">{t('coaches.absent')}</span>
-                            </button>
+                        <div>
+                            <h3 className="font-extrabold text-white text-base tracking-wide">{coach.full_name}</h3>
+                            <p className="text-[10px] text-white/30 uppercase font-black tracking-[0.2em] mt-0.5">{t(`roles.${coach.role}`)}</p>
                         </div>
                     </div>
 
-                    <div className="p-6 border-t border-white/5 bg-white/[0.02] flex justify-end gap-3">
+                    {/* Date Picker */}
+                    <div className="space-y-3 group/field">
+                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Assessment Date</label>
+                        <div className="relative">
+                            <input
+                                required
+                                type="date"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-xs font-bold tracking-widest text-center"
+                                value={date}
+                                onChange={e => setDate(e.target.value)}
+                            />
+                            <Calendar className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/10 pointer-events-none group-focus-within/field:text-primary transition-colors" />
+                        </div>
+                    </div>
+
+                    {/* Status Toggle Grid */}
+                    <div className="grid grid-cols-2 gap-4">
                         <button
                             type="button"
-                            onClick={onClose}
-                            className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold uppercase tracking-wide text-xs transition-colors"
+                            onClick={() => setStatus('present')}
+                            className={`p-6 rounded-[2rem] border flex flex-col items-center gap-3 transition-all duration-500 group/status ${status === 'present'
+                                ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 shadow-lg shadow-emerald-500/5'
+                                : 'bg-white/[0.02] border-white/5 text-white/20 hover:bg-white/[0.05] hover:border-white/10'
+                                }`}
                         >
-                            {t('common.cancel')}
+                            <div className={`p-3 rounded-xl transition-all duration-500 ${status === 'present' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-white/10'}`}>
+                                <Check className="w-5 h-5" />
+                            </div>
+                            <span className="font-black uppercase tracking-[0.2em] text-[10px]">{t('coaches.present')}</span>
                         </button>
+
                         <button
-                            type="submit"
-                            disabled={loading || !status}
-                            className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-wide text-xs transition-colors flex items-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                            type="button"
+                            onClick={() => setStatus('absent')}
+                            className={`p-6 rounded-[2rem] border flex flex-col items-center gap-3 transition-all duration-500 group/status ${status === 'absent'
+                                ? 'bg-rose-500/10 border-rose-500/40 text-rose-400 shadow-lg shadow-rose-500/5'
+                                : 'bg-white/[0.02] border-white/5 text-white/20 hover:bg-white/[0.05] hover:border-white/10'
+                                }`}
                         >
-                            <Save className="w-4 h-4" />
-                            {loading ? t('common.saving') : t('common.save')}
+                            <div className={`p-3 rounded-xl transition-all duration-500 ${status === 'absent' ? 'bg-rose-500/20 text-rose-400' : 'bg-white/5 text-white/10'}`}>
+                                <XCircle className="w-5 h-5" />
+                            </div>
+                            <span className="font-black uppercase tracking-[0.2em] text-[10px]">{t('coaches.absent')}</span>
                         </button>
                     </div>
                 </form>
+
+                {/* Footer Section - Single Premium Button */}
+                <div className="relative z-10 px-8 py-8 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-6">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 whitespace-nowrap"
+                    >
+                        Discard
+                    </button>
+                    <button
+                        onClick={(e) => handleSubmit(e)}
+                        disabled={loading || !status}
+                        className="flex-1 py-4 rounded-3xl bg-white text-black hover:bg-white/90 transition-all duration-500 shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                        {loading ? (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Processing...</span>
+                        ) : (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] group-hover:tracking-[0.5em] transition-all duration-500">
+                                {t('common.save')}
+                            </span>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     );

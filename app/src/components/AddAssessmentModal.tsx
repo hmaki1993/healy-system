@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Save, Settings, Trash2 } from 'lucide-react';
+import { X, Plus, Save, Settings, Trash2, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import SkillsManagerModal from './SkillsManagerModal';
@@ -93,98 +93,142 @@ export default function AddAssessmentModal({ studentId, isOpen, onClose, onSucce
     if (!isOpen) return null;
 
     return (
-        <>
-            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 overflow-hidden">
+            {/* Ultra-Neutral Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-1000"
+                onClick={onClose}
+            />
 
-                <div className="relative w-full max-w-2xl bg-[#0E1D21] border border-white/10 rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
-                    <div className="flex justify-between items-center mb-6 shrink-0">
-                        <h3 className="text-xl font-black text-white uppercase tracking-wider">New Assessment</h3>
-                        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
-                            <X className="w-5 h-5 text-white/60" />
-                        </button>
+            <div className="w-full max-w-2xl bg-black/60 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-700 relative flex flex-col max-h-[90vh]">
+                {/* Dynamic Glass Shimmer */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent pointer-events-none"></div>
+
+                {/* Header Section */}
+                <div className="relative z-10 px-8 pt-10 pb-6 border-b border-white/5 flex-shrink-0">
+                    <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                            <h2 className="text-xl font-black text-white tracking-widest uppercase mb-1 drop-shadow-lg leading-tight">
+                                New Assessment
+                            </h2>
+                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                Record skill scores
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setShowSkillsManager(true)}
+                                className="p-3 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-primary hover:border-primary/40 transition-all active:scale-95"
+                                title="Manage Skills"
+                            >
+                                <Settings className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                                onClick={onClose}
+                                className="p-3 rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/5 active:scale-90"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Scrollable Form Body */}
+                <div className="relative z-10 px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-8">
+
+                    {/* Title Input */}
+                    <div className="space-y-3 group/field">
+                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Assessment Title</label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="e.g. Monthly Level 1 Evaluation..."
+                            className="w-full px-5 py-4 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs font-bold tracking-wide"
+                        />
                     </div>
 
-                    <div className="space-y-6 overflow-y-auto custom-scrollbar pr-2 flex-1">
-                        <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Assessment Title</label>
-                            <input
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder="e.g. Monthly Evaluation / Level 1 Test"
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary/50 outline-none"
-                            />
+                    {/* Skills Section */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between px-1">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Skills</label>
+                            <div className="h-px bg-white/5 flex-1 mx-4"></div>
                         </div>
 
-                        <div>
-                            <div className="flex justify-between items-center mb-4">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Skills & Scores</label>
-                                <button
-                                    onClick={() => setShowSkillsManager(true)}
-                                    className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-white transition-colors flex items-center gap-2"
-                                >
-                                    <Settings className="w-3 h-3" />
-                                    Manage Skills
-                                </button>
-                            </div>
-
-                            <div className="space-y-3">
-                                {selectedSkills.map((row, index) => (
-                                    <div key={index} className="flex gap-3 items-start animate-in fade-in slide-in-from-left-4 duration-300">
-                                        <div className="flex-1">
-                                            <select
-                                                value={row.skill_id}
-                                                onChange={(e) => updateRow(index, 'skill_id', e.target.value)}
-                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary/50 outline-none appearance-none"
-                                            >
-                                                <option value="" className="bg-slate-900">Select Skill...</option>
-                                                {availableSkills.map(s => (
-                                                    <option key={s.id} value={s.id} className="bg-slate-900">{s.name} (Max {s.max_score})</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div className="w-24 relative">
-                                            <input
-                                                type="number"
-                                                value={row.score}
-                                                onChange={(e) => updateRow(index, 'score', parseFloat(e.target.value))}
-                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary/50 outline-none text-center"
-                                                min="0"
-                                                max={row.max_score}
-                                            />
-                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/30">/{row.max_score}</span>
-                                        </div>
-                                        <button
-                                            onClick={() => removeRow(index)}
-                                            className="p-3 hover:bg-rose-500/20 text-white/20 hover:text-rose-500 rounded-xl transition-colors"
+                        <div className="space-y-4">
+                            {selectedSkills.map((row, index) => (
+                                <div key={index} className="group/row flex gap-4 items-center p-4 bg-white/[0.01] hover:bg-white/[0.03] border border-white/5 rounded-[2rem] transition-all duration-500 animate-in slide-in-from-right-4">
+                                    <div className="flex-1 relative">
+                                        <select
+                                            value={row.skill_id}
+                                            onChange={(e) => updateRow(index, 'skill_id', e.target.value)}
+                                            className="w-full pl-5 pr-12 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer text-xs font-bold"
                                         >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                            <option value="" className="bg-[#0a0a0f]">Select Skill</option>
+                                            {availableSkills.map(s => (
+                                                <option key={s.id} value={s.id} className="bg-[#0a0a0f]">{s.name} (Max {s.max_score})</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/10 pointer-events-none group-focus-within/row:text-primary transition-colors" />
                                     </div>
-                                ))}
 
-                                <button
-                                    onClick={addSkillRow}
-                                    className="w-full py-3 border border-dashed border-white/10 rounded-xl text-white/40 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    Add Skill Row
-                                </button>
-                            </div>
+                                    <div className="w-28 relative">
+                                        <input
+                                            type="number"
+                                            value={row.score}
+                                            onChange={(e) => updateRow(index, 'score', parseFloat(e.target.value))}
+                                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-center text-xs font-bold"
+                                            min="0"
+                                            max={row.max_score}
+                                        />
+                                        <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[8px] font-black text-white/20 uppercase tracking-widest whitespace-nowrap opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                            Max: {row.max_score}
+                                        </span>
+                                    </div>
+
+                                    <button
+                                        onClick={() => removeRow(index)}
+                                        className="p-3 text-white/10 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all active:scale-90"
+                                        title="Remove Skill"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            ))}
+
+                            <button
+                                onClick={addSkillRow}
+                                className="w-full py-5 border border-dashed border-white/5 hover:border-white/20 rounded-[2rem] bg-white/[0.01] hover:bg-white/[0.03] text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 flex items-center justify-center gap-3 active:scale-[0.98]"
+                            >
+                                <Plus className="w-3.5 h-3.5" />
+                                Add Skill
+                            </button>
                         </div>
                     </div>
+                </div>
 
-                    <div className="pt-6 mt-6 border-t border-white/10 flex justify-end shrink-0">
-                        <button
-                            onClick={handleSubmit}
-                            disabled={loading}
-                            className="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
-                        >
-                            <Save className="w-4 h-4" />
-                            {loading ? 'Saving...' : 'Save Assessment'}
-                        </button>
-                    </div>
+                {/* Footer Section - Single Premium Button */}
+                <div className="relative z-10 px-8 py-8 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-6">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 whitespace-nowrap"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="flex-1 py-4 rounded-3xl bg-white text-black hover:bg-white/90 transition-all duration-500 shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                        {loading ? (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Processing...</span>
+                        ) : (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] group-hover:tracking-[0.5em] transition-all duration-500">
+                                Save Assessment
+                            </span>
+                        )}
+                    </button>
                 </div>
             </div>
 
@@ -192,6 +236,6 @@ export default function AddAssessmentModal({ studentId, isOpen, onClose, onSucce
                 isOpen={showSkillsManager}
                 onClose={() => setShowSkillsManager(false)}
             />
-        </>
+        </div>
     );
 }

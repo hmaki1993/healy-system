@@ -66,8 +66,6 @@ function App() {
           <BackButtonHandler />
           <Toaster
             position="top-center"
-            reverseOrder={false}
-            gutter={8}
             toastOptions={{
               duration: 4000,
               className: 'premium-toast',
@@ -88,23 +86,15 @@ function App() {
                 gap: '12px',
               },
               success: {
-                style: {
-                  border: '1px solid rgba(16, 185, 129, 0.2)',
-                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(16, 185, 129, 0.1)',
-                },
                 iconTheme: {
                   primary: '#10b981',
-                  secondary: 'transparent',
+                  secondary: '#fff',
                 },
               },
               error: {
-                style: {
-                  border: '1px solid rgba(239, 68, 68, 0.2)',
-                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(239, 68, 68, 0.1)',
-                },
                 iconTheme: {
                   primary: '#ef4444',
-                  secondary: 'transparent',
+                  secondary: '#fff',
                 },
               },
             }}

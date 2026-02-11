@@ -31,7 +31,7 @@ export function useCoaches() {
             // Get coaches with roles
             const { data: coaches, error: coachesError } = await supabase
                 .from('coaches')
-                .select('id, full_name, email, specialty, avatar_url, image_pos_x, image_pos_y, pt_rate, salary, role, created_at, profile_id, profiles(role)')
+                .select('id, full_name, email, phone, specialty, avatar_url, image_pos_x, image_pos_y, pt_rate, salary, role, created_at, profile_id, profiles(role)')
                 .order('created_at', { ascending: false });
 
             if (coachesError) {

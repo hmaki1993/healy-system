@@ -237,33 +237,45 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
     const errorCount = parsedData.filter(row => row.errors.length > 0).length;
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-br from-[#0E1D21] to-[#122E34] rounded-2xl border border-white/10 w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-white/10">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gradient-to-br from-[#622347] to-[#8B3A62] rounded-xl">
-                            <FileSpreadsheet className="w-6 h-6 text-white" />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-hidden">
+            {/* Ultra-Premium Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-1000"
+                onClick={handleClose}
+            />
+
+            <div className="relative w-full max-w-5xl bg-black/60 backdrop-blur-3xl border border-white/5 rounded-[3.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-700">
+                {/* Dynamic Glass Shimmer */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent pointer-events-none"></div>
+
+                {/* Header Section */}
+                <div className="relative z-10 px-10 pt-10 pb-6 flex items-center justify-between border-b border-white/5 bg-[#0E1D21]/50">
+                    <div className="flex items-center gap-6">
+                        <div className="w-16 h-16 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-lg">
+                            <FileSpreadsheet className="w-7 h-7" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-white">Import Students</h2>
-                            <p className="text-sm text-white/60">Upload CSV file from Google Sheets</p>
+                            <h2 className="text-xl font-black text-white uppercase tracking-[0.2em] mb-1">
+                                Import Students
+                            </h2>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-white/30">
+                                Select CSV file to upload
+                            </p>
                         </div>
                     </div>
                     <button
                         onClick={handleClose}
-                        className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+                        className="p-3 rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/10 active:scale-90"
                     >
-                        <X className="w-5 h-5 text-white/60" />
+                        <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                {/* Content */}
-                <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+                <div className="relative z-10 p-10 space-y-10 max-h-[70vh] overflow-y-auto custom-scrollbar">
                     {!preview ? (
                         /* Upload Section */
-                        <div className="space-y-4">
-                            <div className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center hover:border-[#622347]/50 transition-colors">
+                        <div className="space-y-10">
+                            <div className="relative group">
                                 <input
                                     type="file"
                                     accept=".csv"
@@ -271,92 +283,111 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                                     className="hidden"
                                     id="csv-upload"
                                 />
-                                <label htmlFor="csv-upload" className="cursor-pointer">
-                                    <Upload className="w-12 h-12 text-white/40 mx-auto mb-4" />
-                                    <p className="text-white font-bold mb-2">
-                                        {file ? file.name : 'Click to upload CSV file'}
+                                <label
+                                    htmlFor="csv-upload"
+                                    className="cursor-pointer block border-2 border-dashed border-white/10 rounded-[3rem] p-16 text-center hover:border-primary/40 hover:bg-white/[0.02] transition-all duration-700 relative overflow-hidden group/label"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent opacity-0 group-hover/label:opacity-100 transition-opacity"></div>
+                                    <Upload className="w-16 h-16 text-white/10 mx-auto mb-6 group-hover/label:text-primary/60 group-hover/label:scale-110 transition-all duration-700" />
+                                    <p className="text-xl font-black text-white/80 mb-2 uppercase tracking-widest">
+                                        {file ? file.name : 'Upload CSV'}
                                     </p>
-                                    <p className="text-white/60 text-sm">
-                                        Export your Google Sheet as CSV and upload here
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
+                                        Select CSV File
                                     </p>
                                 </label>
                             </div>
 
-                            {/* Instructions */}
-                            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                                <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-                                    <AlertCircle className="w-4 h-4" />
-                                    CSV Format Requirements
-                                </h3>
-                                <ul className="text-white/70 text-sm space-y-1 ml-6 list-disc">
-                                    <li><strong>Name</strong> (required): Student full name</li>
-                                    <li><strong>Phone</strong> (required): 11 digits starting with 01</li>
-                                    <li><strong>Date of Birth</strong> (optional): Format YYYY-MM-DD</li>
-                                    <li><strong>Gender</strong> (optional): male or female</li>
-                                    <li><strong>Coach</strong> (optional): Coach name (must match existing coach)</li>
-                                    <li><strong>Subscription Type</strong> (optional): monthly, 3months, 6months, yearly</li>
-                                    <li><strong>Start Date</strong> (optional): Format YYYY-MM-DD</li>
-                                    <li><strong>Notes</strong> (optional): Additional information</li>
-                                </ul>
+                            {/* Requirements */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-6">
+                                    <div className="flex items-center gap-3 text-primary/60">
+                                        <AlertCircle className="w-4 h-4" />
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em]">Required Fields</h3>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">Name</span>
+                                            <span className="text-[9px] font-bold text-white/20 italic">Full Name</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">Phone</span>
+                                            <span className="text-[9px] font-bold text-white/20 italic">11 Digits</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-4">
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-2">Optional Fields</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['Birth Date', 'Gender', 'Coach', 'Subscription', 'Notes'].map((tag) => (
+                                            <span key={tag} className="px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/5 text-[8px] font-black uppercase tracking-widest text-white/40">
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <p className="text-[9px] font-medium text-white/20 leading-relaxed pt-2">
+                                        Optional fields help create a more complete profile.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     ) : (
                         /* Preview Section */
-                        <div className="space-y-4">
+                        <div className="space-y-10 animate-in fade-in duration-700">
                             {/* Summary */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <CheckCircle className="w-5 h-5 text-green-400" />
-                                        <span className="text-green-400 font-bold">Valid Rows</span>
+                            <div className="grid grid-cols-2 gap-8">
+                                <div className="p-8 rounded-[2.5rem] bg-emerald-500/[0.02] border border-emerald-500/10 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/[0.05] blur-3xl rounded-full"></div>
+                                    <div className="flex items-center gap-3 mb-4 text-emerald-500/60">
+                                        <CheckCircle className="w-5 h-5" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">Valid Entries</span>
                                     </div>
-                                    <p className="text-2xl font-black text-white">{validCount}</p>
+                                    <p className="text-4xl font-black text-white leading-none">{validCount}</p>
                                 </div>
-                                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <AlertCircle className="w-5 h-5 text-red-400" />
-                                        <span className="text-red-400 font-bold">Errors</span>
+                                <div className="p-8 rounded-[2.5rem] bg-rose-500/[0.02] border border-rose-500/10 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/[0.05] blur-3xl rounded-full"></div>
+                                    <div className="flex items-center gap-3 mb-4 text-rose-500/60">
+                                        <AlertCircle className="w-5 h-5" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">Invalid Entries</span>
                                     </div>
-                                    <p className="text-2xl font-black text-white">{errorCount}</p>
+                                    <p className="text-4xl font-black text-white leading-none">{errorCount}</p>
                                 </div>
                             </div>
 
-                            {/* Preview Table */}
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
+                            {/* Data Table */}
+                            <div className="rounded-[2.5rem] bg-white/[0.01] border border-white/5 overflow-hidden">
+                                <table className="w-full border-collapse">
                                     <thead>
-                                        <tr className="border-b border-white/10">
-                                            <th className="text-left text-white/60 text-xs font-bold uppercase p-2">#</th>
-                                            <th className="text-left text-white/60 text-xs font-bold uppercase p-2">Name</th>
-                                            <th className="text-left text-white/60 text-xs font-bold uppercase p-2">Phone</th>
-                                            <th className="text-left text-white/60 text-xs font-bold uppercase p-2">Coach</th>
-                                            <th className="text-left text-white/60 text-xs font-bold uppercase p-2">Status</th>
+                                        <tr className="bg-white/[0.03]">
+                                            <th className="px-8 py-5 text-left text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">ID</th>
+                                            <th className="px-8 py-5 text-left text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">Gymnast Name</th>
+                                            <th className="px-8 py-5 text-left text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">Phone Number</th>
+                                            <th className="px-8 py-5 text-left text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">Status</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody className="divide-y divide-white/5">
                                         {parsedData.map((row, index) => (
-                                            <tr key={index} className="border-b border-white/5">
-                                                <td className="p-2 text-white/60 text-sm">{index + 1}</td>
-                                                <td className="p-2 text-white text-sm font-bold">{row.full_name}</td>
-                                                <td className="p-2 text-white/80 text-sm">{row.phone}</td>
-                                                <td className="p-2 text-white/80 text-sm">{row.coach_name || '-'}</td>
-                                                <td className="p-2">
+                                            <tr key={index} className="hover:bg-white/[0.02] transition-colors group">
+                                                <td className="px-8 py-5 text-[11px] font-black text-white/30">{index + 1}</td>
+                                                <td className="px-8 py-5">
+                                                    <div className="text-[13px] font-black text-white/80 group-hover:text-white transition-colors uppercase tracking-wider">{row.full_name}</div>
+                                                    <div className="text-[8px] font-bold text-white/20 uppercase tracking-widest">{row.coach_name || 'Unassigned'}</div>
+                                                </td>
+                                                <td className="px-8 py-5 text-[11px] font-black text-white/60 font-mono tracking-tighter">{row.phone}</td>
+                                                <td className="px-8 py-5">
                                                     {row.errors.length === 0 ? (
-                                                        <span className="text-green-400 text-xs flex items-center gap-1">
-                                                            <CheckCircle className="w-3 h-3" />
-                                                            Valid
+                                                        <span className="inline-flex items-center gap-2 text-emerald-500 text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 px-4 py-2 rounded-full border border-emerald-500/20">
+                                                            Ready
                                                         </span>
                                                     ) : (
-                                                        <div className="text-red-400 text-xs">
-                                                            <div className="flex items-center gap-1 mb-1">
-                                                                <AlertCircle className="w-3 h-3" />
-                                                                Errors:
+                                                        <div className="space-y-1">
+                                                            <span className="inline-flex items-center gap-2 text-rose-500 text-[9px] font-black uppercase tracking-widest bg-rose-500/10 px-4 py-2 rounded-full border border-rose-500/20">
+                                                                Invalid Data
+                                                            </span>
+                                                            <div className="pl-4 text-[8px] font-bold text-rose-500/60 uppercase tracking-widest">
+                                                                {row.errors[0]}
                                                             </div>
-                                                            <ul className="list-disc ml-4">
-                                                                {row.errors.map((err, i) => (
-                                                                    <li key={i}>{err}</li>
-                                                                ))}
-                                                            </ul>
                                                         </div>
                                                     )}
                                                 </td>
@@ -369,21 +400,29 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                     )}
                 </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between p-6 border-t border-white/10">
+                {/* Footer Section */}
+                <div className="relative z-10 px-10 py-10 border-t border-white/5 bg-[#0E1D21]/50 flex items-center justify-between gap-8">
                     <button
                         onClick={handleClose}
-                        className="px-6 py-3 rounded-xl border border-white/10 text-white hover:bg-white/5 transition-colors font-bold"
+                        className="px-8 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 active:scale-95"
                     >
                         Cancel
                     </button>
+
                     {preview && (
                         <button
                             onClick={handleImport}
                             disabled={importing || validCount === 0}
-                            className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#622347] to-[#8B3A62] text-white font-bold hover:shadow-lg hover:shadow-[#622347]/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 py-5 rounded-3xl bg-primary text-white hover:bg-primary/90 transition-all duration-500 shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] active:scale-95 flex items-center justify-center gap-4 group/btn disabled:opacity-30 disabled:pointer-events-none"
                         >
-                            {importing ? 'Importing...' : `Import ${validCount} Student(s)`}
+                            {importing ? (
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <Upload className="w-4 h-4 group-hover:-translate-y-1 transition-transform" />
+                            )}
+                            <span className="font-black uppercase tracking-[0.4em] text-[10px]">
+                                {importing ? 'Processing...' : `Import ${validCount} Students`}
+                            </span>
                         </button>
                     )}
                 </div>

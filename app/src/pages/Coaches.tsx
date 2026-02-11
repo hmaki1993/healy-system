@@ -17,6 +17,7 @@ interface Coach {
     profile_id?: string;
     full_name: string;
     email?: string;
+    phone?: string;
     specialty: string;
     pt_rate: number;
     avatar_url?: string;
@@ -50,198 +51,165 @@ const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendan
     const [liveSeconds, setLiveSeconds] = useState((coach as any).daily_total_seconds || 0);
 
     useEffect(() => {
-        // Sync with props whenever page data refreshes
         setLiveSeconds((coach as any).daily_total_seconds || 0);
     }, [(coach as any).daily_total_seconds]);
 
     useEffect(() => {
         if (!isWorking) return;
-
         const interval = setInterval(() => {
             setLiveSeconds((prev: number) => prev + 1);
         }, 1000);
-
         return () => clearInterval(interval);
     }, [isWorking]);
 
     return (
-        <div className={`glass-card rounded-[1.5rem] md:rounded-[2rem] border transition-all duration-700 relative overflow-hidden group 
-            ${isPremium
-                ? 'p-5 border-primary/20 bg-primary/5 hover:border-primary/50 shadow-[0_10px_40px_rgba(var(--primary-rgb),0.1)]'
-                : isCompact
-                    ? 'p-3 border-white/5 bg-white/[0.01] hover:border-white/10'
-                    : 'p-4 border-white/10 bg-white/[0.02] hover:border-white/30 shadow-premium'
-            } hover:scale-[1.02] hover:-translate-y-1`}>
+        <div className={`glass-card p-4 rounded-2xl border border-white/10 relative group hover:-translate-y-1 transition-transform duration-300 flex flex-col h-full bg-[#0a0c10]/40 overflow-hidden`}>
+            {/* Background Effects */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl pointer-events-none"></div>
 
-            {/* Background Effects & Shimmer */}
-            <div className={`absolute -top-32 -right-32 w-48 h-48 rounded-full blur-[80px] transition-colors duration-700 
-                ${isPremium ? 'bg-primary/20 group-hover:bg-primary/30' : 'bg-white/5 group-hover:bg-white/10'}`}></div>
+            <div className="relative z-10 flex flex-col h-full">
+                {/* Header Row: Badge & Top Actions */}
+                <div className="flex justify-between items-start mb-4">
+                    <div className="flex flex-wrap gap-2">
+                        {/* Status Badge */}
+                        <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border flex items-center gap-2 transition-all duration-500
+                            ${isWorking ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                isDone ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                    'bg-white/5 text-white/40 border-white/5'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isWorking ? 'bg-emerald-400 animate-pulse' : isDone ? 'bg-blue-400' : 'bg-white/20'}`}></span>
+                            {isWorking ? t('coaches.live') : isDone ? t('coaches.completed') : t('coaches.away')}
+                        </div>
+                        {/* Premium Badge */}
+                        {isPremium && (
+                            <span className="px-2 py-1 bg-primary/10 text-primary border border-primary/20 rounded-lg text-[8px] font-black uppercase tracking-widest">
+                                EXECUTIVE
+                            </span>
+                        )}
+                    </div>
 
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-10 pointer-events-none transition-opacity duration-1000">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
-            </div>
+                    {/* Admin Actions (Top Right - visible on hover like GroupCard) */}
+                    {(role === 'admin') && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                                className="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                                title={t('common.edit')}
+                            >
+                                <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                                className="p-2 rounded-lg hover:bg-rose-500/10 text-white/40 hover:text-rose-500 transition-colors"
+                                title={t('common.delete')}
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    )}
+                </div>
 
-
-            <div className={`flex flex-col items-center text-center w-full transition-all duration-500 ${isCompact ? 'space-y-3' : 'space-y-4'}`}>
-                {/* Avatar Section */}
-                <div className="relative shrink-0">
-                    <div className={`absolute -inset-3 bg-gradient-to-tr rounded-[2.5rem] blur-[15px] opacity-10 group-hover:opacity-40 transition-all duration-700 
-                        ${isPremium ? 'from-primary via-accent to-primary' : 'from-white/20 via-white/5 to-white/20'}`}></div>
-                    {coach.avatar_url ? (
-                        <div className="relative">
+                {/* Main Content: Avatar & Name */}
+                <div className="flex items-start gap-4 mb-4">
+                    {/* Avatar */}
+                    <div className="relative shrink-0 group/avatar cursor-zoom-in" onClick={() => onEnlargeImage?.(coach.avatar_url!)}>
+                        <div className={`absolute -inset-2 bg-gradient-to-tr from-primary/20 to-accent/20 rounded-2xl blur-md opacity-0 group-hover/avatar:opacity-100 transition-all duration-500`}></div>
+                        {coach.avatar_url ? (
                             <img
                                 src={coach.avatar_url}
                                 alt={coach.full_name}
-                                className={`relative rounded-[1.5rem] md:rounded-[1.8rem] object-cover border-2 border-white/10 shadow-xl transition-all duration-700 group-hover:scale-105 group-hover:border-primary/30 cursor-zoom-in
-                                    ${isCompact ? 'w-14 h-14' : isPremium ? 'w-24 h-24' : 'w-20 h-20'}`}
+                                className="relative w-14 h-14 rounded-xl object-cover border border-white/10 shadow-lg group-hover/avatar:scale-105 transition-transform duration-500"
                                 style={{ objectPosition: `${coach.image_pos_x ?? 50}% ${coach.image_pos_y ?? 50}%` }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onEnlargeImage?.(coach.avatar_url!);
-                                }}
                             />
-                            {isWorking && (
-                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-2 border-black rounded-full animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
-                            )}
-                        </div>
-                    ) : (
-                        <div className={`relative flex items-center justify-center bg-white/5 rounded-[1.5rem] md:rounded-[1.8rem] border-2 border-white/10 text-white/20 shadow-inner group-hover:text-primary group-hover:border-primary/30 transition-all 
-                            ${isCompact ? 'w-14 h-14' : isPremium ? 'w-24 h-24' : 'w-20 h-20'}`}>
-                            <Medal className={isCompact ? 'w-6 h-6' : 'w-10 h-10'} />
-                        </div>
-                    )}
-                </div>
-
-                {/* Info Section */}
-                <div className={`w-full ${isCompact ? 'space-y-1' : 'space-y-3'}`}>
-                    <div className="space-y-0.5">
-                        <div className="flex flex-col items-center gap-0.5">
-                            <h3 className={`font-black text-white leading-tight group-hover:text-primary transition-colors tracking-tight
-                                ${isPremium ? 'text-lg md:text-xl' : isCompact ? 'text-sm md:text-base' : 'text-base md:text-lg'}`}>
-                                {coach.full_name}
-                            </h3>
-                            {isPremium && (
-                                <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[7px] font-black uppercase tracking-[0.3em] border border-primary/30 mt-1">
-                                    EXECUTIVE STAFF
-                                </span>
-                            )}
-                        </div>
-                        {coach.role && (
-                            <p className="font-black uppercase tracking-[0.2em] text-[8px] md:text-[9px]" style={{
-                                color: isCompact ? 'rgba(255, 255, 255, 0.3)' : 'var(--color-brand-label)',
-                                opacity: isCompact ? 1 : 0.6
-                            }}>
-                                {t(`roles.${coach.role}`)}
-                            </p>
-                        )}
-
-                        {/* Compact TImer for Reception/Staff */}
-                        {isCompact && isWorking && (
-                            <div className="flex items-center gap-2 pt-1 animate-in fade-in slide-in-from-left-2 duration-500">
-                                <div className="relative flex h-1.5 w-1.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                                </div>
-                                <span className="text-[9px] font-black font-mono text-emerald-400 tracking-wider">
-                                    {Math.floor(liveSeconds / 3600)}:{Math.floor((liveSeconds % 3600) / 60).toString().padStart(2, '0')}:{(liveSeconds % 60).toString().padStart(2, '0')}
-                                </span>
+                        ) : (
+                            <div className="relative w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 shadow-inner group-hover/avatar:text-primary transition-colors">
+                                <Medal className="w-6 h-6" />
                             </div>
+                        )}
+                        {isWorking && (
+                            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#0a0c10] rounded-full animate-pulse z-20"></div>
                         )}
                     </div>
 
-                    {!isCompact && (
-                        <div className="space-y-4 pt-1">
-                            {/* Attendance Status Badge */}
-                            <div className={`inline-flex items-center px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em] border transition-all duration-500 
-                                ${isWorking ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_20px_rgba(52,211,153,0.1)]' :
-                                    isDone ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                        'bg-white/5 text-white/20 border-white/10'}`}>
-                                <span className={`w-1.5 h-1.5 rounded-full mr-2 ${isWorking ? 'bg-emerald-400 animate-pulse' : isDone ? 'bg-blue-400' : 'bg-white/20'}`}></span>
-                                {isWorking ? t('coaches.live') : isDone ? t('coaches.completed') : t('coaches.away')}
-                            </div>
-
-                            {/* Specialty Badge */}
-                            {!['reception', 'receptionist', 'cleaner'].includes(coachRole || '') && coach.specialty && (
-                                <div className="flex items-center justify-center gap-2 text-white/40 text-[9px] font-bold uppercase tracking-[0.15em] bg-white/5 w-fit mx-auto px-4 py-1.5 rounded-xl border border-white/5">
-                                    <Medal className="w-3 h-3" style={{ color: 'var(--color-brand-label)', opacity: 0.6 }} />
-                                    <span>{coach.specialty}</span>
-                                </div>
+                    {/* Name & Role */}
+                    <div className="min-w-0">
+                        <h3 className="text-base font-black text-white tracking-wide mb-1 leading-tight group-hover:text-primary transition-colors truncate" title={coach.full_name}>
+                            {coach.full_name}
+                        </h3>
+                        <div className="flex flex-col gap-0.5">
+                            {coach.role && (
+                                <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--color-brand-label)', opacity: 0.7 }}>
+                                    {t(`roles.${coach.role}`)}
+                                </p>
                             )}
+                            {coach.specialty && !['reception', 'cleaner'].includes(coachRole || '') && (
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-white/30 truncate">
+                                    {coach.specialty}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </div>
 
-                            {/* Stats & Shift */}
-                            <div className="grid grid-cols-2 gap-2 pt-1">
-                                {(coach as any).daily_total_seconds > 0 && (
-                                    <div className="bg-white/5 p-2 rounded-xl border border-white/5 group-hover:bg-white/10 transition-colors text-center md:text-left">
-                                        <p className="text-[7px] font-black text-white/20 uppercase tracking-widest mb-0.5">{t('coaches.worked')}</p>
-                                        <p className="text-xs font-black text-white font-mono tracking-tight">
-                                            {Math.floor(liveSeconds / 3600)}h {Math.floor((liveSeconds % 3600) / 60)}m
-                                            {isWorking && <span className="ml-1 text-[8px] text-emerald-400 animate-pulse">{liveSeconds % 60}s</span>}
-                                        </p>
-                                    </div>
-                                )}
-                                {(coach as any).check_in_time && (
-                                    <div className="bg-white/5 p-2 rounded-xl border border-white/5 group-hover:bg-white/10 transition-colors text-center md:text-left">
-                                        <p className="text-[7px] font-black text-white/20 uppercase tracking-widest mb-0.5">{t('coaches.shiftTime', 'Shift')}</p>
-                                        <p className="text-xs font-black text-white font-mono tracking-tight">
-                                            {new Date((coach as any).check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </p>
-                                    </div>
-                                )}
+                {/* Metrics / Info Rows */}
+                <div className="space-y-1.5 mb-4 flex-1">
+                    {/* Worked Time */}
+                    {(coach as any).daily_total_seconds > 0 && (
+                        <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 bg-white/[0.02] p-1.5 rounded-lg border border-white/[0.02]">
+                            <Clock className="w-2.5 h-2.5 text-primary" />
+                            <span>
+                                {Math.floor(liveSeconds / 3600)}h {Math.floor((liveSeconds % 3600) / 60)}m
+                            </span>
+                            {isWorking && <span className="text-emerald-500 ml-auto animate-pulse">{liveSeconds % 60}s</span>}
+                        </div>
+                    )}
+
+                    {/* PT Stats (Admin/Coach only) */}
+                    {!['reception', 'cleaner'].includes(coachRole || '') && (
+                        <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 bg-white/[0.02] p-1.5 rounded-lg border border-white/[0.02]">
+                            <div className="flex items-center gap-1.5 flex-1">
+                                <span className="text-white/20">SESSIONS:</span>
+                                <span className="text-white font-bold">{(coach as any).pt_sessions_today || 0}</span>
                             </div>
-
-                            {/* PT Rate & Today's Sessions - only for admins and coaches */}
-                            {!['reception', 'cleaner'].includes(coachRole || '') && (
-                                <div className={`mt-3 pt-3 border-t border-white/5 flex items-center justify-between`}>
-                                    {role === 'admin' && (
-                                        <div className="text-left space-y-0.5">
-                                            <p className="text-[7px] font-black text-white/20 uppercase tracking-widest">{t('coaches.ptRate')}</p>
-                                            <p className="text-sm font-black text-primary">{coach.pt_rate} <span className="text-[7px] opacity-40 uppercase tracking-tighter">{currency.code}</span></p>
-                                        </div>
-                                    )}
-                                    <div className="text-right space-y-0.5">
-                                        <p className="text-[7px] font-black text-white/20 uppercase tracking-widest">{t('coaches.sessions')}</p>
-                                        <div className="flex items-center gap-1.5 justify-end">
-                                            <span className="text-lg font-black text-emerald-400 leading-none">{(coach as any).pt_sessions_today || 0}</span>
-                                            <span className="text-[10px] opacity-30">💪</span>
-                                        </div>
-                                    </div>
+                            {role === 'admin' && (
+                                <div className="flex items-center gap-1">
+                                    <span className="text-primary font-bold">{coach.pt_rate}</span>
+                                    <span className="text-[7px] text-primary/50">{currency.code}</span>
                                 </div>
                             )}
                         </div>
                     )}
                 </div>
+
+                {/* Footer Buttons */}
+                <div className="mt-auto grid gap-2">
+                    {/* View Attendance (Primary Action) */}
+                    {['admin', 'reception', 'receptionist'].includes(role || '') && (
+                        <button
+                            onClick={onAttendance}
+                            className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-primary hover:text-white border border-white/10 hover:border-primary/20 text-white/60 font-black text-[10px] uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2 group/btn"
+                        >
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{t('coaches.viewAttendance')}</span>
+                        </button>
+                    )}
+
+                    {/* Manual Attendance (Cleaner/Admin) */}
+                    {coachRole === 'cleaner' && onManualAttendance && (
+                        <button
+                            onClick={onManualAttendance}
+                            className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-emerald-500 hover:text-white border border-white/10 hover:border-emerald-500/20 text-white/60 font-black text-[10px] uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2"
+                        >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>{t('coaches.checkIn')}</span>
+                        </button>
+                    )}
+                </div>
             </div>
 
-            {/* Unified Action Bar - Horizontal at Bottom */}
-            <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-white/5 relative z-30">
-                {(['admin', 'reception', 'receptionist'].includes(role || '')) && (
-                    <button onClick={onAttendance} title={t('coaches.viewAttendance')} className="p-2 bg-white/5 text-white/40 hover:text-primary hover:bg-primary/20 rounded-lg transition-all border border-white/10 shadow-sm active:scale-95 hover:scale-110">
-                        <Clock className="w-4 h-4" />
-                    </button>
-                )}
-                {coachRole === 'cleaner' && onManualAttendance && (
-                    <button onClick={onManualAttendance} className="p-2 bg-white/5 text-white/40 hover:text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition-all border border-white/10 shadow-sm active:scale-95 hover:scale-110">
-                        <Plus className="w-4 h-4" />
-                    </button>
-                )}
-                {role === 'admin' && (
-                    <>
-                        <button onClick={onEdit} className="p-2 bg-white/5 text-white/40 hover:text-blue-400 hover:bg-blue-500/20 rounded-lg transition-all border border-white/10 shadow-sm active:scale-95 hover:scale-110">
-                            <Edit className="w-4 h-4" />
-                        </button>
-                        <button onClick={onDelete} className="p-2 bg-white/5 text-white/40 hover:text-rose-400 hover:bg-rose-500/20 rounded-lg transition-all border border-white/10 shadow-sm active:scale-95 hover:scale-110">
-                            <Trash2 className="w-4 h-4" />
-                        </button>
-                    </>
-                )}
-            </div>
-
-            {/* Premium Corner Accent */}
+            {/* Premium Corner Accent (restored but subtle) */}
             {isPremium && (
-                <div className="absolute top-0 right-0 w-20 h-20 overflow-hidden pointer-events-none">
-                    <div className="absolute top-[12px] right-[-30px] w-[100px] h-6 bg-primary/20 border-y border-primary/30 rotate-45 flex items-center justify-center backdrop-blur-md">
-                        <span className="text-[7px] font-black text-primary uppercase tracking-[0.4em] pl-3">LEADER</span>
-                    </div>
+                <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden pointer-events-none opacity-50">
+                    <div className="absolute top-[8px] right-[-24px] w-[80px] h-4 bg-primary/10 rotate-45"></div>
                 </div>
             )}
         </div>

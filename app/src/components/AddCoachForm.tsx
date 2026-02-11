@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { X, Save, UserPlus, ChevronDown, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ImageLightbox from './ImageLightbox';
 
 interface AddCoachFormProps {
     onClose: () => void;
@@ -12,6 +13,7 @@ interface AddCoachFormProps {
         profile_id?: string;
         full_name: string;
         email?: string;
+        phone?: string;
         role?: string;
         specialty: string;
         pt_rate: number;
@@ -29,6 +31,7 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
     const [formData, setFormData] = useState({
         full_name: initialData?.full_name || '',
         email: initialData?.email || '',
+        phone: initialData?.phone || '',
         password: '',
         role: initialData?.role || 'coach',
         specialty: initialData?.specialty || '',
@@ -39,6 +42,7 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
         image_pos_y: initialData?.image_pos_y ?? 50
     });
     const [uploading, setUploading] = useState(false);
+    const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,6 +135,7 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
             const coachData: any = {
                 full_name: formData.full_name.trim(),
                 email: formData.email.toLowerCase().trim(),
+                phone: formData.phone.trim(),
                 specialty: formData.specialty,
                 role: formData.role,
                 pt_rate: parseFloat(formData.pt_rate) || 0,
@@ -189,265 +194,250 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#0a0a0f]/80 backdrop-blur-md">
-            <div className="w-full max-w-lg max-h-[90vh] bg-[#0a0a0f]/95 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] shadow-2xl shadow-black/50 flex flex-col relative overflow-hidden animate-in fade-in zoom-in-95 duration-500">
-                {/* Decorative gradients */}
-                <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
-                <div className="absolute bottom-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/10 to-transparent"></div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-hidden">
+            {/* Ultra-Neutral Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-1000"
+                onClick={onClose}
+            />
 
-                {/* Header */}
-                <div className="p-8 border-b border-white/[0.03] flex items-center justify-between relative z-10">
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full bg-primary/40 animate-pulse"></div>
-                            <h2 className="text-xl font-black text-white uppercase tracking-[0.2em]">
-                                {initialData ? 'Edit Specialist' : 'Add New Coach'}
+            <div className="w-full max-w-[400px] bg-black/60 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-700 relative flex flex-col max-h-[90vh]">
+                {/* Dynamic Glass Shimmer */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent pointer-events-none"></div>
+
+                {/* Header Section */}
+                <div className="relative z-10 px-8 pt-10 pb-6 border-b border-white/5 flex-shrink-0">
+                    <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                            <h2 className="text-xl font-black text-white tracking-widest uppercase mb-1 drop-shadow-lg leading-tight">
+                                {initialData ? 'Edit Staff Member' : 'New Staff Member'}
                             </h2>
+                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                {initialData ? 'Update Staff Credentials' : 'Register Staff Member'}
+                            </p>
                         </div>
-                        <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] ml-5">
-                            {initialData ? 'Update Staff Credentials' : 'Register New Academy Faculty'}
-                        </p>
+                        <button
+                            onClick={onClose}
+                            className="p-3 rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/5 active:scale-90"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="group relative p-2 overflow-hidden rounded-full transition-all duration-500"
-                    >
-                        <div className="absolute inset-0 bg-white/5 group-hover:bg-white/10 transition-colors"></div>
-                        <X className="w-5 h-5 text-white/30 group-hover:text-white group-hover:rotate-90 transition-all duration-500 relative z-10" />
-                    </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-10 space-y-10 overflow-y-auto flex-1 custom-scrollbar relative z-10">
-                    <div className="space-y-10">
-                        {/* Full Name */}
-                        <div className="space-y-3 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Full Name</label>
-                            <input
-                                required
-                                type="text"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-sm tracking-wide"
-                                value={formData.full_name}
-                                onChange={(e) => {
-                                    const newName = e.target.value;
-                                    const emailName = newName.toLowerCase().replace(/\s+/g, '');
-                                    setFormData(prev => ({
-                                        ...prev,
-                                        full_name: newName,
-                                        email: prev.email === '' || prev.email.includes(`${prev.full_name.toLowerCase().replace(/\s+/g, '')}@healy.com`)
-                                            ? (emailName ? `${emailName}@healy.com` : '')
-                                            : prev.email
-                                    }));
-                                }}
-                            />
-                        </div>
+                {/* Scrollable Form Body */}
+                <form onSubmit={handleSubmit} className="relative z-10 px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
 
-                        {/* Profile Image & Controls */}
-                        <div className="space-y-3 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Profile Image</label>
+                    {/* Full Name */}
+                    <div className="space-y-2 group/field">
+                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Full Name</label>
+                        <input
+                            required
+                            type="text"
+                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs tracking-wide font-bold"
+                            value={formData.full_name}
+                            onChange={(e) => {
+                                const newName = e.target.value;
+                                const emailName = newName.toLowerCase().replace(/\s+/g, '');
+                                setFormData(prev => ({
+                                    ...prev,
+                                    full_name: newName,
+                                    email: prev.email === '' || prev.email.includes(`${prev.full_name.toLowerCase().replace(/\s+/g, '')}@healy.com`)
+                                        ? (emailName ? `${emailName}@healy.com` : '')
+                                        : prev.email
+                                }));
+                            }}
+                        />
+                    </div>
 
-                            <div className="flex gap-6 items-center">
-                                <div className="relative w-24 h-24 rounded-3xl overflow-hidden border border-white/10 bg-white/[0.02] flex-shrink-0 group/img shadow-2xl">
+                    {/* Profile Image - Compact & Centered */}
+                    <div className="p-4 rounded-3xl bg-white/[0.01] border border-white/5 space-y-4">
+                        <div className="flex gap-4 items-center">
+                            <div className="relative w-20 h-20 flex-shrink-0 group/img">
+                                <div className="w-full h-full rounded-[1.5rem] overflow-hidden border border-white/10 bg-white/[0.02] shadow-2xl relative">
                                     <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-accent/10 opacity-0 group-hover/img:opacity-100 transition-opacity"></div>
                                     {formData.avatar_url ? (
-                                        <div className="relative w-full h-full group/preview">
-                                            <img
-                                                src={formData.avatar_url}
-                                                className="w-full h-full object-cover relative z-10 transition-all duration-300 group-hover/preview:scale-105"
-                                                style={{ objectPosition: `${formData.image_pos_x}% ${formData.image_pos_y}%` }}
-                                                alt="Preview"
-                                            />
-                                            {/* Remove Image Overlay */}
-                                            <button
-                                                type="button"
-                                                onClick={() => setFormData(prev => ({
-                                                    ...prev,
-                                                    avatar_url: '',
-                                                    image_pos_x: 50,
-                                                    image_pos_y: 50
-                                                }))}
-                                                className="absolute top-2 right-2 z-20 p-2 bg-rose-500/90 text-white rounded-xl opacity-0 group-hover/preview:opacity-100 transition-all duration-300 hover:bg-rose-600 shadow-lg active:scale-95"
-                                                title="Remove Image"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
+                                        <img
+                                            src={formData.avatar_url}
+                                            className="w-full h-full object-cover relative z-10 transition-all duration-300 group-hover/img:scale-105 cursor-zoom-in"
+                                            style={{ objectPosition: `${formData.image_pos_x}% ${formData.image_pos_y}%` }}
+                                            alt="Preview"
+                                            onClick={() => setEnlargedImage(formData.avatar_url)}
+                                        />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-white/10 font-black text-2xl">?</div>
+                                        <div className="w-full h-full flex items-center justify-center text-white/10 font-black text-xl">?</div>
                                     )}
                                     {uploading && (
                                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-20">
-                                            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                                         </div>
                                     )}
                                 </div>
+                                {/* Remove Image Button (Outside) */}
+                                {formData.avatar_url && !uploading && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, avatar_url: '', image_pos_x: 50, image_pos_y: 50 }))}
+                                        className="absolute -top-2 -right-2 z-30 p-1.5 bg-black/80 backdrop-blur-md border border-white/20 text-white rounded-full hover:bg-rose-500 hover:border-rose-500 transition-all duration-300 shadow-xl active:scale-95 group-hover/img:scale-110"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                )}
+                            </div>
 
-                                <div className="flex-1 space-y-4">
-                                    <label className="block w-full">
-                                        <div className="px-6 py-3 bg-white/[0.02] border border-white/5 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] text-white/40 hover:bg-white/[0.05] hover:text-white hover:border-white/10 cursor-pointer transition-all text-center">
-                                            {uploading ? 'Processing Image...' : 'Deploy New Asset'}
-                                        </div>
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={handleFileUpload}
-                                            className="hidden"
-                                            disabled={uploading}
-                                        />
-                                    </label>
-
-                                    {formData.avatar_url && (
-                                        <div className="grid grid-cols-2 gap-4 p-4 bg-white/[0.01] border border-white/[0.03] rounded-2xl">
-                                            <div className="space-y-1">
-                                                <label className="text-[8px] font-black uppercase tracking-widest text-white/10">Axis X</label>
-                                                <input
-                                                    type="range"
-                                                    min="0"
-                                                    max="100"
-                                                    value={formData.image_pos_x}
-                                                    onChange={(e) => setFormData((prev: any) => ({ ...prev, image_pos_x: parseInt(e.target.value) }))}
-                                                    className="w-full h-px bg-white/10 appearance-none cursor-pointer accent-primary"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[8px] font-black uppercase tracking-widest text-white/10">Axis Y</label>
-                                                <input
-                                                    type="range"
-                                                    min="0"
-                                                    max="100"
-                                                    value={formData.image_pos_y}
-                                                    onChange={(e) => setFormData((prev: any) => ({ ...prev, image_pos_y: parseInt(e.target.value) }))}
-                                                    className="w-full h-px bg-white/10 appearance-none cursor-pointer accent-primary"
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                            <div className="flex-1">
+                                <label className="block w-full">
+                                    <div className="w-full py-3 bg-white/[0.03] border border-white/5 rounded-2xl text-[8px] font-black uppercase tracking-[0.2em] text-white/40 hover:bg-white/[0.08] hover:text-white hover:border-white/10 cursor-pointer transition-all text-center">
+                                        {uploading ? 'Uploading...' : 'Upload Image'}
+                                    </div>
+                                    <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" disabled={uploading} />
+                                </label>
                             </div>
                         </div>
 
-                        {/* Specialty & Role */}
-                        {!['reception', 'cleaner'].includes(formData.role) && (
-                            <div className="space-y-3 group/field">
-                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Specialization</label>
-                                <div className="relative">
-                                    <select
-                                        required={!['reception', 'cleaner'].includes(formData.role)}
-                                        className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-sm tracking-wide"
-                                        value={formData.specialty}
-                                        onChange={e => setFormData({ ...formData, specialty: e.target.value })}
-                                    >
-                                        <option value="" disabled className="bg-[#0a0a0f]">Select Discipline</option>
-                                        <option value="Artistic Gymnastics (Boys)" className="bg-[#0a0a0f]">Artistic Gymnastics (Boys)</option>
-                                        <option value="Artistic Gymnastics (Girls)" className="bg-[#0a0a0f]">Artistic Gymnastics (Girls)</option>
-                                        <option value="Artistic Gymnastics (Mixed)" className="bg-[#0a0a0f]">Artistic Gymnastics (Mixed)</option>
-                                        <option value="Rhythmic Gymnastics" className="bg-[#0a0a0f]">Rhythmic Gymnastics</option>
-                                    </select>
-                                    <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
+                        {/* Sliders */}
+                        {formData.avatar_url && (
+                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
+                                <div className="space-y-1">
+                                    <label className="text-[7px] font-black uppercase tracking-widest text-white/10 ml-1">Axis X</label>
+                                    <input type="range" min="0" max="100" value={formData.image_pos_x} onChange={(e) => setFormData((prev: any) => ({ ...prev, image_pos_x: parseInt(e.target.value) }))} className="w-full h-1 bg-white/5 rounded-full appearance-none cursor-pointer accent-primary" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[7px] font-black uppercase tracking-widest text-white/10 ml-1">Axis Y</label>
+                                    <input type="range" min="0" max="100" value={formData.image_pos_y} onChange={(e) => setFormData((prev: any) => ({ ...prev, image_pos_y: parseInt(e.target.value) }))} className="w-full h-1 bg-white/5 rounded-full appearance-none cursor-pointer accent-primary" />
                                 </div>
                             </div>
                         )}
+                    </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                            {/* Account Email */}
-                            <div className="space-y-3 group/field">
-                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Digital Identity</label>
-                                <input
-                                    required
-                                    type="email"
-                                    placeholder=""
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-sm"
-                                    value={formData.email}
-                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                />
+                    {/* Specialization */}
+                    {!['reception', 'cleaner'].includes(formData.role) && (
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Program</label>
+                            <div className="relative">
+                                <select
+                                    required={!['reception', 'cleaner'].includes(formData.role)}
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs tracking-wide font-bold"
+                                    value={formData.specialty}
+                                    onChange={e => setFormData({ ...formData, specialty: e.target.value })}
+                                >
+                                    <option value="" disabled className="bg-[#0a0a0f]">Select Discipline</option>
+                                    <option value="Artistic Gymnastics (Boys)" className="bg-[#0a0a0f]">Artistic Gymnastics (Boys)</option>
+                                    <option value="Artistic Gymnastics (Girls)" className="bg-[#0a0a0f]">Artistic Gymnastics (Girls)</option>
+                                    <option value="Artistic Gymnastics (Mixed)" className="bg-[#0a0a0f]">Artistic Gymnastics (Mixed)</option>
+                                    <option value="Rhythmic Gymnastics" className="bg-[#0a0a0f]">Rhythmic Gymnastics</option>
+                                </select>
+                                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 pointer-events-none" />
                             </div>
+                        </div>
+                    )}
 
-                            {/* Password */}
-                            <div className="space-y-3 group/field">
-                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">
-                                    {initialData ? 'Reset Credentials' : 'Secure Access Key'}
-                                </label>
-                                <input
-                                    required={!initialData}
-                                    type="password"
-                                    placeholder=""
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-sm"
-                                    value={formData.password}
-                                    onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                />
-                            </div>
-
-                            {/* Role Selection */}
-                            <div className="space-y-3 group/field md:col-span-2">
-                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">System Privilege Level</label>
-                                <div className="relative">
-                                    <select
-                                        required
-                                        className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-sm tracking-[0.1em] font-black uppercase text-center"
-                                        value={formData.role}
-                                        onChange={e => setFormData({ ...formData, role: e.target.value })}
-                                    >
-                                        <option value="coach" className="bg-[#0a0a0f]">{t('roles.coach')}</option>
-                                        <option value="head_coach" className="bg-[#0a0a0f]">{t('roles.head_coach')}</option>
-                                        <option value="admin" className="bg-[#0a0a0f]">{t('roles.admin')}</option>
-                                        <option value="reception" className="bg-[#0a0a0f]">{t('roles.reception')}</option>
-                                        <option value="cleaner" className="bg-[#0a0a0f]">{t('roles.cleaner')}</option>
-                                    </select>
-                                    <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
-                                </div>
-                            </div>
-
-                            {/* Compensation & Rates */}
-                            {!['reception', 'cleaner'].includes(formData.role) && (
-                                <div className="space-y-3 group/field">
-                                    <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">PT Yield Rate</label>
-                                    <input
-                                        required={!['reception', 'cleaner'].includes(formData.role)}
-                                        type="number"
-                                        placeholder=""
-                                        className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-sm font-bold"
-                                        value={formData.pt_rate}
-                                        onChange={e => setFormData({ ...formData, pt_rate: e.target.value })}
-                                    />
-                                </div>
-                            )}
-                            <div className="space-y-3 group/field">
-                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Monthly Retainer</label>
-                                <input
-                                    required
-                                    type="number"
-                                    placeholder=""
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-sm font-bold"
-                                    value={formData.salary}
-                                    onChange={e => setFormData({ ...formData, salary: e.target.value })}
-                                />
-                            </div>
+                    {/* Email & Phone Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Email Address</label>
+                            <input
+                                required
+                                type="email"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold"
+                                value={formData.email}
+                                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Phone Number</label>
+                            <input
+                                required
+                                type="tel"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold"
+                                value={formData.phone}
+                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                            />
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex items-center justify-end gap-6 pt-10 border-t border-white/[0.03] mt-10">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-8 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500"
-                        >
-                            {t('common.cancel', 'Discard')}
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="px-12 py-4 bg-primary text-white text-[9px] font-black uppercase tracking-[0.3em] rounded-2xl shadow-xl shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-500 flex items-center justify-center gap-4 relative overflow-hidden group/btn disabled:opacity-50"
-                        >
-                            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500"></div>
-                            {loading ? (
-                                <span className="animate-pulse">Processing...</span>
-                            ) : (
-                                <span className="relative z-10">{initialData ? 'Update Faculty' : 'Confirm Registration'}</span>
-                            )}
-                        </button>
+                    {/* Role & Password Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Role</label>
+                            <div className="relative">
+                                <select
+                                    required
+                                    className="w-full px-3 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-8 text-[10px] tracking-wider font-bold uppercase text-center"
+                                    value={formData.role}
+                                    onChange={e => setFormData({ ...formData, role: e.target.value })}
+                                >
+                                    <option value="coach" className="bg-[#0a0a0f]">{t('roles.coach')}</option>
+                                    <option value="head_coach" className="bg-[#0a0a0f]">{t('roles.head_coach')}</option>
+                                    <option value="admin" className="bg-[#0a0a0f]">{t('roles.admin')}</option>
+                                    <option value="reception" className="bg-[#0a0a0f]">{t('roles.reception')}</option>
+                                    <option value="cleaner" className="bg-[#0a0a0f]">{t('roles.cleaner')}</option>
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-white/20 pointer-events-none" />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Password</label>
+                            <input
+                                required={!initialData}
+                                type="password"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs font-bold"
+                                value={formData.password}
+                                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                placeholder={initialData ? "••••••" : ""}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        {!['reception', 'cleaner'].includes(formData.role) && (
+                            <div className="space-y-2 group/field">
+                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Session Rate</label>
+                                <input
+                                    required
+                                    type="number"
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-xs font-bold"
+                                    value={formData.pt_rate}
+                                    onChange={e => setFormData({ ...formData, pt_rate: e.target.value })}
+                                />
+                            </div>
+                        )}
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Monthly Salary</label>
+                            <input
+                                required
+                                type="number"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-xs font-bold"
+                                value={formData.salary}
+                                onChange={e => setFormData({ ...formData, salary: e.target.value })}
+                            />
+                        </div>
                     </div>
                 </form>
+
+                {/* Footer Section - Single Premium Button */}
+                <div className="relative z-10 px-8 py-8 border-t border-white/5 flex-shrink-0">
+                    <button
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="w-full py-4 rounded-3xl bg-white text-black hover:bg-white/90 transition-all duration-500 shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                        {loading ? (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Processing...</span>
+                        ) : (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] group-hover:tracking-[0.5em] transition-all duration-500">
+                                {initialData ? 'Save Changes' : 'Add Staff Member'}
+                            </span>
+                        )}
+                    </button>
+                </div>
             </div>
+
+            <ImageLightbox
+                imageUrl={enlargedImage}
+                onClose={() => setEnlargedImage(null)}
+            />
         </div>
     );
 }

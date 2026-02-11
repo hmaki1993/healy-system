@@ -454,7 +454,7 @@ export default function Students() {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-white/5 pb-8">
                 <div className="text-center sm:text-left">
-                    <h1 className="text-3xl sm:text-4xl font-extrabold premium-gradient-text tracking-tight uppercase">{t('students.title')}</h1>
+                    <h1 className="text-3xl sm:text-4xl font-extrabold premium-gradient-text tracking-tight uppercase">Gymnasts</h1>
                     <p className="text-white/60 mt-2 text-sm sm:text-base font-bold tracking-wide uppercase opacity-100">{t('students.subtitle')}</p>
                 </div>
             </div>
@@ -708,32 +708,32 @@ export default function Students() {
             {/* Students Table */}
             <div className="glass-card rounded-[2.5rem] overflow-hidden border border-white/10 shadow-premium">
                 <div className="flex flex-col md:flex-row p-6 md:p-8 border-b border-white/5 gap-6 bg-white/[0.02] items-center">
-                    <div className="flex items-center gap-4 w-full md:w-auto">
+                    <div className="flex items-center gap-4 w-full md:w-auto justify-center md:justify-start">
                         <div className="p-3 text-white/50">
                             <Users className="w-6 h-6" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-black text-white uppercase tracking-wider">{t('students.title')}</h3>
+                            <h3 className="text-lg font-black text-white uppercase tracking-wider">Gymnasts</h3>
                             <p className="text-xs font-bold text-white/40 uppercase tracking-widest mt-1">
                                 {selectedStudentIds.length > 0 ? (
                                     <span className="text-primary animate-pulse">{selectedStudentIds.length} Selected</span>
                                 ) : (
-                                    <span>{filteredStudents.length} Students</span>
+                                    <span>{filteredStudents.length} Gymnasts</span>
                                 )}
                             </p>
                         </div>
                     </div>
 
-                    {/* Search Bar */}
-                    <div className="flex-1 w-full md:max-w-[300px] md:mx-8 relative group order-last md:order-none">
+                    {/* Search Bar - Full Width on Mobile */}
+                    <div className="w-full md:flex-1 md:max-w-[400px] md:mx-auto relative group order-2 md:order-none">
                         <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-                            <Search className="w-4 h-4 text-white/40 group-focus-within:text-primary transition-colors duration-300" />
+                            <Search className="w-5 h-5 text-white/40 group-focus-within:text-primary transition-colors duration-300" />
                         </div>
                         <input
                             type="text"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-white/[0.03] border border-white/5 rounded-full py-2.5 pr-12 text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-white/[0.05] transition-all duration-300 shadow-inner"
+                            className="w-full bg-white/[0.03] border border-white/5 rounded-full py-3.5 sm:py-4 pr-12 text-base text-white focus:outline-none focus:border-primary/50 focus:bg-white/[0.05] transition-all duration-300 shadow-inner"
                             style={{ paddingLeft: '50px' }}
                         />
                         {searchTerm && (
@@ -746,48 +746,51 @@ export default function Students() {
                         )}
                     </div>
 
-                    {selectedStudentIds.length > 0 && (
-                        <button
-                            onClick={handleBulkDelete}
-                            className="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl border border-rose-500/20 flex items-center gap-2 transition-all animate-in fade-in slide-in-from-left-4"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                            <span className="text-xs font-black uppercase tracking-wider">{t('finance.bulkDelete')}</span>
-                        </button>
-                    )}
-
-                    {/* Filter Toggle Button */}
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className={`p-3 px-5 rounded-full border transition-all duration-300 flex items-center gap-2 group/filter ${showFilters ? 'bg-primary/20 border-primary/50 text-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)]' : 'bg-white/[0.03] border-white/5 text-white/40 hover:text-white hover:border-white/20'}`}
-                    >
-                        <Filter className={`w-4 h-4 ${showFilters ? 'animate-pulse' : 'group-hover/filter:rotate-12 transition-transform'}`} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{t('students.filter')}</span>
-                        {activeFilterCount > 0 && (
-                            <span className="w-5 h-5 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-black animate-in zoom-in duration-300">
-                                {activeFilterCount}
-                            </span>
+                    {/* Actions Group - Grid on Mobile */}
+                    <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 w-full md:w-auto order-3 md:order-none">
+                        {selectedStudentIds.length > 0 && (
+                            <button
+                                onClick={handleBulkDelete}
+                                className="col-span-2 px-4 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl border border-rose-500/20 flex items-center justify-center gap-2 transition-all animate-in fade-in slide-in-from-left-4"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                <span className="text-xs font-black uppercase tracking-wider">{t('finance.bulkDelete')}</span>
+                            </button>
                         )}
-                    </button>
 
-                    <button
-                        onClick={() => setShowImportModal(true)}
-                        className="bg-gradient-to-r from-[#622347] to-[#8B3A62] hover:from-[#622347]/90 hover:to-[#8B3A62]/90 text-white px-6 py-3 rounded-full shadow-lg shadow-[#622347]/20 transition-all hover:scale-105 active:scale-95 whitespace-nowrap flex items-center gap-2 font-black uppercase tracking-widest text-xs"
-                    >
-                        <FileSpreadsheet className="w-4 h-4" />
-                        Import CSV
-                    </button>
+                        {/* Filter Toggle Button */}
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`p-3 rounded-xl border transition-all duration-300 flex items-center justify-center gap-2 group/filter ${showFilters ? 'bg-primary/20 border-primary/50 text-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)]' : 'bg-white/[0.03] border-white/5 text-white/40 hover:text-white hover:border-white/20'}`}
+                        >
+                            <Filter className={`w-4 h-4 ${showFilters ? 'animate-pulse' : 'group-hover/filter:rotate-12 transition-transform'}`} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">{t('students.filter')}</span>
+                            {activeFilterCount > 0 && (
+                                <span className="w-5 h-5 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-black animate-in zoom-in duration-300">
+                                    {activeFilterCount}
+                                </span>
+                            )}
+                        </button>
 
-                    <button
-                        onClick={() => {
-                            setEditingStudent(null);
-                            setShowAddModal(true);
-                        }}
-                        className="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-full shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95 whitespace-nowrap flex items-center gap-2 font-black uppercase tracking-widest text-xs"
-                    >
-                        <Plus className="w-4 h-4" />
-                        {t('dashboard.addStudent')}
-                    </button>
+                        <button
+                            onClick={() => setShowImportModal(true)}
+                            className="bg-gradient-to-r from-[#622347] to-[#8B3A62] hover:from-[#622347]/90 hover:to-[#8B3A62]/90 text-white px-4 py-3 rounded-xl shadow-lg shadow-[#622347]/20 transition-all active:scale-95 whitespace-nowrap flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px]"
+                        >
+                            <FileSpreadsheet className="w-4 h-4" />
+                            Import
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                setEditingStudent(null);
+                                setShowAddModal(true);
+                            }}
+                            className="col-span-2 sm:col-span-1 bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 whitespace-nowrap flex items-center justify-center gap-2 font-black uppercase tracking-widest text-xs"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add Gymnast
+                        </button>
+                    </div>
                 </div>
 
                 {/* Filter Bar */}

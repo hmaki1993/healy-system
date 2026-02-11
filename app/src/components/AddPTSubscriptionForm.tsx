@@ -208,195 +208,196 @@ export default function AddPTSubscriptionForm({ onClose, onSuccess, editData }: 
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#0a0a0f]/80 backdrop-blur-md">
-            <div className="w-full max-w-2xl max-h-[90vh] bg-[#0a0a0f]/95 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] shadow-2xl shadow-black/50 flex flex-col relative overflow-hidden animate-in fade-in zoom-in-95 duration-500">
-                {/* Decorative gradients */}
-                <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
-                <div className="absolute bottom-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-primary/10 to-transparent"></div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-hidden">
+            {/* Ultra-Neutral Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-1000"
+                onClick={onClose}
+            />
 
-                {/* Header */}
-                <div className="p-8 border-b border-white/[0.03] flex items-center justify-between relative z-10">
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full bg-primary/40 animate-pulse"></div>
-                            <h2 className="text-xl font-black text-white uppercase tracking-[0.2em]">
-                                {t('pt.addSubscription') || 'PT Subscription'}
+            <div className="w-full max-w-2xl bg-black/60 backdrop-blur-3xl rounded-[3rem] border border-white/5 shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-700 relative flex flex-col max-h-[90vh]">
+                {/* Dynamic Glass Shimmer */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent pointer-events-none"></div>
+
+                {/* Header Section */}
+                <div className="relative z-10 px-8 pt-10 pb-6 border-b border-white/5 flex-shrink-0">
+                    <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                            <h2 className="text-xl font-black text-white tracking-widest uppercase mb-1 drop-shadow-lg leading-tight">
+                                {editData ? 'Modify Subscription' : 'New PT Subscription'}
                             </h2>
+                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                {editData ? 'Update Training Lifecycle' : 'Professional Training Registration'}
+                            </p>
                         </div>
-                        <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] ml-5">
-                            {editData ? 'Update Training Lifecycle' : 'Register New Professional Training'}
-                        </p>
+                        <button
+                            onClick={onClose}
+                            className="p-3 rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/5 active:scale-90"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="group relative p-2 overflow-hidden rounded-full transition-all duration-500"
-                    >
-                        <div className="absolute inset-0 bg-white/5 group-hover:bg-white/10 transition-colors"></div>
-                        <X className="w-5 h-5 text-white/30 group-hover:text-white group-hover:rotate-90 transition-all duration-500 relative z-10" />
-                    </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-10 space-y-10 overflow-y-auto flex-1 custom-scrollbar relative z-10">
-                    {/* Student Selection */}
-                    <div className="space-y-3 group/field">
-                        <div className="flex items-center justify-between ml-1">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 group-focus-within/field:text-primary transition-colors">
-                                {t('common.student') || 'Gymnast'}
-                            </label>
+                {/* Scrollable Form Body */}
+                <form onSubmit={handleSubmit} className="relative z-10 px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-8">
+
+                    {/* Mode Toggle & Student Selection */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between px-1">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Client Identification</label>
                             <button
                                 type="button"
                                 onClick={() => {
                                     setIsGuest(!isGuest);
                                     setFormData(prev => ({ ...prev, student_id: '', student_name: '', student_phone: '' }));
                                 }}
-                                className="text-[9px] font-black uppercase tracking-widest text-primary/60 hover:text-primary transition-colors"
+                                className="px-4 py-1.5 rounded-full bg-white/5 border border-white/5 text-[8px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 transition-all"
                             >
-                                {isGuest ? 'Browse Members' : 'Register External'}
+                                {isGuest ? 'Internal Member' : 'External Guest'}
                             </button>
                         </div>
 
-                        {isGuest ? (
-                            <input
-                                type="text"
-                                value={formData.student_name}
-                                onChange={(e) => setFormData({ ...formData, student_name: e.target.value })}
-                                placeholder=""
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-sm tracking-wide"
-                                required
-                            />
-                        ) : (
-                            <div className="relative">
-                                <select
-                                    value={formData.student_id}
-                                    onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none text-sm tracking-wide cursor-pointer"
-                                    required
-                                >
-                                    <option value="" disabled className="bg-[#0a0a0f]">Select Athlete</option>
-                                    {students.map(student => (
-                                        <option key={student.id} value={student.id} className="bg-[#0a0a0f]">
-                                            {student.full_name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
-                            </div>
-                        )}
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-500">
+                            {isGuest ? (
+                                <div className="space-y-2 group/field">
+                                    <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Guest Designation</label>
+                                    <input
+                                        type="text"
+                                        value={formData.student_name}
+                                        onChange={(e) => setFormData({ ...formData, student_name: e.target.value })}
+                                        placeholder="Full Legal Name"
+                                        className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs font-bold"
+                                        required
+                                    />
+                                </div>
+                            ) : (
+                                <div className="space-y-2 group/field">
+                                    <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Academy Gymnast</label>
+                                    <div className="relative">
+                                        <select
+                                            value={formData.student_id}
+                                            onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
+                                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs font-bold"
+                                            required
+                                        >
+                                            <option value="" disabled className="bg-[#0a0a0f]">Select Athlete Profile</option>
+                                            {students.map(student => (
+                                                <option key={student.id} value={student.id} className="bg-[#0a0a0f]">{student.full_name}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/10 pointer-events-none group-focus-within/field:text-primary transition-colors" />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
-                        {/* Personal Phone */}
-                        <div className="space-y-3 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">
-                                {t('common.phone') || 'Contact Line'}
-                            </label>
+                    <div className="grid grid-cols-2 gap-6">
+                        {/* Phone */}
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Secure Contact</label>
                             <input
                                 type="tel"
-                                placeholder=""
                                 value={formData.student_phone}
                                 onChange={(e) => setFormData({ ...formData, student_phone: e.target.value })}
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-sm"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-xs font-bold"
+                                placeholder="+XXX-XXXX-XXXX"
                             />
                         </div>
 
                         {/* Coach Selection */}
-                        <div className="space-y-3 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">
-                                {t('common.coach') || 'Lead Specialist'}
-                            </label>
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Assign Specialist</label>
                             <div className="relative">
                                 <select
                                     value={formData.coach_id}
                                     onChange={(e) => setFormData({ ...formData, coach_id: e.target.value })}
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none text-sm tracking-wide cursor-pointer"
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs font-bold"
                                     required
                                 >
-                                    <option value="" disabled className="bg-[#0a0a0f]">Assigned Coach</option>
+                                    <option value="" disabled className="bg-[#0a0a0f]">Lead Coach</option>
                                     {coaches.map(coach => (
-                                        <option key={coach.id} value={coach.id} className="bg-[#0a0a0f]">
-                                            {coach.full_name}
-                                        </option>
+                                        <option key={coach.id} value={coach.id} className="bg-[#0a0a0f]">{coach.full_name}</option>
                                     ))}
                                 </select>
-                                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
+                                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/10 pointer-events-none group-focus-within/field:text-primary transition-colors" />
                             </div>
                         </div>
 
                         {/* Sessions Count */}
-                        <div className="space-y-3 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">
-                                {t('pt.sessionCount') || 'Training Volume'}
-                            </label>
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Training Units</label>
                             <input
                                 type="number"
                                 min="1"
-                                placeholder=""
                                 value={formData.sessions_total}
                                 onChange={(e) => setFormData({ ...formData, sessions_total: e.target.value })}
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-sm"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-xs font-bold"
                                 required
                             />
                         </div>
 
-                        {/* Date Range */}
-                        <div className="space-y-3 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">
-                                {t('common.startDate') || 'Activation Date'}
-                            </label>
+                        {/* Start Date */}
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Activation Date</label>
                             <input
                                 type="date"
                                 value={formData.start_date}
                                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-sm"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center"
                                 required
                             />
                         </div>
+                    </div>
 
-                        {/* Price Input & Display */}
-                        <div className="space-y-3 group/field md:col-span-2">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">
-                                {t('common.price') || 'Investment'}
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    min="0"
-                                    placeholder=""
-                                    value={formData.price}
-                                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                                    className="w-full px-5 py-6 bg-white/[0.02] border border-white/5 rounded-[2rem] focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-3xl font-black tracking-tight"
-                                    required
-                                />
-                                <div className="absolute right-8 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/20 uppercase tracking-[0.2em] pointer-events-none">
-                                    {currency.code}
-                                </div>
+                    {/* Investment / Price */}
+                    <div className="space-y-3 group/field">
+                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Financial Investment</label>
+                        <div className="relative p-6 bg-white/[0.01] border border-white/5 rounded-[2rem] flex items-center justify-between group-focus-within/field:bg-white/[0.03] transition-all">
+                            <input
+                                type="number"
+                                min="0"
+                                value={formData.price}
+                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                className="bg-transparent border-none outline-none text-4xl font-black text-white w-full tracking-tighter"
+                                required
+                            />
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">{currency.code}</span>
+                                {selectedCoach && (
+                                    <span className="text-[8px] font-black text-primary/40 uppercase tracking-widest whitespace-nowrap mt-1">
+                                        Rate: {selectedCoach.pt_rate} / Session
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center justify-end gap-6 pt-10 border-t border-white/[0.03] mt-10">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-8 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500"
-                        >
-                            {t('common.cancel', 'Discard')}
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="px-12 py-4 bg-primary text-white text-[9px] font-black uppercase tracking-[0.3em] rounded-2xl shadow-xl shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-500 flex items-center justify-center gap-4 relative overflow-hidden group/btn disabled:opacity-50"
-                        >
-                            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-500"></div>
-                            {loading ? (
-                                <span className="animate-pulse">Processing...</span>
-                            ) : (
-                                <span className="relative z-10">{editData ? 'Update Cycle' : 'Confirm Subscription'}</span>
-                            )}
-                        </button>
-                    </div>
                 </form>
+
+                {/* Footer Section - Single Premium Button */}
+                <div className="relative z-10 px-8 py-8 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-6">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 whitespace-nowrap"
+                    >
+                        Discard
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="flex-1 py-4 rounded-3xl bg-white text-black hover:bg-white/90 transition-all duration-500 shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                        {loading ? (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Processing...</span>
+                        ) : (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] group-hover:tracking-[0.5em] transition-all duration-500">
+                                {editData ? 'Commit Updates' : 'Authorize Subscription'}
+                            </span>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     );

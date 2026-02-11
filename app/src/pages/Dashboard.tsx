@@ -118,18 +118,18 @@ export default function Dashboard() {
                     </div>
 
                     {/* Compact Date & Clock Widget */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mt-4 sm:mt-0">
                         <button
                             onClick={() => navigate('/evaluations')}
-                            className="hidden sm:flex items-center gap-2 px-6 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-lg shadow-primary/5 group/eval"
+                            className="flex items-center gap-2 px-4 sm:px-6 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-lg shadow-primary/5 group/eval"
                         >
                             <ClipboardCheck className="w-4 h-4 group-hover/eval:scale-110 transition-transform" />
                             <span className="text-[10px] font-black uppercase tracking-widest">Evaluations Hub</span>
                         </button>
 
-                        <div className="flex items-center gap-4 p-2 pr-6 bg-white/5 border border-white/10 rounded-full shadow-inner backdrop-blur-xl">
-                            <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-primary shadow-lg">
-                                <Calendar className="w-4 h-4 drop-shadow-[0_0_8px_currentColor]" strokeWidth={1.5} />
+                        <div className="flex items-center gap-2 sm:gap-4 p-2 pr-4 sm:pr-6 bg-white/5 border border-white/10 rounded-full shadow-inner backdrop-blur-xl">
+                            <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 rounded-full bg-white/5 border border-white/10 text-primary shadow-lg">
+                                <Calendar className="w-3 h-3 sm:w-4 sm:h-4 drop-shadow-[0_0_8px_currentColor]" strokeWidth={1.5} />
                                 <span className="text-[10px] font-black uppercase tracking-widest">{format(new Date(), 'MMM dd, yyyy')}</span>
                             </div>
 

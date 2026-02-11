@@ -128,149 +128,161 @@ export default function AddSessionForm({ onClose, onSuccess, initialData }: AddS
     };
 
     return (
-        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 backdrop-blur-xl animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-hidden">
+            {/* Ultra-Neutral Backdrop */}
             <div
-                className="glass-card rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh] border border-white/20 animate-in zoom-in-95 duration-300"
-            >
-                <div className="px-8 py-6 flex items-center justify-between border-b border-white/5 bg-white/5">
-                    <div>
-                        <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3">
-                            <div className="p-2 bg-primary/20 rounded-xl text-primary">
-                                <Calendar className="w-6 h-6" />
-                            </div>
-                            {initialData ? 'Edit Class' : 'Add New Class'}
-                        </h2>
+                className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-1000"
+                onClick={onClose}
+            />
+
+            <div className="w-full max-w-[450px] bg-black/60 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-700 relative flex flex-col max-h-[90vh]">
+                {/* Dynamic Glass Shimmer */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent pointer-events-none"></div>
+
+                {/* Header Section */}
+                <div className="relative z-10 px-8 pt-10 pb-6 border-b border-white/5 flex-shrink-0">
+                    <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                            <h2 className="text-xl font-black text-white tracking-widest uppercase mb-1 drop-shadow-lg leading-tight">
+                                {initialData ? 'Update Class' : 'New Academic Class'}
+                            </h2>
+                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                {initialData ? 'Modify Session Parameters' : 'Register Training Block'}
+                            </p>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="p-3 rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/5 active:scale-90"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
                     </div>
-                    <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-2xl transition-all text-white/40 hover:text-white">
-                        <X className="w-6 h-6" />
-                    </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-1">Class Title</label>
+                {/* Scrollable Form Body */}
+                <form onSubmit={handleSubmit} className="relative z-10 px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+
+                    {/* Class Title */}
+                    <div className="space-y-2 group/field">
+                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Class Designation</label>
                         <input
                             required
-                            placeholder=""
-                            className="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-4 focus:ring-primary/20 focus:border-primary outline-none transition-all text-white placeholder:text-white/20"
+                            type="text"
+                            placeholder="e.g. Advanced Tumbling..."
+                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs tracking-wide font-bold"
                             value={formData.title}
                             onChange={e => setFormData({ ...formData, title: e.target.value })}
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-1">Coach</label>
-                            <div className="relative group/coach">
+                    {/* Coach & Day */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Lead Coach</label>
+                            <div className="relative">
                                 <select
                                     required
-                                    className="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-4 focus:ring-primary/20 focus:border-primary outline-none transition-all text-white appearance-none cursor-pointer pr-12"
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs tracking-wide font-bold"
                                     value={formData.coach_id}
                                     onChange={e => setFormData({ ...formData, coach_id: e.target.value })}
                                 >
-                                    <option value="" className="bg-slate-900">Select Coach</option>
+                                    <option value="" className="bg-[#0a0a0f]">Assign Coach</option>
                                     {coaches.map(c => (
-                                        <option key={c.id} value={c.id} className="bg-slate-900">{c.full_name}</option>
+                                        <option key={c.id} value={c.id} className="bg-[#0a0a0f]">{c.full_name}</option>
                                     ))}
                                 </select>
-                                <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none opacity-40 group-hover/coach:opacity-100 transition-opacity">
-                                    <ChevronDown className="w-4 h-4 text-white" />
-                                </div>
+                                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-1">Day</label>
-                            <div className="relative group/day">
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Schedule Day</label>
+                            <div className="relative">
                                 <select
                                     required
-                                    className="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-4 focus:ring-primary/20 focus:border-primary outline-none transition-all text-white appearance-none cursor-pointer pr-12"
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs tracking-wide font-bold"
                                     value={formData.day_of_week}
                                     onChange={e => setFormData({ ...formData, day_of_week: e.target.value })}
                                 >
                                     {daysOfWeek.map(day => (
-                                        <option key={day} value={day} className="bg-slate-900">{day}</option>
+                                        <option key={day} value={day} className="bg-[#0a0a0f]">{day}</option>
                                     ))}
                                 </select>
-                                <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none opacity-40 group-hover/day:opacity-100 transition-opacity">
-                                    <ChevronDown className="w-4 h-4 text-white" />
-                                </div>
+                                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-1">Start Time</label>
+                    {/* Times */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Start Time</label>
                             <input
                                 required
                                 type="time"
-                                className="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-4 focus:ring-primary/20 focus:border-primary outline-none transition-all text-white"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-xs font-bold tracking-widest text-center"
                                 value={formData.start_time}
                                 onChange={e => setFormData({ ...formData, start_time: e.target.value })}
                             />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-1">End Time</label>
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">End Time</label>
                             <input
                                 required
                                 type="time"
-                                className="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-4 focus:ring-primary/20 focus:border-primary outline-none transition-all text-white"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-xs font-bold tracking-widest text-center"
                                 value={formData.end_time}
                                 onChange={e => setFormData({ ...formData, end_time: e.target.value })}
                             />
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 ml-1">Capacity</label>
+                    {/* Capacity */}
+                    <div className="space-y-2 group/field">
+                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Class Capacity</label>
                         <input
                             required
                             type="number"
-                            className="w-full px-5 py-3 bg-white/5 border border-white/10 rounded-2xl focus:ring-4 focus:ring-primary/20 focus:border-primary outline-none transition-all text-white"
+                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs tracking-wide font-bold"
                             value={formData.capacity}
                             onChange={e => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
                         />
                     </div>
-
-                    <div className="flex justify-between items-center pt-8 border-t border-white/5 mt-8">
-                        {initialData ? (
-                            <button
-                                type="button"
-                                onClick={() => setShowDeleteConfirm(true)}
-                                className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-red-500 hover:text-red-400 transition-all bg-red-500/5 hover:bg-red-500/10 rounded-2xl flex items-center gap-3"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                Delete Class
-                            </button>
-                        ) : (
-                            <div></div> // Spacer
-                        )}
-                        <div className="flex gap-4">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-all bg-white/5 hover:bg-white/10 rounded-2xl"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="px-10 py-4 bg-gradient-to-r from-primary to-primary/80 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 relative overflow-hidden group/btn"
-                            >
-                                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300"></div>
-                                {loading ? (
-                                    <span className="animate-pulse">Processing...</span>
-                                ) : (
-                                    <>
-                                        <Save className="w-4 h-4 relative z-10" />
-                                        <span className="relative z-10">Save Class</span>
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
                 </form>
+
+                {/* Footer Section */}
+                <div className="relative z-10 px-8 py-8 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-6">
+                    {initialData ? (
+                        <button
+                            type="button"
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="p-4 rounded-2xl bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all duration-500"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 whitespace-nowrap"
+                        >
+                            Discard
+                        </button>
+                    )}
+
+                    <button
+                        onClick={(e) => handleSubmit(e)}
+                        disabled={loading}
+                        className="flex-1 py-4 rounded-3xl bg-white text-black hover:bg-white/90 transition-all duration-500 shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                        {loading ? (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Processing...</span>
+                        ) : (
+                            <span className="font-black uppercase tracking-[0.3em] text-[10px] group-hover:tracking-[0.5em] transition-all duration-500">
+                                {initialData ? 'Update Schedule' : 'Confirm Class'}
+                            </span>
+                        )}
+                    </button>
+                </div>
             </div>
 
             <ConfirmModal
