@@ -60,14 +60,20 @@ export default function BatchAssessmentDetailsModal({ isOpen, onClose, batchId, 
 
     const fetchBatchDetails = async () => {
         setLoading(true);
+        console.log('🚀 Fetching batch details for:', { title, date });
         try {
             const { data, error } = await supabase
                 .from('skill_assessments')
-                .select('*, students(full_name, photo_url, coaches(full_name))')
+                .select('*, students(full_name, coaches(full_name))')
                 .eq('title', title)
                 .eq('date', date);
 
-            if (error) throw error;
+            console.log('📦 Batch details response:', { data, error, count: data?.length });
+
+            if (error) {
+                console.error('❌ Supabase error:', error);
+                throw error;
+            }
 
             if (data && data.length > 0) {
                 setAssessments(data);
@@ -75,6 +81,7 @@ export default function BatchAssessmentDetailsModal({ isOpen, onClose, batchId, 
                 const firstRecord = data[0];
                 if (firstRecord.skills && Array.isArray(firstRecord.skills)) {
                     const extractedSkills = firstRecord.skills.map((s: any) => s.name);
+                    console.log('✅ Extracted skills:', extractedSkills);
                     setSkillsList(extractedSkills);
 
                     const scoresMap: Record<string, number> = {};
@@ -83,9 +90,11 @@ export default function BatchAssessmentDetailsModal({ isOpen, onClose, batchId, 
                     });
                     setMaxScores(scoresMap);
                 }
+            } else {
+                console.warn('⚠️ No data found for this batch!');
             }
         } catch (err) {
-            console.error('Error fetching batch details:', err);
+            console.error('❌ Error in fetchBatchDetails:', err);
         } finally {
             setLoading(false);
         }
@@ -195,17 +204,46 @@ export default function BatchAssessmentDetailsModal({ isOpen, onClose, batchId, 
                 throw new Error('PDF Libraries not loaded yet. Please wait a moment and try again.');
             }
 
-            const dataUrl = await htmlToImage.toPng(tableRef.current, {
-                backgroundColor: '#0E1D21',
+            // Create a clone of the table to render full width without scrolling
+            const originalElement = tableRef.current;
+            const clone = originalElement.cloneNode(true) as HTMLElement;
+
+            // Style the clone to be fully visible and expanded
+            clone.style.position = 'absolute';
+            clone.style.top = '-9999px';
+            clone.style.left = '-9999px';
+            clone.style.width = 'fit-content'; // Allow full width
+            clone.style.minWidth = '1024px'; // Min width to ensure desktop layout
+            clone.style.height = 'auto';
+            clone.style.overflow = 'visible';
+            clone.style.zIndex = '-1';
+
+            // Adjust styles inside the clone to ensure visibility
+            const scrollables = clone.querySelectorAll('.overflow-x-auto, .overflow-auto, .custom-scrollbar');
+            scrollables.forEach(el => {
+                (el as HTMLElement).style.overflow = 'visible';
+                (el as HTMLElement).style.width = 'fit-content';
+            });
+
+            // Append clone to body to render it
+            document.body.appendChild(clone);
+
+            // Wait a bit for render
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const dataUrl = await htmlToImage.toPng(clone, {
+                backgroundColor: '#16292E',
                 cacheBust: true,
-                pixelRatio: 3, // Balanced resolution for cleaner text rendering
+                pixelRatio: 2,
                 fontEmbedCSS: '',
                 style: {
                     borderRadius: '0',
                     letterSpacing: 'normal',
-                    padding: '20px'
                 }
             });
+
+            // Remove clone
+            document.body.removeChild(clone);
 
             // Create a temp PDF instance to calculate image properties safely
             const tempPdf = new jsPDF({ unit: 'px' });

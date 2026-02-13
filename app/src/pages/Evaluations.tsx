@@ -223,7 +223,7 @@ export default function Evaluations() {
             if (!studentsData) return;
 
             // 2. Fetch latest assessments for these students
-            const { data: assessmentsData } = await supabase
+            const { data: assessorsData } = await supabase
                 .from('skill_assessments')
                 .select('*')
                 .in('student_id', studentsData.map(s => s.id))
@@ -238,7 +238,7 @@ export default function Evaluations() {
                 .lte('date', end.toISOString());
 
             const processedReporting = studentsData.map(student => {
-                const studentAssessments = assessmentsData?.filter(a => a.student_id === student.id) || [];
+                const studentAssessments = assessorsData?.filter(a => a.student_id === student.id) || [];
                 const latestTest = studentAssessments[0];
                 const studentAttendance = attendanceData?.filter(at => at.student_id === student.id) || [];
                 const presentCount = studentAttendance.filter(at => at.status === 'present').length;

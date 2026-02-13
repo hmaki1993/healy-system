@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Mic, Radio, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { Mic, Radio, Volume2, VolumeX, Loader2, Users, X, CheckSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -121,6 +121,59 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
         }
     };
 
+    const [showRecipients, setShowRecipients] = useState(false);
+    const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+    const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
+    // Fetch users when opening the recipients modal
+    const handleOpenRecipients = async () => {
+        console.log('👥 handleOpenRecipients clicked', { showRecipients, availableUsersCount: availableUsers.length });
+        if (showRecipients) {
+            setShowRecipients(false);
+            return;
+        }
+
+        setShowRecipients(true);
+        if (availableUsers.length > 0) return;
+
+        setIsLoadingUsers(true);
+        try {
+            console.log('🔄 Fetching users...');
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, full_name, role')
+                .in('role', ['admin', 'head_coach', 'coach', 'reception'])
+                .neq('id', userId) // Exclude self
+                .order('role', { ascending: true })
+                .order('full_name', { ascending: true });
+
+            console.log('✅ Users fetched:', { data, error });
+
+            if (error) throw error;
+            setAvailableUsers(data || []);
+        } catch (err) {
+            console.error('Error fetching users:', err);
+            toast.error('Failed to load users');
+        } finally {
+            setIsLoadingUsers(false);
+        }
+    };
+
+    const toggleUserSelection = (id: string) => {
+        setSelectedUserIds(prev =>
+            prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
+        );
+    };
+
+    const toggleAllUsers = () => {
+        if (selectedUserIds.length === availableUsers.length) {
+            setSelectedUserIds([]);
+        } else {
+            setSelectedUserIds(availableUsers.map(u => u.id));
+        }
+    };
+
     const uploadBroadcast = async (blob: Blob) => {
         setIsUploading(true);
         const fileName = `${userId}_${Date.now()}.webm`;
@@ -141,11 +194,12 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                 .insert({
                     sender_id: userId,
                     audio_url: publicUrl,
+                    target_users: selectedUserIds.length > 0 ? selectedUserIds : null, // Null means everyone
                     expires_at: new Date(Date.now() + 60000).toISOString() // Expire in 1 min
                 });
 
             if (dbError) throw dbError;
-            toast.success('Broadcast sent!');
+            // toast.success('Broadcast sent!');
         } catch (err: any) {
             console.error('Broadcast error:', err);
             toast.error('Failed to send broadcast');
@@ -166,6 +220,12 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                     console.log('📡 WalkieTalkie: Received broadcast:', newBroadcast);
 
                     if (newBroadcast.sender_id !== userId && !isMuted) {
+                        // Check if this broadcast is targeted to specific users
+                        if (newBroadcast.target_users && Array.isArray(newBroadcast.target_users) && newBroadcast.target_users.length > 0) {
+                            if (!newBroadcast.target_users.includes(userId)) {
+                                return; // Skip if not in target list
+                            }
+                        }
                         setIsIncoming(true);
 
                         // Play Beep first
@@ -205,7 +265,91 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
     }, [isMuted, userId]);
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 relative">
+            {/* Recipients Selection - ADMIN ONLY */}
+            {role === 'admin' && (
+                <>
+                    <button
+                        onClick={handleOpenRecipients}
+                        className={`relative w-10 h-10 flex items-center justify-center rounded-full border transition-all ${showRecipients || selectedUserIds.length > 0
+                            ? 'bg-amber-500/10 border-amber-500/50 text-amber-500'
+                            : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
+                            }`}
+                        title="Select who receives this message"
+                    >
+                        <Users className="w-4 h-4" />
+                        {selectedUserIds.length > 0 && (
+                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-black">
+                                {selectedUserIds.length}
+                            </span>
+                        )}
+                    </button>
+
+                    {showRecipients && (
+                        <div className="absolute top-12 left-0 w-64 bg-[#1A1D21] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-[9999] animate-in fade-in slide-in-from-top-2">
+                            <div className="p-3 border-b border-white/5 flex items-center justify-between bg-white/5">
+                                <span className="text-xs font-bold text-white/80">Select Recipients</span>
+                                <button
+                                    onClick={() => setShowRecipients(false)}
+                                    className="text-white/40 hover:text-white"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <div className="max-h-60 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                {isLoadingUsers ? (
+                                    <div className="flex justify-center p-4">
+                                        <Loader2 className="w-5 h-5 animate-spin text-white/40" />
+                                    </div>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={toggleAllUsers}
+                                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-xs font-medium ${selectedUserIds.length === availableUsers.length && availableUsers.length > 0
+                                                ? 'bg-amber-500/20 text-amber-500' // Changed to amber for better contrast
+                                                : 'hover:bg-white/5 text-white/60'
+                                                }`}
+                                        >
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedUserIds.length === availableUsers.length && availableUsers.length > 0
+                                                ? 'bg-amber-500 border-amber-500'
+                                                : 'border-white/20'
+                                                }`}>
+                                                {selectedUserIds.length === availableUsers.length && availableUsers.length > 0 && <CheckSquare className="w-3 h-3 text-black" />}
+                                            </div>
+                                            Broadcast to All ({availableUsers.length})
+                                        </button>
+
+                                        <div className="h-px bg-white/10 my-1 mx-2" />
+
+                                        {availableUsers.map(user => (
+                                            <button
+                                                key={user.id}
+                                                onClick={() => toggleUserSelection(user.id)}
+                                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-xs font-medium ${selectedUserIds.includes(user.id)
+                                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                                    : 'hover:bg-white/5 text-white/60'
+                                                    }`}
+                                            >
+                                                <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedUserIds.includes(user.id)
+                                                    ? 'bg-emerald-500 border-emerald-500'
+                                                    : 'border-white/20'
+                                                    }`}>
+                                                    {selectedUserIds.includes(user.id) && <CheckSquare className="w-3 h-3 text-black" />}
+                                                </div>
+                                                <div className="flex flex-col items-start">
+                                                    <span>{user.full_name}</span>
+                                                    <span className="text-[9px] uppercase opacity-50">{user.role}</span>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
             {/* Broadcast Button - ADMIN ONLY */}
             {role === 'admin' && (
                 <button

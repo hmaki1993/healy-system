@@ -662,7 +662,18 @@ id,
                     <div className="flex gap-3">
                         {step === 2 && !initialAssignment && (
                             <button
-                                onClick={() => handleSave('assigned')}
+                                onClick={() => {
+                                    console.log('🚀 Send to Coach clicked!');
+                                    console.log('📋 Validation check:', {
+                                        loading,
+                                        title,
+                                        studentsCount: students.length,
+                                        skillsCount: selectedSkills.length,
+                                        assessorId,
+                                        currentCoachId
+                                    });
+                                    handleSave('assigned');
+                                }}
                                 disabled={loading || !title || students.length === 0 || selectedSkills.length === 0}
                                 className={`px-6 py-3 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] flex items-center gap-2 border ${assessorId && assessorId !== currentCoachId
                                     ? 'bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] border-emerald-400 scale-105'
