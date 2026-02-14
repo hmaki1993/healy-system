@@ -383,26 +383,28 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
             )}
 
             {/* Speaker Button - ALL AUTHORIZED ROLES */}
-            <button
-                onClick={() => {
-                    setIsMuted(!isMuted);
-                    if (audioContext.current?.state === 'suspended') {
-                        audioContext.current.resume();
-                    }
-                }}
-                className={`relative w-10 h-10 flex items-center justify-center rounded-full border transition-all ${isMuted
-                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-500'
-                    : isIncoming
-                        ? 'bg-primary/10 border-primary/50 text-primary animate-bounce shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)]'
-                        : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
-                    }`}
-                title={isIncoming ? "Admin is Speaking... (Click to Stop)" : "Hoki Toki Speaker (Mute/Unmute)"}
-            >
-                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                {isIncoming && !isMuted && (
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full animate-ping"></span>
-                )}
-            </button>
+            {role !== 'admin' && (
+                <button
+                    onClick={() => {
+                        setIsMuted(!isMuted);
+                        if (audioContext.current?.state === 'suspended') {
+                            audioContext.current.resume();
+                        }
+                    }}
+                    className={`relative w-10 h-10 flex items-center justify-center rounded-full border transition-all ${isMuted
+                        ? 'bg-rose-500/10 border-rose-500/20 text-rose-500'
+                        : isIncoming
+                            ? 'bg-primary/10 border-primary/50 text-primary animate-bounce shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)]'
+                            : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
+                        }`}
+                    title={isIncoming ? "Admin is Speaking... (Click to Stop)" : "Hoki Toki Speaker (Mute/Unmute)"}
+                >
+                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                    {isIncoming && !isMuted && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full animate-ping"></span>
+                    )}
+                </button>
+            )}
         </div>
     );
 }

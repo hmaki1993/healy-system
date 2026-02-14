@@ -402,7 +402,8 @@ export default function DashboardLayout() {
                             <img
                                 src={settings.logo_url || "/logo.png"}
                                 alt="Logo"
-                                className="relative z-10 h-28 w-28 object-cover rounded-full shadow-2xl transition-all hover:scale-105 duration-500 mx-auto cursor-pointer mix-blend-multiply"
+                                className="relative z-10 h-28 w-28 object-contain rounded-full shadow-2xl transition-all hover:scale-105 duration-500 mx-auto cursor-pointer mix-blend-screen"
+                                style={{ clipPath: 'circle(50%)' }}
                             />
                         </button>
                     </div>

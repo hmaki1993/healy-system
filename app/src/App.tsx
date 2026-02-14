@@ -25,6 +25,7 @@ const StudentAttendance = lazy(() => import('./pages/StudentAttendance'));
 const StaffAttendance = lazy(() => import('./pages/StaffAttendance'));
 const PTAttendance = lazy(() => import('./pages/PTAttendance'));
 const Evaluations = lazy(() => import('./pages/Evaluations'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
 
 // Premium Loading Fallback
 const PageLoader = () => (
@@ -96,13 +97,14 @@ function App() {
           />
           <Suspense fallback={<PageLoader />}>
             <Routes>
+              <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/registration" element={<PublicRegistration />} />
 
               {/* Protected Routes */}
               <Route element={<ProtectedRoute />}>
-                <Route path="/" element={<DashboardLayout />}>
+                <Route path="/app" element={<DashboardLayout />}>
                   <Route index element={<Dashboard />} />
                   <Route path="students" element={<Students />} />
                   <Route path="students/:id" element={<StudentDetails />} />

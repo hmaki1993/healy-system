@@ -21,6 +21,16 @@ export default function Login() {
     }, []);
 
     useEffect(() => {
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                navigate('/app');
+            }
+        };
+        checkSession();
+    }, [navigate]);
+
+    useEffect(() => {
         document.body.style.overflow = 'hidden';
         document.documentElement.style.overflow = 'hidden';
         // Force body background to black to hide any teal/blue "broad strips" on mobile/tablet browser safe areas
@@ -34,7 +44,7 @@ export default function Login() {
         };
     }, []);
 
-    const logoPath = "/Whisk_00abd08a154989ca599400ffd45cb917dr-removebg-preview.jbj";
+    const logoPath = "/logo.png";
     const bgPath = "/Tom Roberton Images _ Balance-and-Form _ 2.jpg";
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -49,7 +59,7 @@ export default function Login() {
             });
 
             if (error) throw error;
-            navigate('/');
+            navigate('/app');
         } catch (err: unknown) {
             if (err instanceof Error) {
                 setError(err.message);
@@ -87,15 +97,18 @@ export default function Login() {
                 <div className="flex justify-center mb-8 relative group">
                     <div className="relative">
                         <div className="absolute inset-[-30px] bg-[#D4AF37]/10 blur-3xl rounded-full opacity-40 group-hover:opacity-80 transition-opacity duration-700"></div>
-                        <img
-                            src={logoPath}
-                            alt="Healy Academy"
-                            className="w-20 h-20 md:w-36 md:h-36 object-contain relative z-10 opacity-100 md:opacity-60 md:group-hover:opacity-90 transition-all duration-700 drop-shadow-xl"
-                            onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                            }}
-                        />
+                        <div className="w-20 h-20 md:w-36 md:h-36 rounded-full overflow-hidden flex items-center justify-center relative z-10">
+                            <img
+                                src={logoPath}
+                                alt="Healy Academy"
+                                className="w-full h-full object-contain opacity-100 md:opacity-60 md:group-hover:opacity-90 transition-all duration-700 drop-shadow-xl mix-blend-screen"
+                                style={{ clipPath: 'circle(50%)' }}
+                                onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                            />
+                        </div>
                         <div className="hidden w-24 h-24 rounded-full border border-[#D4AF37]/20 bg-black/40 backdrop-blur-md flex items-center justify-center relative z-10">
                             <Award className="w-12 h-12 text-[#D4AF37]/30" />
                         </div>
