@@ -489,10 +489,12 @@ export default function StudentAttendance() {
                                                     'wed': 'wednesday', 'thu': 'thursday', 'fri': 'friday', 'sat': 'saturday'
                                                 };
                                                 const fullDayName = fullDayMap[day];
-                                                const scheduleKey = student.training_groups?.schedule_key || student.training_schedule || '';
+                                                const scheduleKey = student.training_groups?.schedule_key || '';
                                                 const isActive = student.training_days?.includes(day) ||
-                                                    scheduleKey.toLowerCase().includes(day) ||
-                                                    scheduleKey.toLowerCase().includes(fullDayName);
+                                                    (typeof scheduleKey === 'string' && (
+                                                        scheduleKey.toLowerCase().includes(day) ||
+                                                        scheduleKey.toLowerCase().includes(fullDayName)
+                                                    ));
 
                                                 const dayLabels: { [key: string]: string } = {
                                                     sat: 'S', sun: 'S', mon: 'M', tue: 'T', wed: 'W', thu: 'T', fri: 'F'
