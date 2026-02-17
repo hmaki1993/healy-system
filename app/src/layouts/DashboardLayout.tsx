@@ -66,6 +66,7 @@ export default function DashboardLayout() {
     // Track processed IDs to prevent duplicate toasts/state updates
     // This persists across renders and isn't affected by fresh closures or StrictMode double-invokes
     const processedIds = useRef(new Set<string>());
+    const processedToasts = useRef(new Set<string>());
 
     useEffect(() => {
         // Fetch initial notifications
@@ -119,6 +120,15 @@ export default function DashboardLayout() {
                         return;
                     }
 
+
+                    // Filter Out Self-Referential Broadcasts
+                    // If this is a check-in/out message about THIS user, ignore it (they get a personal confirmation)
+                    const isSelfBroadcast = newNote.related_coach_id && newNote.related_coach_id === user.id;
+                    if (isSelfBroadcast && !newNote.user_id) {
+                        console.log('🔔 Notification: Ignoring self-broadcast', newNote);
+                        return;
+                    }
+
                     // Only add if it's for this user OR global
                     // Note: target_role filtering happens in the render filter
                     if (!newNote.user_id || newNote.user_id === user.id) {
@@ -127,19 +137,38 @@ export default function DashboardLayout() {
                             return;
                         }
 
-                        processedIds.current.add(newNote.id);
-                        console.log('🔔 Notification: Adding to state and toasting', newNote);
+                        // Show Toast for EVERY new notification insertion
+                        // Check for similar toasts recently shown to prevent 2-for-1 (Broadcast + Personal)
+                        const isDuplicate = Array.from(processedToasts.current).some(msg =>
+                            msg === newNote.message || msg.includes(newNote.message) || newNote.message.includes(msg)
+                        );
 
-                        if (!newNote.is_read) {
-                            toast.success(newNote.title, {
+                        if (!isDuplicate) {
+                            processedToasts.current.add(newNote.message);
+                            // Clear from memory after 10 seconds to allow same action later
+                            setTimeout(() => processedToasts.current.delete(newNote.message), 10000);
+
+                            toast.success(`${newNote.message}`, {
                                 icon: '🔔',
-                                duration: 4000
+                                duration: 5000,
+                                style: {
+                                    backdropFilter: 'blur(25px)',
+                                    background: 'rgba(15, 23, 42, 0.95)',
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    boxShadow: '0 25px 70px -12px rgba(0, 0, 0, 0.7)',
+                                    color: '#fff',
+                                    fontSize: '13px',
+                                    fontWeight: '700',
+                                    padding: '16px 24px',
+                                    borderRadius: '24px'
+                                }
                             });
                         }
 
                         setNotifications(prev => {
                             if (prev.some(n => n.id === newNote.id)) return prev;
-                            return [newNote, ...prev];
+                            const updated = [newNote, ...prev];
+                            return updated.slice(0, 50); // Keep it clean
                         });
                     } else {
                         console.log('🔔 Notification: Ignore (Targeted to another user)', newNote.user_id);

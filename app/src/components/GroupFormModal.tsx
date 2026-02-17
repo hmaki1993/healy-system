@@ -14,7 +14,7 @@ interface GroupFormModalProps {
 const DAYS = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
 
 export default function GroupFormModal({ initialData, onClose, onSuccess }: GroupFormModalProps) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { data: coaches } = useCoaches();
     const { data: students } = useStudents();
     const [loading, setLoading] = useState(false);
@@ -25,8 +25,7 @@ export default function GroupFormModal({ initialData, onClose, onSuccess }: Grou
         name: '',
         coach_id: '',
         days: [] as string[],
-        startTime: '16:00', // Default 4 PM
-        duration: 60 // Minutes
+        perDaySchedule: {} as { [key: string]: { startTime: string; duration: number } }
     });
 
     useEffect(() => {
@@ -40,49 +39,40 @@ export default function GroupFormModal({ initialData, onClose, onSuccess }: Grou
     useEffect(() => {
         if (initialData) {
             let days = [] as string[];
-            let startTime = '16:00';
-            let duration = 60;
+            const perDaySchedule: { [key: string]: { startTime: string; duration: number } } = {};
 
             if (initialData.schedule_key) {
                 const parts = initialData.schedule_key.split('|');
-                if (parts.length > 0) {
-                    const firstPart = parts[0].split(':');
-                    // Format is day:startH:startM:endH:endM
-                    if (firstPart.length >= 5) {
-                        const start = `${firstPart[1]}:${firstPart[2]}`; // HH:mm
-                        const end = `${firstPart[3]}:${firstPart[4]}`;   // HH:mm
+                parts.forEach((part: string) => {
+                    const subParts = part.split(':');
+                    if (subParts.length >= 5) {
+                        const day = subParts[0];
+                        const start = `${subParts[1]}:${subParts[2]}`;
+                        const end = `${subParts[3]}:${subParts[4]}`;
 
-                        if (start && end) {
-                            try {
-                                const [startH, startM] = start.split(':').map(Number);
-                                const [endH, endM] = end.split(':').map(Number);
-                                const startTotal = startH * 60 + startM;
-                                const endTotal = endH * 60 + endM;
-                                duration = endTotal - startTotal;
-                            } catch (e) {
-                                console.error('Error parsing time for duration:', e);
-                            }
+                        let duration = 60;
+                        try {
+                            const [startH, startM] = start.split(':').map(Number);
+                            const [endH, endM] = end.split(':').map(Number);
+                            const startTotal = startH * 60 + startM;
+                            let endTotal = endH * 60 + endM;
+                            if (endTotal <= startTotal) endTotal += 1440; // Handle overnight
+                            duration = endTotal - startTotal;
+                        } catch (e) {
+                            console.error('Error parsing duration:', e);
                         }
-                        startTime = start;
-                    } else if (firstPart.length === 3) {
-                        // Fallback for potentially old format or simple day:time (unlikely but safe)
-                        const start = firstPart[1];
-                        // Try to see if it parses
-                        if (start.includes(':')) {
-                            startTime = start;
-                        }
+
+                        days.push(day);
+                        perDaySchedule[day] = { startTime: start, duration };
                     }
-
-                    days = parts.map((p: string) => p.split(':')[0]);
-                }
+                });
             }
 
             setFormData({
-                name: initialData.name,
-                coach_id: initialData.coach_id,
+                name: initialData.name || '',
+                coach_id: initialData.coach_id || '',
                 days: days,
-                startTime: startTime,
-                duration: duration > 0 ? duration : 60
+                perDaySchedule: perDaySchedule
             });
 
             if (initialData.students) {
@@ -95,12 +85,51 @@ export default function GroupFormModal({ initialData, onClose, onSuccess }: Grou
     }, [initialData, students]);
 
     const toggleDay = (day: string) => {
+        setFormData(prev => {
+            const isRemoving = prev.days.includes(day);
+            const newDays = isRemoving
+                ? prev.days.filter(d => d !== day)
+                : [...prev.days, day];
+
+            const newSchedule = { ...prev.perDaySchedule };
+            if (isRemoving) {
+                delete newSchedule[day];
+            } else if (!newSchedule[day]) {
+                newSchedule[day] = { startTime: '16:00', duration: 60 };
+            }
+
+            return {
+                ...prev,
+                days: newDays,
+                perDaySchedule: newSchedule
+            };
+        });
+    };
+
+    const updateDaySchedule = (day: string, field: 'startTime' | 'duration', value: any) => {
         setFormData(prev => ({
             ...prev,
-            days: prev.days.includes(day)
-                ? prev.days.filter(d => d !== day)
-                : [...prev.days, day]
+            perDaySchedule: {
+                ...prev.perDaySchedule,
+                [day]: {
+                    ...prev.perDaySchedule[day],
+                    [field]: field === 'duration' ? parseInt(value) : value
+                }
+            }
         }));
+    };
+
+    const formatTime12h = (time24: string) => {
+        if (!time24) return '';
+        try {
+            const [h, m] = time24.split(':').map(Number);
+            if (isNaN(h)) return '';
+            const ampm = h >= 12 ? (i18n.language === 'ar' ? 'م' : 'PM') : (i18n.language === 'ar' ? 'ص' : 'AM');
+            const h12 = h % 12 || 12;
+            return `(${h12}:${m.toString().padStart(2, '0')} ${ampm})`;
+        } catch (e) {
+            return '';
+        }
     };
 
     const toggleStudent = (studentId: string) => {
@@ -120,16 +149,19 @@ export default function GroupFormModal({ initialData, onClose, onSuccess }: Grou
         setLoading(true);
 
         try {
-            const [startH, startM] = formData.startTime.split(':').map(Number);
-            const totalStartMinutes = startH * 60 + startM;
-            const totalEndMinutes = totalStartMinutes + parseInt(String(formData.duration));
-
-            const endH = Math.floor(totalEndMinutes / 60);
-            const endM = totalEndMinutes % 60;
-            const endTime = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
-
             const scheduleKey = formData.days
-                .map(d => `${d}:${formData.startTime}:${endTime}`)
+                .map(day => {
+                    const sched = formData.perDaySchedule[day] || { startTime: '16:00', duration: 60 };
+                    const [startH, startM] = sched.startTime.split(':').map(Number);
+                    const totalStartMinutes = startH * 60 + startM;
+                    const totalEndMinutes = totalStartMinutes + sched.duration;
+
+                    const endH = Math.floor(totalEndMinutes / 60) % 24;
+                    const endM = totalEndMinutes % 60;
+                    const endTime = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+
+                    return `${day}:${sched.startTime}:${endTime}`;
+                })
                 .sort()
                 .join('|');
 
@@ -164,17 +196,75 @@ export default function GroupFormModal({ initialData, onClose, onSuccess }: Grou
 
 
             if (groupId) {
+                // Prepare training schedule for students
+                const trainingDays = formData.days.map(d => d.substring(0, 3).toLowerCase());
+                const trainingSchedule = formData.days.map(day => {
+                    const sched = formData.perDaySchedule[day] || { startTime: '16:00', duration: 60 };
+                    const [startH, startM] = sched.startTime.split(':').map(Number);
+                    const totalStartMinutes = startH * 60 + startM;
+                    const totalEndMinutes = totalStartMinutes + sched.duration;
+                    const endH = Math.floor(totalEndMinutes / 60) % 24;
+                    const endM = totalEndMinutes % 60;
+                    const endTime = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+
+                    return {
+                        day: day.substring(0, 3).toLowerCase(),
+                        start: sched.startTime,
+                        end: endTime
+                    };
+                });
+
+                // 1. Update Students Table: training_group_id, coach_id, training_days, training_schedule
                 const { error: updateError } = await supabase
                     .from('students')
                     .update({
                         training_group_id: groupId,
-                        coach_id: formData.coach_id
+                        coach_id: formData.coach_id,
+                        training_days: trainingDays,
+                        training_schedule: trainingSchedule
                     })
                     .in('id', selectedStudents);
 
                 if (updateError) {
                     console.error('Error updating students:', updateError);
                     toast.error('Group saved but failed to update some students');
+                }
+
+                // 2. Sync student_training_schedule table for assigned students
+                if (selectedStudents.length > 0) {
+                    // Delete old schedules first
+                    await supabase
+                        .from('student_training_schedule')
+                        .delete()
+                        .in('student_id', selectedStudents);
+
+                    // Insert new schedules
+                    const inserts: any[] = [];
+                    selectedStudents.forEach(sid => {
+                        formData.days.forEach(day => {
+                            const sched = formData.perDaySchedule[day] || { startTime: '16:00', duration: 60 };
+                            const [startH, startM] = sched.startTime.split(':').map(Number);
+                            const totalStartMinutes = startH * 60 + startM;
+                            const totalEndMinutes = totalStartMinutes + sched.duration;
+                            const endH = Math.floor(totalEndMinutes / 60) % 24;
+                            const endM = totalEndMinutes % 60;
+                            const endTime = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+
+                            inserts.push({
+                                student_id: sid,
+                                day_of_week: day.substring(0, 3).toLowerCase(),
+                                start_time: sched.startTime,
+                                end_time: endTime
+                            });
+                        });
+                    });
+
+                    if (inserts.length > 0) {
+                        const { error: scheduleError } = await supabase
+                            .from('student_training_schedule')
+                            .insert(inserts);
+                        if (scheduleError) console.error('Error syncing individual schedules:', scheduleError);
+                    }
                 }
 
                 if (initialData?.id) {
@@ -286,35 +376,46 @@ export default function GroupFormModal({ initialData, onClose, onSuccess }: Grou
                                 ))}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2 group/field">
-                                    <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">{t('students.startTime')}</label>
-                                    <input
-                                        type="time"
-                                        required
-                                        value={formData.startTime}
-                                        onChange={e => setFormData({ ...formData, startTime: e.target.value })}
-                                        className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-xs font-bold tracking-widest"
-                                    />
-                                </div>
-                                <div className="space-y-2 group/field">
-                                    <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">{t('coaches.duration')}</label>
-                                    <div className="relative">
-                                        <select
-                                            value={formData.duration}
-                                            onChange={e => setFormData({ ...formData, duration: parseInt(e.target.value) })}
-                                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs tracking-wide font-bold"
-                                        >
-                                            <option value="60" className="bg-[#0a0a0f]">{t('common.hour1')}</option>
-                                            <option value="90" className="bg-[#0a0a0f]">{t('common.hour1_5')}</option>
-                                            <option value="120" className="bg-[#0a0a0f]">{t('common.hour2')}</option>
-                                            <option value="150" className="bg-[#0a0a0f]">{t('common.hour2_5')}</option>
-                                            <option value="180" className="bg-[#0a0a0f]">{t('common.hour3')}</option>
-                                            <option value="240" className="bg-[#0a0a0f]">{t('common.hour4')}</option>
-                                        </select>
-                                        <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
-                                    </div>
-                                </div>
+                            <div className="space-y-4">
+                                {formData.days.map(day => {
+                                    const sched = formData.perDaySchedule[day] || { startTime: '16:00', duration: 60 };
+                                    return (
+                                        <div key={day} className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-left-4 duration-500">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-black uppercase text-primary tracking-[0.3em]">
+                                                    {t(`students.days.${day.substring(0, 3)}`)}
+                                                </span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[8px] font-black uppercase tracking-[0.2em] text-white/10 ml-1">{t('students.startTime')}</label>
+                                                    <input
+                                                        type="time"
+                                                        value={sched.startTime}
+                                                        onChange={e => updateDaySchedule(day, 'startTime', e.target.value)}
+                                                        className="w-full px-4 py-2 bg-white/[0.03] border border-white/10 rounded-xl outline-none text-white [color-scheme:dark] text-[10px] font-bold"
+                                                    />
+                                                    <p className="text-[7px] font-black text-primary/60 uppercase tracking-widest mt-1 ml-1">{formatTime12h(sched.startTime)}</p>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[8px] font-black uppercase tracking-[0.2em] text-white/10 ml-1">{t('coaches.duration')}</label>
+                                                    <select
+                                                        value={sched.duration}
+                                                        onChange={e => updateDaySchedule(day, 'duration', e.target.value)}
+                                                        className="w-full px-4 py-2 bg-white/[0.03] border border-white/10 rounded-xl outline-none text-white appearance-none text-[10px] font-bold"
+                                                    >
+                                                        <option value="60" className="bg-[#0a0a0f]">{t('common.hour1')}</option>
+                                                        <option value="90" className="bg-[#0a0a0f]">{t('common.hour1_5')}</option>
+                                                        <option value="120" className="bg-[#0a0a0f]">{t('common.hour2')}</option>
+                                                        <option value="150" className="bg-[#0a0a0f]">{t('common.hour2_5')}</option>
+                                                        <option value="180" className="bg-[#0a0a0f]">{t('common.hour3')}</option>
+                                                        <option value="240" className="bg-[#0a0a0f]">{t('common.hour4')}</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>

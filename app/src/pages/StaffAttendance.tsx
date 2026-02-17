@@ -23,6 +23,7 @@ export default function StaffAttendance() {
     const [ptAttendance, setPtAttendance] = useState<any[]>([]);
     const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null);
     const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+    const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
     const fetchCoachesStatus = async () => {
         try {
@@ -136,14 +137,20 @@ export default function StaffAttendance() {
 
     // Handle marking staff as absent (reception can only mark absent, not present)
     const handleMarkAbsent = async (coachId: string) => {
+        if (processingIds.has(coachId)) return;
+
         const today = format(new Date(), 'yyyy-MM-dd');
+        setProcessingIds(prev => new Set(prev).add(coachId));
+
         try {
-            const { data: existing } = await supabase
+            const { data: existing, error: fetchError } = await supabase
                 .from('coach_attendance')
                 .select('*')
                 .eq('coach_id', coachId)
                 .eq('date', today)
                 .maybeSingle();
+
+            if (fetchError) throw fetchError;
 
             const payload: any = {
                 coach_id: coachId,
@@ -153,34 +160,52 @@ export default function StaffAttendance() {
                 check_out_time: null
             };
 
+            let saveError;
             if (existing) {
-                await supabase
+                const { error } = await supabase
                     .from('coach_attendance')
                     .update(payload)
                     .eq('id', existing.id);
+                saveError = error;
             } else {
-                await supabase
+                const { error } = await supabase
                     .from('coach_attendance')
                     .insert(payload);
+                saveError = error;
             }
 
-            toast.success(t('common.saved'));
-        } catch (e) {
+            if (saveError) throw saveError;
+
+            // Local success toast removed to allow global notification system to take over
+            // toast.success(t('common.saved'));
+        } catch (e: any) {
             console.error('Error marking absent:', e);
-            toast.error('Error');
+            toast.error(e.message || 'Error marking absent');
+        } finally {
+            setProcessingIds(prev => {
+                const next = new Set(prev);
+                next.delete(coachId);
+                return next;
+            });
         }
     };
 
     // Handle marking staff as present (only for cleaners)
     const handleMarkPresent = async (coachId: string) => {
+        if (processingIds.has(coachId)) return;
+
         const today = format(new Date(), 'yyyy-MM-dd');
+        setProcessingIds(prev => new Set(prev).add(coachId));
+
         try {
-            const { data: existing } = await supabase
+            const { data: existing, error: fetchError } = await supabase
                 .from('coach_attendance')
                 .select('*')
                 .eq('coach_id', coachId)
                 .eq('date', today)
                 .maybeSingle();
+
+            if (fetchError) throw fetchError;
 
             const payload: any = {
                 coach_id: coachId,
@@ -190,21 +215,33 @@ export default function StaffAttendance() {
                 check_out_time: null
             };
 
+            let saveError;
             if (existing) {
-                await supabase
+                const { error } = await supabase
                     .from('coach_attendance')
                     .update(payload)
                     .eq('id', existing.id);
+                saveError = error;
             } else {
-                await supabase
+                const { error } = await supabase
                     .from('coach_attendance')
                     .insert(payload);
+                saveError = error;
             }
 
-            toast.success(t('common.saved'));
-        } catch (e) {
+            if (saveError) throw saveError;
+
+            // Local success toast removed to allow global notification system to take over
+            // toast.success(t('common.saved'));
+        } catch (e: any) {
             console.error('Error marking present:', e);
-            toast.error('Error');
+            toast.error(e.message || 'Error marking present');
+        } finally {
+            setProcessingIds(prev => {
+                const next = new Set(prev);
+                next.delete(coachId);
+                return next;
+            });
         }
     };
 
@@ -246,137 +283,165 @@ export default function StaffAttendance() {
                         <div className="w-8 h-8 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {filteredCoaches.map((coach) => (
                             <div key={coach.id}
                                 onClick={() => {
                                     setSelectedCoachId(coach.id);
                                     setShowHistoryModal(true);
                                 }}
-                                className={`group relative flex flex-col items-center p-5 rounded-xl border transition-all duration-500 hover:scale-[1.02] cursor-pointer overflow-hidden
+                                className={`group relative flex flex-col p-5 rounded-[2.5rem] border transition-all duration-700 hover:scale-[1.02] cursor-pointer overflow-hidden aspect-[1/1.3]
                                     ${coach.status === 'present'
-                                        ? 'bg-gradient-to-b from-[#102a20] to-[#0a1612] border-emerald-500/30 shadow-[0_0_30px_-10px_rgba(16,185,129,0.3)]'
+                                        ? 'bg-gradient-to-br from-[#102a20] via-[#0a1612] to-[#050b09] border-emerald-500/20 shadow-[0_25px_60px_-15px_rgba(16,185,129,0.3)]'
                                         : coach.status === 'absent'
-                                            ? 'bg-gradient-to-b from-[#2a1010] to-[#160a0a] border-rose-500/30 shadow-[0_0_30px_-10px_rgba(244,63,94,0.3)]'
-                                            : 'glass-card border-white/10 hover:border-white/20'}`}
+                                            ? 'bg-gradient-to-br from-[#2a1010] via-[#160a0a] to-[#0b0505] border-rose-500/20 shadow-[0_25px_60px_-15px_rgba(244,63,94,0.3)]'
+                                            : 'glass-card border-white/5 hover:border-white/10 shadow-2xl shadow-black/40'}`}
                             >
-                                {/* Background Glow Effect */}
-                                <div className={`absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b opacity-20 transition-opacity duration-500
-                                    ${coach.status === 'present' ? 'from-emerald-500 to-transparent' :
-                                        coach.status === 'absent' ? 'from-rose-500 to-transparent' :
-                                            'from-white to-transparent opacity-5'}`} />
+                                {/* Background Decorative Layer */}
+                                <div className={`absolute -top-32 -right-32 w-64 h-64 rounded-full blur-[80px] opacity-10 transition-all duration-1000
+                                    ${coach.status === 'present' ? 'bg-emerald-500 group-hover:opacity-30' :
+                                        coach.status === 'absent' ? 'bg-rose-500 group-hover:opacity-30' :
+                                            'bg-white/5 group-hover:opacity-10'}`} />
 
-                                {/* Avatar Section */}
-                                <div className="relative mb-4 mt-2">
-                                    <div className={`w-24 h-24 rounded-lg flex items-center justify-center overflow-hidden border-2 shadow-2xl transition-all duration-500
-                                        ${coach.status === 'present' ? 'border-emerald-500/50 shadow-emerald-900/50' :
-                                            coach.status === 'absent' ? 'border-rose-500/50 shadow-rose-900/50' :
-                                                'border-white/10 bg-white/5'}`}>
-                                        {coach.avatar_url ? (
-                                            <img
-                                                src={coach.avatar_url}
-                                                alt=""
-                                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-zoom-in"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setEnlargedImage(coach.avatar_url);
-                                                }}
-                                            />
-                                        ) : (
-                                            <span className="font-black text-white/50 text-4xl">{coach.full_name[0]}</span>
-                                        )}
-                                    </div>
-
-                                    {/* Status Dot */}
-                                    <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-[3px] border-[#0E1D21] flex items-center justify-center shadow-lg
-                                        ${coach.status === 'present' ? 'bg-emerald-500' :
-                                            coach.status === 'absent' ? 'bg-rose-500' : 'bg-surface-light'}`}
-                                    >
-                                        {coach.status === 'present' && <CheckCircle className="w-3 h-3 text-emerald-950" strokeWidth={3} />}
-                                        {coach.status === 'absent' && <XCircle className="w-3 h-3 text-rose-950" strokeWidth={3} />}
-                                    </div>
-                                </div>
-
-                                {/* Name & Role */}
-                                <div className="text-center w-full mb-6 relative z-10">
-                                    <h3 className="text-lg font-black text-white tracking-tight mb-2 truncate px-2">
+                                {/* Header: Identity Information */}
+                                <div className="relative z-10 flex flex-col items-center text-center gap-0.5 mb-4">
+                                    <h3 className="text-xs font-black text-white tracking-[0.2em] uppercase truncate max-w-full drop-shadow-lg">
                                         {coach.full_name}
                                     </h3>
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border backdrop-blur-sm
-                                        ${coach.status === 'present' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                                            coach.status === 'absent' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
-                                                'bg-white/5 border-white/10 text-white/40'}`}>
-                                        {coach.role || 'Staff'}
-                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className={`w-1 h-1 rounded-full ${coach.status === 'present' ? 'bg-emerald-500' : coach.status === 'absent' ? 'bg-rose-500' : 'bg-white/20'}`} />
+                                        <span className="text-[7.5px] font-black text-white/30 uppercase tracking-[0.25em]">{coach.role || 'Staff Member'}</span>
+                                    </div>
                                 </div>
 
-                                {/* Stats Grid */}
-                                <div className="grid grid-cols-3 gap-2 w-full mb-6 relative z-10 px-1">
-                                    <div className="flex flex-col items-center justify-center p-1 rounded-xl bg-white/5 border border-white/5 group-hover:border-white/10 transition-colors h-[50px]">
-                                        <Clock className={`w-3 h-3 mb-0.5 ${coach.status === 'present' ? 'text-emerald-400 animate-pulse' : 'text-white/40'}`} />
-                                        <span className="text-[8px] text-white/40 font-bold uppercase tracking-wider mb-0.5 whitespace-nowrap">Time</span>
+                                {/* Center: Large Avatar & Status Indicator */}
+                                <div className="relative z-10 flex flex-col items-center justify-center mb-6">
+                                    <div className={`relative w-32 h-32 rounded-3xl p-1 border transition-all duration-700
+                                        ${coach.status === 'present' ? 'border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.15)] scale-105' :
+                                            coach.status === 'absent' ? 'border-rose-500/40 shadow-[0_0_30px_rgba(244,63,94,0.15)]' :
+                                                'border-white/10 bg-white/[0.02]'}`}>
+
+                                        <div className="w-full h-full rounded-2xl overflow-hidden bg-black/40 border border-white/5">
+                                            {coach.avatar_url ? (
+                                                <img
+                                                    src={coach.avatar_url}
+                                                    alt=""
+                                                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setEnlargedImage(coach.avatar_url);
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <span className="font-black text-white/5 text-4xl italic">{coach.full_name[0]}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Activity Pulse for Active Coaches */}
+                                        {coach.status === 'present' && (
+                                            <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/40 backdrop-blur-md">
+                                                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.5)]" />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Footer: Structured Information Grid - 3 Columns */}
+                                <div className="relative z-10 grid grid-cols-3 gap-px bg-white/[0.08] border border-white/5 rounded-2xl overflow-hidden mt-auto shadow-inner">
+                                    {/* Checked In Time */}
+                                    <div className="flex flex-col items-center justify-center p-1.5 py-3 bg-[#0a0a0a]/40 backdrop-blur-sm group-hover:bg-[#0a0a0a]/10 transition-colors">
+                                        <span className="text-[6px] font-black uppercase tracking-[0.2em] text-white/20 mb-1">In</span>
+                                        <span className={`text-[10px] font-black tracking-tight ${coach.checkInTime ? 'text-white' : 'text-white/10'}`}>
+                                            {coach.checkInTime ? format(new Date(coach.checkInTime), 'HH:mm') : '--:--'}
+                                        </span>
+                                    </div>
+
+                                    {/* Checked Out Time */}
+                                    <div className="flex flex-col items-center justify-center p-1.5 py-3 bg-[#0a0a0a]/50 backdrop-blur-sm group-hover:bg-[#0a0a0a]/15 transition-colors">
+                                        <span className="text-[6px] font-black uppercase tracking-[0.2em] text-white/20 mb-1">Out</span>
+                                        <span className={`text-[10px] font-black tracking-tight ${coach.checkOutTime ? 'text-white' : 'text-white/10'}`}>
+                                            {coach.checkOutTime ? format(new Date(coach.checkOutTime), 'HH:mm') : '--:--'}
+                                        </span>
+                                    </div>
+
+                                    {/* Duration / Total Time */}
+                                    <div className="flex flex-col items-center justify-center p-1.5 py-3 bg-[#0a0a0a]/60 backdrop-blur-sm group-hover:bg-[#0a0a0a]/20 transition-colors">
+                                        <span className="text-[6px] font-black uppercase tracking-[0.2em] text-white/20 mb-1">Time</span>
                                         {coach.status === 'present' && coach.checkInTime ? (
-                                            <LiveTimer startTime={coach.checkInTime} initialMinutes={coach.totalMinutes} />
+                                            <div className="text-[10px] text-emerald-400 font-black">
+                                                <LiveTimer startTime={coach.checkInTime} initialMinutes={coach.totalMinutes} />
+                                            </div>
                                         ) : (
-                                            <span className="text-[10px] font-black text-white whitespace-nowrap">
+                                            <span className="text-[10px] font-black text-primary/80 tracking-tight">
                                                 {coach.totalMinutes > 0
                                                     ? `${Math.floor(coach.totalMinutes / 60)}h ${coach.totalMinutes % 60}m`
-                                                    : '--'}
+                                                    : '0h 00m'}
                                             </span>
                                         )}
                                     </div>
-                                    <div className="flex flex-col items-center justify-center p-1.5 rounded-xl bg-white/5 border border-white/5 group-hover:border-white/10 transition-colors h-[50px]">
-                                        <LogIn className="w-3 h-3 text-emerald-400/70 mb-1" />
-                                        <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider mb-0.5 whitespace-nowrap">In</span>
-                                        <span className="text-[11px] font-black text-white whitespace-nowrap">
-                                            {coach.checkInTime
-                                                ? format(new Date(coach.checkInTime), 'HH:mm')
-                                                : '--'}
-                                        </span>
-                                    </div>
-                                    <div className="flex flex-col items-center justify-center p-1.5 rounded-xl bg-white/5 border border-white/5 group-hover:border-white/10 transition-colors h-[50px]">
-                                        <LogOut className="w-3 h-3 text-rose-400/70 mb-1" />
-                                        <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider mb-0.5 whitespace-nowrap">Out</span>
-                                        <span className="text-[11px] font-black text-white whitespace-nowrap">
-                                            {coach.checkOutTime
-                                                ? format(new Date(coach.checkOutTime), 'HH:mm')
-                                                : '--'}
-                                        </span>
-                                    </div>
                                 </div>
 
-                                {/* Action Buttons */}
+                                {/* Absolute Overlays for Management Actions */}
                                 {(() => {
-                                    const isCleaner = coach.role?.toLowerCase().trim() === 'cleaner';
-                                    const isAdminOrHeadOrReception = contextRole === 'admin' || contextRole === 'head_coach' || contextRole === 'reception' || contextRole === 'receptionist';
+                                    const isAdminOrHead = contextRole === 'admin' || contextRole === 'head_coach';
+                                    const isReception = contextRole === 'reception' || contextRole === 'receptionist';
 
-                                    if (isAdminOrHeadOrReception) {
+                                    if (isAdminOrHead) {
                                         return (
-                                            <div className="w-full flex items-center justify-center gap-3 relative z-10 px-1" onClick={(e) => e.stopPropagation()}>
+                                            <div className="absolute bottom-[22%] left-1/2 -translate-x-1/2 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:translate-y-4 sm:group-hover:translate-y-0 z-30" onClick={(e) => e.stopPropagation()}>
                                                 {coach.status !== 'present' && (
                                                     <button
                                                         onClick={() => handleMarkPresent(coach.id)}
-                                                        className="w-10 h-10 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-all flex items-center justify-center group/btn shadow-lg"
-                                                        title="Mark Present"
+                                                        disabled={processingIds.has(coach.id)}
+                                                        className={`px-3 py-2 sm:px-4 sm:py-2 rounded-full bg-emerald-500 text-emerald-950 text-[8px] sm:text-[9px] font-black uppercase tracking-widest shadow-2xl shadow-emerald-500/40 hover:scale-110 active:scale-95 transition-all flex items-center gap-1.5 sm:gap-2 ${processingIds.has(coach.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                     >
-                                                        <CheckCircle className="w-5 h-5 group-hover/btn:scale-110 transition-transform flex-shrink-0" />
+                                                        {processingIds.has(coach.id) ? (
+                                                            <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 border-2 border-emerald-950/30 border-t-emerald-950 rounded-full animate-spin" />
+                                                        ) : (
+                                                            <CheckCircle className="w-3.5 h-3.5" />
+                                                        )}
+                                                        <span>{processingIds.has(coach.id) ? '...' : 'In'}</span>
                                                     </button>
                                                 )}
                                                 {coach.status !== 'absent' && (
                                                     <button
                                                         onClick={() => handleMarkAbsent(coach.id)}
-                                                        className="w-10 h-10 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/20 hover:border-rose-500/40 transition-all flex items-center justify-center group/btn shadow-lg"
-                                                        title="Mark Absent"
+                                                        disabled={processingIds.has(coach.id)}
+                                                        className={`px-3 py-2 sm:px-4 sm:py-2 rounded-full bg-rose-500 text-rose-950 text-[8px] sm:text-[9px] font-black uppercase tracking-widest shadow-2xl shadow-rose-500/40 hover:scale-110 active:scale-95 transition-all flex items-center gap-1.5 sm:gap-2 ${processingIds.has(coach.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                     >
-                                                        <XCircle className="w-5 h-5 group-hover/btn:scale-110 transition-transform flex-shrink-0" />
+                                                        {processingIds.has(coach.id) ? (
+                                                            <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 border-2 border-rose-950/30 border-t-rose-950 rounded-full animate-spin" />
+                                                        ) : (
+                                                            <XCircle className="w-3.5 h-3.5" />
+                                                        )}
+                                                        <span>{processingIds.has(coach.id) ? '...' : 'Absent'}</span>
                                                     </button>
                                                 )}
                                             </div>
                                         );
-                                    } else {
-                                        // For other roles, just show status indicators if needed or nothing
-                                        return null;
+                                    } else if (isReception) {
+                                        return (
+                                            <div className="absolute bottom-[22%] left-1/2 -translate-x-1/2 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-500 sm:translate-y-4 sm:group-hover:translate-y-0 z-30" onClick={(e) => e.stopPropagation()}>
+                                                {coach.status !== 'absent' && coach.status !== 'completed' && (
+                                                    <button
+                                                        onClick={() => handleMarkAbsent(coach.id)}
+                                                        disabled={processingIds.has(coach.id)}
+                                                        className={`px-5 py-2 sm:px-6 sm:py-2 rounded-full bg-rose-500 text-rose-950 text-[8px] sm:text-[9px] font-black uppercase tracking-widest shadow-2xl shadow-rose-500/40 hover:scale-110 active:scale-95 transition-all flex items-center gap-1.5 sm:gap-2 ${processingIds.has(coach.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                    >
+                                                        {processingIds.has(coach.id) ? (
+                                                            <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 border-2 border-rose-950/30 border-t-rose-950 rounded-full animate-spin" />
+                                                        ) : (
+                                                            <XCircle className="w-3.5 h-3.5" />
+                                                        )}
+                                                        <span>{processingIds.has(coach.id) ? '...' : 'Mark Absent'}</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
                                     }
+                                    return null;
                                 })()}
                             </div>
                         ))}
@@ -490,6 +555,22 @@ function StaffAttendanceHistoryModal({ coachId, onClose }: { coachId: string, on
         return history.find(h => isSameDay(new Date(h.date), day));
     };
 
+    const totalMinutes = useMemo(() => {
+        return history.reduce((acc, record) => {
+            if (record.check_in_time && record.check_out_time) {
+                const diffMs = new Date(record.check_out_time).getTime() - new Date(record.check_in_time).getTime();
+                return acc + Math.max(0, Math.floor(diffMs / 1000 / 60));
+            }
+            return acc;
+        }, 0);
+    }, [history]);
+
+    const formatDutyTime = (mins: number) => {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return `${h}h ${m}m`;
+    };
+
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="glass-card w-full max-w-lg rounded-2xl border border-white/10 overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
@@ -581,7 +662,7 @@ function StaffAttendanceHistoryModal({ coachId, onClose }: { coachId: string, on
                         </div>
                     )}
 
-                    <div className="grid grid-cols-3 gap-3 mt-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
                         <div className="bg-emerald-500/5 border border-emerald-500/10 p-3 rounded-xl text-center">
                             <div className="text-xl font-black text-emerald-400">
                                 {history.filter(h => h.status === 'present').length}
@@ -599,6 +680,12 @@ function StaffAttendanceHistoryModal({ coachId, onClose }: { coachId: string, on
                                 {monthDays.length > 0 ? Math.round((history.filter(h => h.status === 'present').length / monthDays.length) * 100) : 0}%
                             </div>
                             <div className="text-[9px] font-black text-white/20 uppercase tracking-widest mt-0.5">Rate</div>
+                        </div>
+                        <div className="bg-primary/5 border border-primary/10 p-3 rounded-xl text-center">
+                            <div className="text-xl font-black text-primary whitespace-nowrap">
+                                {formatDutyTime(totalMinutes)}
+                            </div>
+                            <div className="text-[9px] font-black text-primary/60 uppercase tracking-widest mt-0.5">Duty</div>
                         </div>
                     </div>
                 </div>

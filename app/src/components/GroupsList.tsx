@@ -11,7 +11,7 @@ interface GroupsListProps {
 }
 
 export default function GroupsList({ coachId, showAll = false, onEdit }: GroupsListProps) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [groups, setGroups] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedGroup, setSelectedGroup] = useState<any>(null);
@@ -71,9 +71,33 @@ export default function GroupsList({ coachId, showAll = false, onEdit }: GroupsL
     const parseSchedule = (scheduleKey: string) => {
         if (!scheduleKey) return [];
         return scheduleKey.split('|').map(s => {
-            const [day, startTime, endTime] = s.split(':');
-            return { day, startTime, endTime };
+            const parts = s.split(':');
+            if (parts.length >= 5) {
+                // New format: day:startH:startM:endH:endM
+                return {
+                    day: parts[0],
+                    startTime: `${parts[1]}:${parts[2]}`,
+                    endTime: `${parts[3]}:${parts[4]}`
+                };
+            }
+            // Legacy format: day:startTime:endTime
+            return { day: parts[0], startTime: parts[1], endTime: parts[2] };
         });
+    };
+
+    const formatTime = (timeStr: string) => {
+        if (!timeStr || timeStr.toLowerCase().includes('undefined')) return '';
+        const parts = timeStr.split(':');
+        if (parts.length < 1) return '';
+
+        let hour = parseInt(parts[0]);
+        let minute = parts[1] || '00';
+
+        if (isNaN(hour)) return '';
+
+        const ampm = hour >= 12 ? (i18n.language === 'ar' ? 'م' : 'PM') : (i18n.language === 'ar' ? 'ص' : 'AM');
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minute} ${ampm}`;
     };
 
     if (loading) return (
@@ -118,17 +142,21 @@ export default function GroupsList({ coachId, showAll = false, onEdit }: GroupsL
                             </h3>
 
                             <div className="space-y-2.5">
-                                {schedules.map((s, idx) => (
-                                    <div key={idx} className="flex items-center justify-between p-3 bg-white/[0.03] rounded-2xl border border-white/5 group-hover:border-white/10 transition-colors">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                                            <span className="text-[10px] font-black text-white/80 uppercase tracking-widest leading-none mt-0.5">{s.day}</span>
+                                {schedules.map((s, idx) => {
+                                    const fStart = formatTime(s.startTime);
+                                    const fEnd = formatTime(s.endTime);
+                                    return (
+                                        <div key={idx} className="flex items-center justify-between p-3 bg-white/[0.03] rounded-2xl border border-white/5 group-hover:border-white/10 transition-colors">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                                                <span className="text-[10px] font-black text-white/80 uppercase tracking-widest leading-none mt-0.5">{s.day}</span>
+                                            </div>
+                                            <span className="text-[10px] font-mono font-bold text-white/40 tracking-tight">
+                                                {fStart} - {fEnd}
+                                            </span>
                                         </div>
-                                        <span className="text-[11px] font-mono font-bold text-white/40 tracking-tight">
-                                            {s.startTime} - {s.endTime}
-                                        </span>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
 
                             <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between opacity-40 group-hover:opacity-100 transition-opacity">

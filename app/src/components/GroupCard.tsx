@@ -23,8 +23,19 @@ export default function GroupCard({ group, onViewDetails, onEdit, onDelete }: {
             if (parts.length === 0) return { days: [], time: '' };
 
             const firstPart = parts[0].split(':');
-            const startTime = firstPart[1]; // e.g., 16:00
-            const endTime = firstPart[2];   // e.g., 18:00
+
+            let startTime = '';
+            let endTime = '';
+
+            if (firstPart.length >= 5) {
+                // New format: day:startH:startM:endH:endM
+                startTime = `${firstPart[1]}:${firstPart[2]}`;
+                endTime = `${firstPart[3]}:${firstPart[4]}`;
+            } else {
+                // Legacy support
+                startTime = firstPart[1];
+                endTime = firstPart[2];
+            }
 
             // Format time in 12h format
             const formatTime = (timeStr: string) => {

@@ -106,6 +106,26 @@ export default function GroupDetailsModal({ group, onClose, onEdit }: GroupDetai
                     </div>
                 </div>
 
+                {/* Schedule Display */}
+                {group.schedule_key && (
+                    <div className="relative z-10 px-8 py-4 border-b border-white/5 flex flex-wrap gap-2">
+                        {group.schedule_key.split('|').map((part, i) => {
+                            const subParts = part.split(':');
+                            if (subParts.length < 5) return null;
+                            const [day, startH, startM, endH, endM] = subParts;
+                            const dayName = t(`students.days.${day.substring(0, 3).toLowerCase()}`);
+                            const startTime = `${startH}:${startM}`;
+                            const endTime = `${endH}:${endM}`;
+                            return (
+                                <div key={i} className="flex flex-col bg-white/5 px-3 py-2 rounded-2xl border border-white/5">
+                                    <span className="text-[8px] font-black uppercase text-primary tracking-widest leading-none mb-1">{dayName}</span>
+                                    <span className="text-[10px] font-bold text-white tracking-widest leading-none">{startTime} - {endTime}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+
                 {/* Body - Clean List */}
                 <div className="relative z-10 px-8 pb-4 max-h-[40vh] overflow-y-auto custom-scrollbar pt-6">
                     {group.students.length === 0 ? (

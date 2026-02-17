@@ -19,7 +19,7 @@ const COUNTRIES = [
 ];
 
 import { useQueryClient } from '@tanstack/react-query';
-import { useSubscriptionPlans, useCoaches } from '../hooks/useData';
+import { useSubscriptionPlans, useCoaches, useGroups } from '../hooks/useData';
 import { useCurrency } from '../context/CurrencyContext';
 
 interface AddStudentFormProps {
@@ -35,6 +35,22 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
     const [loading, setLoading] = useState(false);
     const { data: plansData, isLoading: isLoadingPlans } = useSubscriptionPlans();
     const plans = plansData || [];
+
+    const normalizeDay = (day: string) => {
+        const map: { [key: string]: string } = {
+            'saturday': 'sat', 'sunday': 'sun', 'monday': 'mon',
+            'tuesday': 'tue', 'wednesday': 'wed', 'thursday': 'thu', 'friday': 'fri'
+        };
+        const d = day.toLowerCase();
+        return map[d] || d.substring(0, 3);
+    };
+
+    const normalizeTime = (time: string) => {
+        if (!time) return '16:00';
+        if (time === '00' || time === '24') return '00:00';
+        if (/^\d{1,2}$/.test(time)) return `${time.padStart(2, '0')}:00`;
+        return time;
+    };
 
     const [formData, setFormData] = useState({
         full_name: initialData?.full_name || '',
@@ -52,9 +68,15 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
         subscription_type: initialData?.subscription_plan_id || '', // Correctly map plan ID
         subscription_start: initialData?.subscription_start || format(new Date(), 'yyyy-MM-dd'),
         subscription_expiry: initialData?.subscription_expiry || '', // Manual expiry date
-        training_days: initialData?.training_days || [],
-        training_schedule: initialData?.training_schedule || [],
+        training_days: initialData?.training_days?.map(normalizeDay) || [],
+        training_schedule: initialData?.training_schedule?.map((s: any) => ({
+            ...s,
+            day: normalizeDay(s.day),
+            start: normalizeTime(s.start),
+            end: normalizeTime(s.end)
+        })) || [],
         coach_id: initialData?.coach_id || '',
+        training_group_id: initialData?.training_group_id || '',
         notes: initialData?.notes || ''
     });
 
@@ -77,8 +99,47 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
     }, [formData.subscription_start, formData.subscription_type, plans]);
 
     const { data: coaches } = useCoaches();
+    const { data: groups } = useGroups();
 
     const daysOfWeek = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'];
+
+    const handleGroupChange = (groupId: string) => {
+        const group = groups?.find(g => g.id === groupId);
+        if (group) {
+            const scheduleKey = group.schedule_key || '';
+            const parts = scheduleKey.split('|');
+            const trainingDays: string[] = [];
+            const trainingSchedule: any[] = [];
+
+            parts.forEach((part: string) => {
+                const subParts = part.split(':');
+                if (subParts.length >= 1) {
+                    const day = normalizeDay(subParts[0]);
+                    trainingDays.push(day);
+
+                    if (subParts.length >= 3) {
+                        trainingSchedule.push({
+                            day,
+                            start: normalizeTime(`${subParts[1]}:${subParts[2]}`),
+                            end: subParts.length >= 5 ? normalizeTime(`${subParts[3]}:${subParts[4]}`) : '18:00'
+                        });
+                    } else {
+                        trainingSchedule.push({ day, start: '16:00', end: '18:00' });
+                    }
+                }
+            });
+
+            setFormData(prev => ({
+                ...prev,
+                training_group_id: groupId,
+                coach_id: group.coach_id || prev.coach_id,
+                training_days: trainingDays.length > 0 ? trainingDays : prev.training_days,
+                training_schedule: trainingSchedule.length > 0 ? trainingSchedule : prev.training_schedule
+            }));
+        } else {
+            setFormData(prev => ({ ...prev, training_group_id: '' }));
+        }
+    };
 
     const toggleDay = (day: string) => {
         setFormData(prev => {
@@ -180,7 +241,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                 subscription_plan_id: formData.subscription_type && formData.subscription_type.trim() !== '' ? formData.subscription_type : null,
                 sessions_remaining: plans.find(p => p.id === formData.subscription_type)?.sessions_limit || null,
                 notes: formData.notes,
-                training_group_id: trainingGroupId || null // Assign to Training Group
+                training_group_id: formData.training_group_id && formData.training_group_id.trim() !== '' ? formData.training_group_id : null // Assign to Training Group
             };
 
             let error;
@@ -436,6 +497,27 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                         </div>
                     </div>
 
+                    {/* Training Group Selector */}
+                    <div className="space-y-2 group/field">
+                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Training Group</label>
+                        <div className="relative">
+                            <select
+                                value={formData.training_group_id}
+                                onChange={e => handleGroupChange(e.target.value)}
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none text-xs tracking-wide font-bold cursor-pointer"
+                            >
+                                <option value="" className="bg-[#0a0a0f]">None (Individual)</option>
+                                {groups?.map(group => (
+                                    <option key={group.id} value={group.id} className="bg-[#0a0a0f]">
+                                        {group.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
+                        </div>
+                        <p className="text-[8px] text-white/20 uppercase tracking-widest ml-1">Selecting a group auto-fills schedule and coach</p>
+                    </div>
+
                     {/* Primary Guardian & Phone */}
                     <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2 group/field">
@@ -556,7 +638,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                                                 : 'bg-white/[0.02] border-white/5 text-white/20 hover:bg-white/[0.05] hover:border-white/10'
                                                 }`}
                                         >
-                                            {t(`students.days.${day}`)}
+                                            {t(`students.days.${day.toLowerCase()}`)}
                                         </button>
                                     );
                                 })}
@@ -570,7 +652,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                                         className="px-4 py-3 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-row items-center justify-between gap-3 animate-in zoom-in-95 duration-500"
                                     >
                                         <span className="text-[10px] font-black uppercase text-accent tracking-[0.3em] min-w-[50px]">
-                                            {t(`students.days.${schedule.day}`)}
+                                            {t(`students.days.${schedule.day.toLowerCase()}`)}
                                         </span>
                                         <div className="flex items-center gap-2 flex-1 justify-end">
                                             <input

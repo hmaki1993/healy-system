@@ -250,17 +250,17 @@ export default function ReceptionDashboard({ role }: { role?: string }) {
         try {
             if (todaysClasses.length === 0) setLoadingClasses(true);
             const todayIdx = new Date().getDay(); // 0 = Sunday, 6 = Saturday
-            const dayMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-            const todayDay = dayMap[todayIdx];
+            const dayMapShort = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+            const dayMapFull = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+            const todayDayShort = dayMapShort[todayIdx];
+            const todayDayFull = dayMapFull[todayIdx];
             const dateStr = format(new Date(), 'yyyy-MM-dd');
 
-            console.log('Fetching classes for:', todayDay);
-
-            // 1. Fetch Students scheduled for today
+            // 1. Fetch Students joined with their training groups
             const { data: students, error: studentsError } = await supabase
                 .from('students')
-                .select('*, coaches(full_name)')
-                .contains('training_days', [todayDay]);
+                .select('*, coaches(full_name, avatar_url), training_groups(id, name, schedule_key, coaches(full_name, avatar_url))');
 
             if (studentsError) {
                 console.error('Error fetching students:', studentsError);
@@ -277,15 +277,57 @@ export default function ReceptionDashboard({ role }: { role?: string }) {
                 console.error('Error fetching attendance:', attendanceError);
             }
 
-            // 3. Merge and Filter (Exclude PT-only students from the Gymnast List)
+            // 3. Merge and Filter logic similar to StudentAttendance.tsx
             const merged = (students || [])
                 .filter(student => {
                     const type = student.training_type?.toLowerCase() || '';
-                    return !type.includes('pt') && !type.includes('personal training');
+                    if (type.includes('pt') || type.includes('personal training')) return false;
+
+                    let shouldShow = false;
+                    const record = attendance?.find(a => a.student_id === student.id);
+
+                    if (student.training_groups) {
+                        const scheduleKey = student.training_groups.schedule_key?.toLowerCase() || '';
+                        if (scheduleKey.includes(todayDayShort) || scheduleKey.includes(todayDayFull)) {
+                            shouldShow = true;
+                        }
+                    } else {
+                        // Fallback to individual logic
+                        if (student.training_days?.includes(todayDayShort) || student.training_days?.includes(todayDayFull)) {
+                            shouldShow = true;
+                        }
+                    }
+
+                    // Always show if there's an attendance record (e.g. makeup class)
+                    if (record) shouldShow = true;
+
+                    return shouldShow;
                 })
                 .map(student => {
                     const record = attendance?.find(a => a.student_id === student.id);
-                    const todaySchedule = student.training_schedule?.find((s: any) => s.day === todayDay);
+                    let scheduledStart = '';
+                    let scheduledEnd = '';
+                    let displayCoach = student.coaches?.full_name || 'Unassigned';
+
+                    if (student.training_groups) {
+                        const group = student.training_groups;
+                        const scheduleKey = group.schedule_key?.toLowerCase() || '';
+                        const parts = scheduleKey.split('|');
+                        const todayPart = parts.find((p: string) => p.includes(todayDayShort) || p.includes(todayDayFull));
+
+                        if (todayPart) {
+                            const timeMatch = todayPart.split(':').map((s: string) => s.trim());
+                            if (timeMatch.length >= 3) {
+                                scheduledStart = `${timeMatch[1]}:${timeMatch[2]}`;
+                                if (timeMatch.length >= 5) scheduledEnd = `${timeMatch[3]}:${timeMatch[4]}`;
+                            }
+                        }
+                        displayCoach = group.coaches?.full_name || 'Group Coach';
+                    } else {
+                        const todaySchedule = student.training_schedule?.find((s: any) => s.day === todayDayShort || s.day === todayDayFull);
+                        scheduledStart = todaySchedule?.start || '';
+                        scheduledEnd = todaySchedule?.end || '';
+                    }
 
                     let status = 'pending';
                     if (record) {
@@ -296,8 +338,9 @@ export default function ReceptionDashboard({ role }: { role?: string }) {
 
                     return {
                         ...student,
-                        scheduledStart: todaySchedule?.start || '',
-                        scheduledEnd: todaySchedule?.end || '',
+                        scheduledStart,
+                        scheduledEnd,
+                        displayCoach,
                         attendanceId: record?.id,
                         status: status,
                         note: record?.note || '',
@@ -309,7 +352,6 @@ export default function ReceptionDashboard({ role }: { role?: string }) {
                     return a.full_name.localeCompare(b.full_name);
                 });
 
-            console.log('Classes Merged:', merged);
             setTodaysClasses(merged);
         } catch (error) {
             console.error('Error fetching classes:', error);
@@ -775,16 +817,19 @@ export default function ReceptionDashboard({ role }: { role?: string }) {
                 return c;
             }));
 
-            toast.success('You are Checked In!');
+            // Local Toast Removed (Handled by Global Notification)
+            // toast.success('You are Checked In!');
 
-            // Notification: Self Check-In (Admin + Head Coach + Reception)
+            // Manual Notification Insert Removed (Handled by DB Trigger)
+            /*
             await supabase.from('notifications').insert({
                 type: 'attendance',
                 title: 'Staff Checked In',
-                message: `A staff member has checked in.`, // Ideally we'd have the name, but myCoachId is just ID.
+                message: `A staff member has checked in.`,
                 target_role: 'admin_head_reception',
                 is_read: false
             });
+            */
 
             // Re-fetch after a short delay to ensure DB propagation
             setTimeout(() => {
@@ -839,9 +884,11 @@ export default function ReceptionDashboard({ role }: { role?: string }) {
                 return c;
             }));
 
-            toast.success('You are Checked Out!');
+            // Local Toast Removed (Handled by Global Notification)
+            // toast.success('You are Checked Out!');
 
-            // Notification: Self Check-Out (Admin + Head Coach + Reception)
+            // Manual Notification Insert Removed (Handled by DB Trigger)
+            /*
             await supabase.from('notifications').insert({
                 type: 'attendance',
                 title: 'Staff Checked Out',
@@ -849,6 +896,8 @@ export default function ReceptionDashboard({ role }: { role?: string }) {
                 target_role: 'admin_head_reception',
                 is_read: false
             });
+            */
+
             setTimeout(() => {
                 fetchCoachesStatus();
             }, 1000);
@@ -1108,7 +1157,7 @@ export default function ReceptionDashboard({ role }: { role?: string }) {
                         </div>
                         <div>
                             <h2 className="text-3xl font-black text-white tracking-tighter">
-                                {todaysClasses.filter(c => c.status === 'present' || c.status === 'completed').length}
+                                {todaysClasses.filter(c => c.status === 'present' || c.status === 'completed' || c.status === 'absent').length}
                                 <span className="text-lg text-white/30 ml-2 font-bold uppercase">/ {todaysClasses.length}</span>
                             </h2>
                             <p className="text-xs font-bold text-primary uppercase tracking-wider mt-1">Gymnast Attendance</p>
@@ -1116,7 +1165,7 @@ export default function ReceptionDashboard({ role }: { role?: string }) {
                         <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                             <div
                                 className="h-full bg-primary transition-all duration-500"
-                                style={{ width: `${todaysClasses.length > 0 ? (todaysClasses.filter(c => c.status === 'present' || c.status === 'completed').length / todaysClasses.length) * 100 : 0}%` }}
+                                style={{ width: `${todaysClasses.length > 0 ? (todaysClasses.filter(c => c.status === 'present' || c.status === 'completed' || c.status === 'absent').length / todaysClasses.length) * 100 : 0}%` }}
                             />
                         </div>
                     </div>

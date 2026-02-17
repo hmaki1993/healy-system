@@ -290,7 +290,7 @@ export default function GymnastProfileModal({ student, onClose }: GymnastProfile
                                             <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 transition-all hover:bg-white/5 group">
                                                 <p className="text-[8px] font-black uppercase tracking-widest text-white/10 mb-2 group-hover:text-primary transition-colors">Joined Date</p>
                                                 <p className="text-[11px] font-mono font-black text-white/60 tracking-widest">
-                                                    {student.created_at ? format(new Date(student.created_at), 'dd/MM/yyyy') : '---'}
+                                                    {student.created_at ? format(new Date(student.created_at), 'dd/MM/yyyy - HH:mm') : '---'}
                                                 </p>
                                             </div>
                                         </div>

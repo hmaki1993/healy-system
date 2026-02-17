@@ -44,6 +44,7 @@ const PageLoader = () => (
 import { initializeTheme } from './utils/theme';
 import { CurrencyProvider } from './context/CurrencyContext';
 import { ThemeProvider } from './context/ThemeContext';
+import NotificationSoundHandler from './components/NotificationSoundHandler';
 
 import BackButtonHandler from './components/BackButtonHandler';
 
@@ -64,6 +65,7 @@ function App() {
     <CurrencyProvider>
       <ThemeProvider>
         <BrowserRouter>
+          <NotificationSoundHandler />
           <BackButtonHandler />
           <Toaster
             position="top-center"
