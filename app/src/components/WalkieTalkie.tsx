@@ -19,7 +19,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
     const gainNode = useRef<GainNode | null>(null);
 
     // ELITE: Authentic Motorola MDC-1200 Style Chirp Synthesis
-    const playBeep = (type: 'start' | 'end') => {
+    const playBeep = (type: 'start' | 'end', force: boolean = false) => {
         try {
             if (!audioContext.current) {
                 audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -27,6 +27,9 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
             if (audioContext.current.state === 'suspended') audioContext.current.resume();
 
             const now = audioContext.current.currentTime;
+
+            // ELITE: Triple Boost for "Forced" broadcasts
+            const beepGain = force ? 1.5 : 0.3;
 
             if (type === 'start') {
                 // Motorola MDC-1200 Approximation (3 quick tones)
@@ -40,7 +43,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                     osc.type = 'sine';
                     osc.frequency.setValueAtTime(freq, now + (i * duration));
 
-                    gain.gain.setValueAtTime(0.3, now + (i * duration));
+                    gain.gain.setValueAtTime(beepGain, now + (i * duration));
                     gain.gain.exponentialRampToValueAtTime(0.01, now + (i * duration) + duration);
 
                     osc.connect(gain);
@@ -58,7 +61,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                 const noise = audioContext.current.createBufferSource();
                 noise.buffer = buffer;
                 const noiseGain = audioContext.current.createGain();
-                noiseGain.gain.setValueAtTime(0.1, now);
+                noiseGain.gain.setValueAtTime(force ? 0.3 : 0.1, now);
                 noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
                 noise.connect(noiseGain);
                 noiseGain.connect(audioContext.current.destination);
@@ -70,7 +73,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(1000, now);
                 osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
-                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.setValueAtTime(beepGain / 3, now);
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
                 osc.connect(gain);
                 gain.connect(audioContext.current.destination);
@@ -89,7 +92,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                 filter.type = 'bandpass';
                 filter.frequency.value = 2000;
 
-                noiseGain.gain.setValueAtTime(0.05, now);
+                noiseGain.gain.setValueAtTime(force ? 0.2 : 0.05, now);
                 noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
 
                 noise.connect(filter);
@@ -104,7 +107,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
     };
 
     // ELITE: Professional Notification Chime Synthesis
-    const playNotificationSound = () => {
+    const playNotificationSound = (force: boolean = false) => {
         try {
             if (!audioContext.current) {
                 audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -114,8 +117,9 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
             const now = audioContext.current.currentTime;
 
             // Dual-tone harmonic chime (A5 + C#6)
-            const freq1 = 880;
-            const freq2 = 1100;
+            // If forced, use higher, piercing frequencies (D6 + F#6)
+            const freq1 = force ? 1174.66 : 880;
+            const freq2 = force ? 1479.98 : 1100;
 
             [freq1, freq2].forEach((freq, i) => {
                 const osc = audioContext.current!.createOscillator();
@@ -125,7 +129,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                 osc.frequency.setValueAtTime(freq, now);
 
                 gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(0.15, now + 0.05); // Rapid fade in
+                gain.gain.linearRampToValueAtTime(force ? 0.6 : 0.15, now + 0.05); // Rapid fade in
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2); // Long fade out
 
                 osc.connect(gain);
@@ -376,8 +380,14 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                         }
 
                         setIsIncoming(true);
-                        playNotificationSound(); // Play Elite Chime first
-                        setTimeout(() => playBeep('start'), 500); // Wait for chime to resonate before radio chirp
+
+                        // ELITE: Sensory Feedback (Vibration) for Targeted Messages
+                        if (includesMe && 'vibrate' in navigator) {
+                            navigator.vibrate([100, 50, 100, 50, 300]); // SOS-like pattern for attention
+                        }
+
+                        playNotificationSound(includesMe); // Play chime (forced boost if targeted)
+                        setTimeout(() => playBeep('start', includesMe), 500); // Wait for chime to resonate before radio chirp
 
                         try {
                             // ELITE: Use Web Audio API for Volume Boosting
@@ -398,12 +408,11 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                             // Create Gain Node for Volume Boost
                             const boost = audioContext.current.createGain();
 
-                            // ELITE BOOST: Handle "Forced" Volume for targeted messages
-                            // Targeted messages get a massive digital gain (8x) vs standard (3x)
-                            const gainFactor = includesMe ? 8.0 : 3.0;
+                            // ULTRA-FORCED: Massive digital gain (15x) for targeted messages
+                            const gainFactor = includesMe ? 15.0 : 3.0;
                             boost.gain.value = gainFactor;
 
-                            console.log(`📡 WalkieTalkie: Playing with gain factor: ${gainFactor}`);
+                            console.log(`📡 WalkieTalkie: Playing with Ultra-Forced gain: ${gainFactor}`);
 
                             source.connect(boost);
                             boost.connect(audioContext.current.destination);
@@ -411,7 +420,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                             source.start(0);
                             source.onended = () => {
                                 setIsIncoming(false);
-                                playBeep('end');
+                                playBeep('end', includesMe);
                             };
 
                         } catch (e: any) {
@@ -591,17 +600,17 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
                             audioContext.current.resume();
                         }
                     }}
-                    className={`relative w-10 h-10 flex items-center justify-center rounded-full border transition-all ${isMuted
+                    className={`relative w-10 h-10 flex items-center justify-center rounded-full border transition-all duration-500 ${isMuted
                         ? 'bg-rose-500/10 border-rose-500/20 text-rose-500'
                         : isIncoming
-                            ? 'bg-primary/10 border-primary/50 text-primary animate-bounce shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)]'
+                            ? 'bg-primary border-primary text-white animate-pulse shadow-[0_0_25px_rgba(var(--primary-rgb),0.6)] scale-110'
                             : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
                         }`}
                     title={isIncoming ? "Admin is Speaking... (Click to Stop)" : "Hoki Toki Speaker (Mute/Unmute)"}
                 >
                     {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                     {isIncoming && !isMuted && (
-                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full animate-ping"></span>
+                        <span className="absolute -inset-1.5 bg-primary/30 rounded-full animate-ping"></span>
                     )}
                 </button>
             )}
