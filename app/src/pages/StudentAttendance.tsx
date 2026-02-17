@@ -184,12 +184,13 @@ export default function StudentAttendance() {
     const groupedGymnasts = useMemo(() => {
         const groups: { [key: string]: { sectionName: string, coachName: string, avatar: string, students: any[] } } = {};
         filteredGymnasts.forEach(s => {
-            const sectionName = s.groupName || 'Individual Training';
+            const isIndividual = !s.groupName;
+            const sectionName = isIndividual ? `Individual Training - ${s.displayCoach}` : s.groupName;
             const coach = s.displayCoach || 'No Coach';
 
             if (!groups[sectionName]) {
                 groups[sectionName] = {
-                    sectionName: sectionName,
+                    sectionName: isIndividual ? 'Individual Training' : sectionName,
                     coachName: coach,
                     avatar: s.coachAvatar || '',
                     students: []
