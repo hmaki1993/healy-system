@@ -46,6 +46,7 @@ export default function DashboardLayout() {
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
+    const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
     const isRtl = i18n.language === 'ar' || document.dir === 'rtl';
 
@@ -294,10 +295,7 @@ export default function DashboardLayout() {
 
     // Filter notifications based on role and user_id
     const filteredNotifications = notifications.filter(note => {
-        if (!normalizedRole) {
-            console.log('🔔 Notification Filter: No role loaded yet');
-            return false;
-        }
+        if (!normalizedRole || !userId) return false;
 
         // 1. User-specific override: Only the specific user sees these
         if (note.user_id) {
@@ -321,6 +319,11 @@ export default function DashboardLayout() {
             // Handle consolidated roles (reception / receptionist)
             if (target === 'reception' && (normalizedRole === 'reception' || normalizedRole === 'receptionist')) {
                 return true;
+            }
+
+            // Handle joint staff roles (Admin, Head Coach, Receptionist)
+            if (target === 'admin_head_reception') {
+                return ['admin', 'head_coach', 'reception', 'receptionist'].includes(normalizedRole);
             }
 
             if (target === normalizedRole) return true;
@@ -472,8 +475,12 @@ export default function DashboardLayout() {
 
                             <div className="flex items-center gap-4 relative z-10">
                                 <div className="relative flex-shrink-0">
-                                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary to-accent p-[1px] shadow-lg">
-                                        <div className="w-full h-full rounded-2xl bg-[#0E1D21] flex items-center justify-center overflow-hidden">
+                                    <button
+                                        onClick={() => setIsAvatarModalOpen(true)}
+                                        className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-accent p-[1px] shadow-2xl hover:scale-110 transition-all duration-500 group/avatar relative"
+                                    >
+                                        <div className="absolute inset-0 bg-primary/20 blur-xl opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-700"></div>
+                                        <div className="w-full h-full rounded-2xl bg-[#0E1D21] flex items-center justify-center overflow-hidden relative z-10 border border-white/5">
                                             {avatarUrl ? (
                                                 <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
                                             ) : (
@@ -482,8 +489,8 @@ export default function DashboardLayout() {
                                                 </span>
                                             )}
                                         </div>
-                                    </div>
-                                    <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#122E34] shadow-lg ${userStatus === 'online' ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></div>
+                                    </button>
+                                    <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#122E34] shadow-lg ${userStatus === 'online' ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse z-20`}></div>
                                 </div>
 
                                 <div className="flex-1 min-w-0">
@@ -499,7 +506,7 @@ export default function DashboardLayout() {
                     </div>
 
                     {/* Navigation */}
-                    <nav className="flex-1 px-4 mt-2 mb-2 space-y-1 overflow-y-auto custom-scrollbar">
+                    <div className="flex-1 px-4 space-y-1 py-4 overflow-y-auto custom-scrollbar">
                         <div className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] px-4 mb-2">Main Menu</div>
                         {navItems.map((item) => {
                             const Icon = item.icon;
@@ -514,18 +521,19 @@ export default function DashboardLayout() {
                                         : 'text-white/50 hover:bg-white/[0.04] hover:text-white hover:translate-x-1'
                                         }`}
                                 >
-                                    <Icon className={`w-4 h-4 transition-transform duration-300 ${isActive ? 'scale-110 text-white' : 'group-hover:scale-110'} ${isRtl ? 'ml-3' : 'mr-3'}`} />
-                                    <span className="tracking-widest uppercase">{item.label}</span>
+                                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-current'} transition-transform group-hover:scale-110 ${isRtl ? 'ml-3' : 'mr-3'}`} />
+                                    <span className="relative z-10">{t(item.label)}</span>
                                     {isActive && (
-                                        <div className={`absolute ${isRtl ? 'left-4' : 'right-4'} w-1 h-3 rounded-full bg-white shadow-[0_0_12px_white] animate-pulse`} />
+                                        <div className="absolute inset-y-2 right-2 w-1.5 bg-white/20 rounded-full blur-[2px]" />
                                     )}
                                 </Link>
                             );
                         })}
-                    </nav>
+                    </div>
+
 
                     {/* Sidebar Footer - Actions Tray */}
-                    <div className="p-4 mx-2 mb-4 rounded-3xl bg-black/20 border border-white/5 flex items-center gap-2">
+                    <div className="p-3 mx-2 mb-4 rounded-3xl bg-black/20 border border-white/5 flex items-center gap-2 flex-shrink-0">
                         <button
                             onClick={() => {
                                 const newLang = i18n.language === 'en' ? 'ar' : 'en';
@@ -533,20 +541,20 @@ export default function DashboardLayout() {
                                 document.dir = newLang === 'ar' ? 'rtl' : 'ltr';
                                 updateSettings({ language: newLang });
                             }}
-                            className="w-10 h-10 flex-shrink-0 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded-2xl transition-all duration-300 group border border-transparent hover:border-white/10 backdrop-blur-sm"
+                            className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 rounded-2xl transition-all duration-300 flex-shrink-0 group"
                             title={i18n.language === 'en' ? 'Arabic' : 'English'}
                         >
-                            <Globe className="w-5 h-5 transition-transform group-hover:rotate-45 duration-700" />
+                            <Globe className="w-4 h-4 transition-transform group-hover:rotate-45 duration-700" />
                         </button>
 
                         <div className="h-6 w-px bg-white/5"></div>
 
                         <button
                             onClick={handleLogout}
-                            className="flex-1 h-10 flex items-center justify-center px-2 text-[10px] font-black text-rose-500/80 hover:text-rose-400 hover:bg-rose-500/5 rounded-2xl transition-all duration-300 group border border-transparent hover:border-rose-500/10 uppercase tracking-[0.2em]"
+                            className="flex-1 h-10 flex items-center justify-center px-3 text-[10px] font-black text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-2xl transition-all duration-300 group border border-transparent hover:border-rose-500/20 uppercase tracking-[0.15em] whitespace-nowrap"
                         >
                             <LogOut className={`w-4 h-4 transition-transform group-hover:-translate-x-1 ${isRtl ? 'ml-2' : 'mr-2'}`} />
-                            {t('common.logout')}
+                            <span>{t('common.logout')}</span>
                         </button>
                     </div>
                 </div>
@@ -654,18 +662,23 @@ export default function DashboardLayout() {
                                                         <div
                                                             key={note.id}
                                                             onClick={() => handleMarkAsRead(note.id)}
-                                                            className={`p-6 border-b border-white/[0.05] hover:bg-white/[0.08] transition-all group cursor-pointer ${!note.is_read ? 'bg-primary/10' : ''}`}
+                                                            className={`p-6 border-b border-white/[0.05] hover:bg-white/[0.08] transition-all group cursor-pointer relative ${!note.is_read ? 'bg-primary/5' : ''}`}
                                                         >
+                                                            {!note.is_read && (
+                                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-primary rounded-r-full shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]"></div>
+                                                            )}
                                                             <div className="flex gap-4">
                                                                 <div className={`w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 shadow-inner ${color} group-hover:scale-105 transition-transform border border-white/5`}>
                                                                     <Icon className="w-5 h-5" />
                                                                 </div>
                                                                 <div className="flex-1">
                                                                     <div className="flex justify-between items-start mb-1">
-                                                                        <h4 className="font-extrabold text-white text-sm tracking-tight">{note.title}</h4>
-                                                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">{timeAgo(note.created_at)}</span>
+                                                                        <h4 className={`font-black tracking-tight text-sm ${!note.is_read ? 'text-white' : 'text-white/60'}`}>{note.title}</h4>
+                                                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-full">{timeAgo(note.created_at)}</span>
                                                                     </div>
-                                                                    <p className="text-xs text-white/70 group-hover:text-white/90 transition-colors leading-relaxed line-clamp-2 font-medium">{note.message}</p>
+                                                                    <p className={`text-xs leading-relaxed line-clamp-2 font-medium transition-colors ${!note.is_read ? 'text-white/80' : 'text-white/40'}`}>
+                                                                        {note.message}
+                                                                    </p>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -709,8 +722,14 @@ export default function DashboardLayout() {
                                 </div>
 
                                 <div className="relative">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent p-[1px] group-hover:scale-105 transition-transform duration-500">
-                                        <div className="w-full h-full rounded-full bg-background flex items-center justify-center overflow-hidden">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsAvatarModalOpen(true);
+                                        }}
+                                        className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent p-[1px] group-hover:scale-105 transition-transform duration-500 relative"
+                                    >
+                                        <div className="w-full h-full rounded-full bg-background flex items-center justify-center overflow-hidden border border-white/5">
                                             {avatarUrl ? (
                                                 <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
                                             ) : (
@@ -719,7 +738,7 @@ export default function DashboardLayout() {
                                                 </span>
                                             )}
                                         </div>
-                                    </div>
+                                    </button>
                                     <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background border-2 border-white/10 flex items-center justify-center p-0.5">
                                         <ChevronDown className={`w-full h-full text-white/40 transition-all duration-300 ${profileOpen ? 'rotate-180' : ''}`} />
                                     </div>
@@ -779,6 +798,49 @@ export default function DashboardLayout() {
 
                 </main>
             </div>
+
+            {/* Avatar Lightbox Modal */}
+            {isAvatarModalOpen && (
+                <div
+                    className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-3xl animate-in fade-in duration-500"
+                    onClick={() => setIsAvatarModalOpen(false)}
+                >
+                    <div className="relative max-w-2xl max-h-[80vh] w-full flex items-center justify-center px-4">
+                        <div className="relative group/lightbox">
+                            {/* Premium Glow around image */}
+                            <div className="absolute -inset-4 bg-gradient-to-br from-primary/30 to-accent/30 rounded-[3rem] blur-3xl opacity-50 group-hover/lightbox:opacity-100 transition-opacity duration-1000"></div>
+
+                            {avatarUrl ? (
+                                <img
+                                    src={avatarUrl}
+                                    alt="Profile"
+                                    className="relative z-10 max-w-full max-h-[70vh] object-contain rounded-[3rem] shadow-2xl border-2 border-white/20 animate-in zoom-in-95 duration-500"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            ) : (
+                                <div className="relative z-10 w-64 h-64 bg-background rounded-[3rem] border-2 border-white/20 flex items-center justify-center shadow-2xl animate-in zoom-in-95 duration-500">
+                                    <span className="text-white font-black text-8xl uppercase">
+                                        {(fullName || role)?.[0] || 'A'}
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* Info card in lightbox */}
+                            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 bg-white/10 backdrop-blur-3xl border border-white/20 px-8 py-4 rounded-[2rem] shadow-2xl text-center min-w-[240px] animate-in slide-in-from-bottom-4 duration-700 delay-200">
+                                <h3 className="text-white font-black text-xl tracking-tight leading-none mb-1">{fullName}</h3>
+                                <p className="text-primary text-[10px] font-black uppercase tracking-[0.3em]">{t(`roles.${role}`)}</p>
+                            </div>
+
+                            <button
+                                onClick={() => setIsAvatarModalOpen(false)}
+                                className="absolute -top-12 right-0 w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl text-white transition-all backdrop-blur-sm border border-white/10 scale-90 hover:scale-100 active:scale-95 duration-300"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Logo Lightbox Modal */}
             {isLogoModalOpen && (

@@ -440,6 +440,15 @@ i18n
                         subscriptionAdded: 'Subscription added successfully',
                         ptGymnast: 'GYMNAST PT ATTENDANCE',
                         attendanceHistory: 'Attendance History'
+                    },
+                    notifications: {
+                        coachCheckedIn: '{{name}} Checked In',
+                        checkedInAt: 'Checked in at {{time}}',
+                        coachCheckedOut: '{{name}} Checked Out',
+                        checkedOutAt: 'Checked out at {{time}}',
+                        ptSessionRecorded: 'PT Session Recorded',
+                        by: 'By {{name}}',
+                        for: 'For {{student}}'
                     }
                 }
             },

@@ -412,6 +412,19 @@ id,
             setIsCheckedIn(true);
             setCheckInTime(format(now, 'HH:mm:ss'));
             localStorage.setItem(`checkInStart_${todayStr} `, JSON.stringify({ timestamp: now.getTime(), recordId: data.id }));
+
+            // 🚀 Send Notification to Admin/Reception
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase.from('notifications').insert({
+                    title: t('notifications.coachCheckedIn', { name: fullName }),
+                    message: t('notifications.checkedInAt', { time: format(now, 'HH:mm:ss') }),
+                    type: 'check_in',
+                    related_coach_id: user.id,
+                    target_role: 'admin_head_reception'
+                });
+            }
+
             toast.success(t('coach.checkInSuccess'));
         } catch (error: any) {
             console.error('Check-in error detailed:', error);
@@ -428,6 +441,18 @@ id,
                 const { recordId, timestamp } = JSON.parse(savedStart);
                 await supabase.from('coach_attendance').update({ check_out_time: now.toISOString() }).eq('id', recordId);
                 setDailyTotalSeconds(Math.floor((now.getTime() - timestamp) / 1000));
+
+                // 🚀 Send Notification to Admin/Reception
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    await supabase.from('notifications').insert({
+                        title: t('notifications.coachCheckedOut', { name: fullName }),
+                        message: t('notifications.checkedOutAt', { time: format(now, 'HH:mm:ss') }),
+                        type: 'check_out',
+                        related_coach_id: user.id,
+                        target_role: 'admin_head_reception'
+                    });
+                }
             }
             setIsCheckedIn(false);
             setCheckInTime(null);
@@ -504,6 +529,19 @@ id,
                 })
                 .eq('id', sub.id);
             if (subError) throw subError;
+
+            // 🚀 Send Notification to Admin
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase.from('notifications').insert({
+                    title: t('notifications.ptSessionRecorded'),
+                    message: `${t('notifications.by', { name: fullName })} - ${t('notifications.for', { student: studentName })}`,
+                    type: 'pt_subscription',
+                    related_coach_id: user.id,
+                    related_student_id: studentData?.id || sub.student_id,
+                    target_role: 'admin'
+                });
+            }
 
             // 3. Refresh data
             await Promise.all([
@@ -666,13 +704,13 @@ id,
                     <div className="flex items-center justify-between mb-4 relative z-10">
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
-                                <span className={`w - 1.5 h - 1.5 rounded - full transition - all duration - 500 ${isCheckedIn ? 'bg-emerald-400 shadow-[0_0_10px_2px_rgba(52,211,153,0.8)] animate-pulse' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'} `}></span>
+                                <span className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${isCheckedIn ? 'bg-emerald-400 shadow-[0_0_10px_2px_rgba(52,211,153,0.8)] animate-pulse' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`}></span>
                                 <span className={isCheckedIn ? 'text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.5)]' : 'text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.3)]'}>
                                     {isCheckedIn ? t('coaches.workingNow') : t('coaches.away')}
                                 </span>
                             </p>
                         </div>
-                        <div className="p-3 bg-primary/20 rounded-xl text-primary">
+                        <div className="p-3 bg-primary/20 rounded-xl text-primary border border-white/5">
                             <Clock className="w-5 h-5" />
                         </div>
                     </div>
@@ -686,8 +724,8 @@ id,
                                 <div className="text-3xl sm:text-4xl md:text-5xl font-black text-emerald-400 tracking-widest font-mono drop-shadow-[0_0_20px_rgba(52,211,153,0.3)]">
                                     {formatTimer(dailyTotalSeconds)}
                                 </div>
-                                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">
-                                    <span className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em]">Summary</span>
+                                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20 shadow-[0_0_15px_rgba(52,211,153,0.1)]">
+                                    <span className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em]">Shift Summary</span>
                                 </div>
                             </div>
                         ) : (
@@ -695,9 +733,11 @@ id,
                         )}
                         <button
                             onClick={isCheckedIn ? handleCheckOut : handleCheckIn}
-                            className={`group / btn w - full py - 4 rounded - [1.5rem] font - black uppercase tracking - widest text - [11px] flex items - center justify - center gap - 3 transition - all hover: scale - 102 active: scale - 98 shadow - premium ${isCheckedIn ? 'bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white' : 'bg-primary text-white hover:bg-primary/90'} `}
+                            className={`w-full py-4 rounded-full font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-3 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-2xl ${isCheckedIn
+                                ? 'bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20'
+                                : 'bg-white text-black border border-transparent hover:shadow-[0_0_30px_rgba(255,255,255,0.3)]'}`}
                         >
-                            {isCheckedIn ? <XCircle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
+                            {isCheckedIn ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
                             {isCheckedIn ? t('coach.checkOut') : t('coach.checkIn')}
                         </button>
                     </div>

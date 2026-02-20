@@ -150,6 +150,19 @@ export default function HeadCoachDashboard() {
             setIsCheckedIn(true);
             setCheckInTime(format(now, 'HH:mm:ss'));
             localStorage.setItem(`checkInStart_${todayStr}`, JSON.stringify({ timestamp: now.getTime(), recordId: data.id }));
+
+            // 🚀 Send Notification to Admin/Reception
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase.from('notifications').insert({
+                    title: t('notifications.coachCheckedIn', { name: fullName }),
+                    message: t('notifications.checkedInAt', { time: format(now, 'HH:mm:ss') }),
+                    type: 'check_in',
+                    related_coach_id: user.id,
+                    target_role: 'admin_head_reception'
+                });
+            }
+
             toast.success(t('coach.checkInSuccess'));
         } catch (error: any) {
             toast.error(error.message || t('common.error'));
@@ -165,6 +178,18 @@ export default function HeadCoachDashboard() {
                 const { recordId, timestamp } = JSON.parse(savedStart);
                 await supabase.from('coach_attendance').update({ check_out_time: now.toISOString() }).eq('id', recordId);
                 setDailyTotalSeconds(Math.floor((now.getTime() - timestamp) / 1000));
+
+                // 🚀 Send Notification to Admin/Reception
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    await supabase.from('notifications').insert({
+                        title: t('notifications.coachCheckedOut', { name: fullName }),
+                        message: t('notifications.checkedOutAt', { time: format(now, 'HH:mm:ss') }),
+                        type: 'check_out',
+                        related_coach_id: user.id,
+                        target_role: 'admin_head_reception'
+                    });
+                }
             }
             setIsCheckedIn(false);
             setCheckInTime(null);
@@ -238,7 +263,7 @@ export default function HeadCoachDashboard() {
                                 </span>
                             </p>
                         </div>
-                        <div className="p-4 bg-primary/20 rounded-2xl text-primary border border-primary/20">
+                        <div className="p-4 bg-primary/20 rounded-2xl text-primary border border-white/5 shadow-inner">
                             <Clock className="w-6 h-6" />
                         </div>
                     </div>
@@ -252,8 +277,8 @@ export default function HeadCoachDashboard() {
                                 <div className="text-3xl sm:text-4xl md:text-5xl font-black text-emerald-400 tracking-widest font-mono drop-shadow-[0_0_20px_rgba(52,211,153,0.3)]">
                                     {formatTimer(dailyTotalSeconds)}
                                 </div>
-                                <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">
-                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">Summary</span>
+                                <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20 shadow-[0_0_20px_rgba(52,211,153,0.15)]">
+                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">Shift Summary</span>
                                 </div>
                             </div>
                         ) : (
@@ -261,7 +286,9 @@ export default function HeadCoachDashboard() {
                         )}
                         <button
                             onClick={isCheckedIn ? handleCheckOut : handleCheckIn}
-                            className={`group/btn w-full py-6 rounded-[2rem] font-black uppercase tracking-widest text-sm flex items-center justify-center gap-4 transition-all hover:scale-[1.02] active:scale-98 shadow-premium ${isCheckedIn ? 'bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white' : 'bg-primary text-white hover:bg-primary/90'}`}
+                            className={`w-full py-5 rounded-full font-black uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-4 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-2xl ${isCheckedIn
+                                ? 'bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20'
+                                : 'bg-white text-black border border-transparent hover:shadow-[0_0_40px_rgba(255,255,255,0.35)]'}`}
                         >
                             {isCheckedIn ? <XCircle className="w-6 h-6" /> : <CheckCircle className="w-6 h-6" />}
                             {isCheckedIn ? t('coach.checkOut') : t('coach.checkIn')}

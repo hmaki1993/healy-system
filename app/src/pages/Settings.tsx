@@ -225,10 +225,39 @@ export default function Settings() {
 
             // Only allow admin users to update email
             if (role === 'admin' && inputEmail && currentAuthEmail && inputEmail !== currentAuthEmail) {
+                // Validate email format
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(inputEmail)) {
+                    throw new Error('Invalid email format');
+                }
+
+                console.log('🔄 Attempting to update Admin email to:', inputEmail);
                 const { error: authError } = await supabase.auth.updateUser({
                     email: inputEmail
                 });
-                if (authError) throw authError;
+
+                if (authError) {
+                    console.error('❌ Supabase Auth Update Error:', authError);
+                    if (authError.message.includes('rate limit')) {
+                        throw new Error('Too many update attempts. Please try again in 24 hours or check your email settings.');
+                    }
+                    if (authError.message.includes('already registered') || authError.status === 422) {
+                        throw new Error('This email is already associated with another account.');
+                    }
+                    throw authError;
+                }
+
+                // Sync with profiles table as well to maintain consistency
+                const { error: syncError } = await supabase
+                    .from('profiles')
+                    .update({ email: inputEmail })
+                    .eq('id', user.id);
+
+                if (syncError) {
+                    console.error('❌ Syncing email to profiles failed:', syncError);
+                    // We don't throw here because Auth update already succeeded/started
+                }
+
                 toast.success('Email update started! Follow the link sent to your new email.');
             } else {
                 toast.success(t('common.saveSuccess'));

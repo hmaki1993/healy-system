@@ -79,95 +79,171 @@ export default function FinanceDetailModal({ isOpen, onClose, type, title, data,
             case 'income':
                 const payments = data as Payment[];
                 return (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="text-white/30 font-black text-[10px] uppercase tracking-[0.2em] border-b border-white/5">
-                                <tr>
-                                    <th className="px-6 py-6">GYMNAST</th>
-                                    <th className="px-6 py-4">Type</th>
-                                    <th className="px-6 py-4">Date</th>
-                                    <th className="px-6 py-4">Method</th>
-                                    <th className="px-6 py-4 text-right">Amount</th>
-                                    {onDelete && <th className="px-6 py-4 w-12"></th>}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {payments.length === 0 ? (
-                                    <tr><td colSpan={onDelete ? 6 : 5} className="px-6 py-8 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No records found</td></tr>
-                                ) : (
-                                    payments.map((p) => {
-                                        const isPT = p.notes?.toLowerCase().includes('pt');
-                                        return (
-                                            <tr key={p.id} className="hover:bg-white/5 transition-colors group">
-                                                <td className="px-6 py-4">
-                                                    <div className="font-bold text-white group-hover:text-primary transition-colors">
-                                                        {p.students?.full_name || (p.notes?.split(' - ')[1] || 'Guest Gymnast')}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${isPT
-                                                        ? 'bg-primary/10 text-primary border-primary/20'
-                                                        : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                        }`}>
-                                                        {isPT ? 'Personal Training' : 'Gymnast'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-white/60 text-xs font-mono">{format(new Date(p.payment_date), 'MMM dd, yyyy')}</td>
-                                                <td className="px-6 py-4">
-                                                    <span className="px-2 py-1 rounded-lg bg-white/5 text-[9px] font-black uppercase tracking-wider text-white/40 border border-white/5">
-                                                        {p.payment_method.replace('_', ' ')}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-6 text-right font-black text-emerald-400 tracking-tighter text-3xl drop-shadow-[0_0_10px_rgba(52,211,153,0.2)]">
-                                                    +{Number(p.amount).toLocaleString()} <span className="text-[10px] text-white/10 font-black italic">{currency.code}</span>
-                                                </td>
-                                                {onDelete && (
+                    <div className="space-y-6">
+                        {/* Desktop View */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="text-white/30 font-black text-[10px] uppercase tracking-[0.2em] border-b border-white/5">
+                                    <tr>
+                                        <th className="px-6 py-6">GYMNAST</th>
+                                        <th className="px-6 py-4">Type</th>
+                                        <th className="px-6 py-4">Date</th>
+                                        <th className="px-6 py-4">Method</th>
+                                        <th className="px-6 py-4 text-right">Amount</th>
+                                        {onDelete && <th className="px-6 py-4 w-12"></th>}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {payments.length === 0 ? (
+                                        <tr><td colSpan={onDelete ? 6 : 5} className="px-6 py-8 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No records found</td></tr>
+                                    ) : (
+                                        payments.map((p) => {
+                                            const isPT = p.notes?.toLowerCase().includes('pt');
+                                            return (
+                                                <tr key={p.id} className="hover:bg-white/5 transition-colors group">
                                                     <td className="px-6 py-4">
-                                                        <button
-                                                            onClick={() => onDelete(p.id, 'payments')}
-                                                            className="p-2 bg-white/5 hover:bg-rose-500/10 text-white/20 hover:text-rose-400 rounded-lg transition-all active:scale-95 group/del"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
+                                                        <div className="font-bold text-white group-hover:text-primary transition-colors">
+                                                            {p.students?.full_name || (p.notes?.split(' - ')[1] || 'Guest Gymnast')}
+                                                        </div>
                                                     </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${isPT
+                                                            ? 'bg-primary/10 text-primary border-primary/20'
+                                                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                            }`}>
+                                                            {isPT ? 'Personal Training' : 'Gymnast'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-white/60 text-xs font-mono">{format(new Date(p.payment_date), 'MMM dd, yyyy')}</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="px-2 py-1 rounded-lg bg-white/5 text-[9px] font-black uppercase tracking-wider text-white/40 border border-white/5">
+                                                            {p.payment_method.replace('_', ' ')}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-6 text-right font-black text-emerald-400 tracking-tighter text-3xl drop-shadow-[0_0_10px_rgba(52,211,153,0.2)]">
+                                                        +{Number(p.amount).toLocaleString()} <span className="text-[10px] text-white/10 font-black italic">{currency.code}</span>
+                                                    </td>
+                                                    {onDelete && (
+                                                        <td className="px-6 py-4">
+                                                            <button
+                                                                onClick={() => onDelete(p.id, 'payments')}
+                                                                className="p-2 bg-white/5 hover:bg-rose-500/10 text-white/20 hover:text-rose-400 rounded-lg transition-all active:scale-95 group/del"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile View: Premium Cards */}
+                        <div className="md:hidden space-y-4">
+                            {payments.length === 0 ? (
+                                <div className="p-12 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No records found</div>
+                            ) : (
+                                payments.map((p) => {
+                                    const isPT = p.notes?.toLowerCase().includes('pt');
+                                    return (
+                                        <div key={p.id} className="glass-card p-5 rounded-3xl bg-white/[0.02] border border-white/5 space-y-4">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-primary font-black text-lg">
+                                                        {p.students?.full_name?.[0] || (p.notes?.split(' - ')[1]?.[0] || 'G')}
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-black text-white text-sm">{p.students?.full_name || (p.notes?.split(' - ')[1] || 'Guest Gymnast')}</h3>
+                                                        <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isPT ? 'bg-primary/10 text-primary border-primary/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+                                                            {isPT ? 'Personal Training' : 'Gymnast'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xl font-black text-emerald-400 tracking-tighter">+{Number(p.amount).toLocaleString()}</p>
+                                                    <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">{currency.code}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">{format(new Date(p.payment_date), 'dd MMM yyyy')}</span>
+                                                    <span className="px-2 py-0.5 rounded bg-white/5 text-[8px] font-black text-white/20 uppercase tracking-widest border border-white/5">{p.payment_method.replace('_', ' ')}</span>
+                                                </div>
+                                                {onDelete && (
+                                                    <button onClick={() => onDelete(p.id, 'payments')} className="p-2 bg-rose-500/10 text-rose-500 rounded-xl border border-rose-500/20 active:scale-95 transition-all">
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
                                                 )}
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
                     </div>
                 );
 
             case 'expenses':
                 const payroll = data as PayrollEntry[];
                 return (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="text-white/30 font-black text-[10px] uppercase tracking-[0.2em] border-b border-white/5">
-                                <tr>
-                                    <th className="px-6 py-4">Coach</th>
-                                    <th className="px-6 py-4 text-center">Base Salary</th>
-                                    <th className="px-6 py-4 text-right">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {payroll.length === 0 ? (
-                                    <tr><td colSpan={3} className="px-6 py-8 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No payroll records</td></tr>
-                                ) : (
-                                    payroll.map((p, i) => (
-                                        <tr key={i} className="hover:bg-white/5 transition-colors group">
-                                            <td className="px-6 py-4 font-bold text-white group-hover:text-orange-400 transition-colors">{p.coach_name}</td>
-                                            <td className="px-6 py-4 text-center text-white/60 font-bold">{p.salary.toLocaleString()} <span className="text-[9px] text-white/20">{currency.code}</span></td>
-                                            <td className="px-6 py-4 text-right font-black text-orange-400 tracking-tight">
-                                                -{p.salary.toLocaleString()} <span className="text-[9px] text-white/20">{currency.code}</span>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                    <div className="space-y-6">
+                        {/* Desktop View */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="text-white/30 font-black text-[10px] uppercase tracking-[0.2em] border-b border-white/5">
+                                    <tr>
+                                        <th className="px-6 py-4">Coach</th>
+                                        <th className="px-6 py-4 text-center">Base Salary</th>
+                                        <th className="px-6 py-4 text-right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {payroll.length === 0 ? (
+                                        <tr><td colSpan={3} className="px-6 py-8 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No payroll records</td></tr>
+                                    ) : (
+                                        payroll.map((p, i) => (
+                                            <tr key={i} className="hover:bg-white/5 transition-colors group">
+                                                <td className="px-6 py-4 font-bold text-white group-hover:text-orange-400 transition-colors">{p.coach_name}</td>
+                                                <td className="px-6 py-4 text-center text-white/60 font-bold">{p.salary.toLocaleString()} <span className="text-[9px] text-white/20">{currency.code}</span></td>
+                                                <td className="px-6 py-4 text-right font-black text-orange-400 tracking-tight">
+                                                    -{p.salary.toLocaleString()} <span className="text-[9px] text-white/20">{currency.code}</span>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile View: Premium Cards */}
+                        <div className="md:hidden space-y-4">
+                            {payroll.length === 0 ? (
+                                <div className="p-12 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No payroll records</div>
+                            ) : (
+                                payroll.map((p, i) => (
+                                    <div key={i} className="glass-card p-5 rounded-3xl bg-white/[0.02] border border-white/5 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400 border border-orange-500/20">
+                                                    <User className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-white text-sm">{p.coach_name}</p>
+                                                    <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">Base Salary</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xl font-black text-orange-400 tracking-tighter">-{p.salary.toLocaleString()}</p>
+                                                <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">{currency.code}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 );
 
@@ -350,46 +426,84 @@ export default function FinanceDetailModal({ isOpen, onClose, type, title, data,
             case 'refunds':
                 const refunds = data as Refund[];
                 return (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="text-white/30 font-black text-[10px] uppercase tracking-[0.2em] border-b border-white/5">
-                                <tr>
-                                    <th className="px-6 py-4">Student</th>
-                                    <th className="px-6 py-4">Date</th>
-                                    <th className="px-6 py-4">Reason</th>
-                                    <th className="px-6 py-4 text-right">Amount</th>
-                                    {onDelete && <th className="px-6 py-4 w-12"></th>}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {refunds.length === 0 ? (
-                                    <tr><td colSpan={onDelete ? 5 : 4} className="px-6 py-8 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No refunds</td></tr>
-                                ) : (
-                                    refunds.map((r) => (
-                                        <tr key={r.id} className="hover:bg-white/5 transition-colors group">
-                                            <td className="px-6 py-4 font-bold text-white group-hover:text-rose-400 transition-colors">
-                                                {r.students?.full_name || 'Unknown'}
-                                            </td>
-                                            <td className="px-6 py-4 text-white/60 text-xs font-mono">{format(new Date(r.refund_date), 'MMM dd, yyyy')}</td>
-                                            <td className="px-6 py-4 text-white/40 text-xs">{r.reason || 'No reason provided'}</td>
-                                            <td className="px-6 py-4 text-right font-black text-rose-400 tracking-tight">
-                                                -{Number(r.amount).toLocaleString()} <span className="text-[9px] text-white/20">{currency.code}</span>
-                                            </td>
-                                            {onDelete && (
-                                                <td className="px-6 py-4">
-                                                    <button
-                                                        onClick={() => onDelete(r.id, 'refunds')}
-                                                        className="p-2 bg-white/5 hover:bg-rose-500/10 text-white/20 hover:text-rose-400 rounded-lg transition-all active:scale-95"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                    <div className="space-y-6">
+                        {/* Desktop View */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="text-white/30 font-black text-[10px] uppercase tracking-[0.2em] border-b border-white/5">
+                                    <tr>
+                                        <th className="px-6 py-4">Student</th>
+                                        <th className="px-6 py-4">Date</th>
+                                        <th className="px-6 py-4">Reason</th>
+                                        <th className="px-6 py-4 text-right">Amount</th>
+                                        {onDelete && <th className="px-6 py-4 w-12"></th>}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {refunds.length === 0 ? (
+                                        <tr><td colSpan={onDelete ? 5 : 4} className="px-6 py-8 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No refunds</td></tr>
+                                    ) : (
+                                        refunds.map((r) => (
+                                            <tr key={r.id} className="hover:bg-white/5 transition-colors group">
+                                                <td className="px-6 py-4 font-bold text-white group-hover:text-rose-400 transition-colors">
+                                                    {r.students?.full_name || 'Unknown'}
                                                 </td>
+                                                <td className="px-6 py-4 text-white/60 text-xs font-mono">{format(new Date(r.refund_date), 'MMM dd, yyyy')}</td>
+                                                <td className="px-6 py-4 text-white/40 text-xs">{r.reason || 'No reason provided'}</td>
+                                                <td className="px-6 py-4 text-right font-black text-rose-400 tracking-tight">
+                                                    -{Number(r.amount).toLocaleString()} <span className="text-[9px] text-white/20">{currency.code}</span>
+                                                </td>
+                                                {onDelete && (
+                                                    <td className="px-6 py-4">
+                                                        <button
+                                                            onClick={() => onDelete(r.id, 'refunds')}
+                                                            className="p-2 bg-white/5 hover:bg-rose-500/10 text-white/20 hover:text-rose-400 rounded-lg transition-all active:scale-95"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile View: Premium Cards */}
+                        <div className="md:hidden space-y-4">
+                            {refunds.length === 0 ? (
+                                <div className="p-12 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No refunds</div>
+                            ) : (
+                                refunds.map((r) => (
+                                    <div key={r.id} className="glass-card p-5 rounded-3xl bg-white/[0.02] border border-white/5 space-y-4">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400 border border-rose-500/20">
+                                                    <RefreshCw className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-white text-sm">{r.students?.full_name || 'Unknown'}</p>
+                                                    <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">{format(new Date(r.refund_date), 'dd MMM yyyy')}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xl font-black text-rose-400 tracking-tighter">-{Number(r.amount).toLocaleString()}</p>
+                                                <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">{currency.code}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                                            <p className="text-[9px] font-bold text-white/40 italic truncate max-w-[200px]">{r.reason || 'No reason provided'}</p>
+                                            {onDelete && (
+                                                <button onClick={() => onDelete(r.id, 'refunds')} className="p-2 bg-rose-500/10 text-rose-500 rounded-xl border border-rose-500/20 active:scale-95 transition-all">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
                                             )}
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 );
 
@@ -403,50 +517,90 @@ export default function FinanceDetailModal({ isOpen, onClose, type, title, data,
                     other: 'Other'
                 };
                 return (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="text-white/30 font-black text-[10px] uppercase tracking-[0.2em] border-b border-white/5">
-                                <tr>
-                                    <th className="px-6 py-4">Description</th>
-                                    <th className="px-6 py-6">CATEGORY</th>
-                                    <th className="px-6 py-6">DATE</th>
-                                    <th className="px-6 py-6 text-right">AMOUNT</th>
-                                    {onDelete && <th className="px-6 py-4 w-12"></th>}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {expenses.length === 0 ? (
-                                    <tr><td colSpan={onDelete ? 5 : 4} className="px-6 py-8 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No expenses</td></tr>
-                                ) : (
-                                    expenses.map((e) => (
-                                        <tr key={e.id} className="hover:bg-white/5 transition-colors group">
-                                            <td className="px-6 py-4 font-bold text-white group-hover:text-orange-400 transition-colors">
-                                                {e.description}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="px-2 py-1 rounded-lg bg-orange-500/10 text-orange-400 text-[9px] font-black uppercase tracking-wider border border-orange-500/20">
-                                                    {categoryLabels[e.category] || e.category}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-white/60 text-xs font-mono">{format(new Date(e.expense_date), 'MMM dd, yyyy')}</td>
-                                            <td className="px-6 py-4 text-right font-black text-orange-400 tracking-tight text-xl">
-                                                -{Number(e.amount).toLocaleString()} <span className="text-[10px] text-white/10 uppercase tracking-widest">{currency.code}</span>
-                                            </td>
-                                            {onDelete && (
-                                                <td className="px-6 py-4">
-                                                    <button
-                                                        onClick={() => onDelete(e.id, 'expenses')}
-                                                        className="p-2 bg-white/5 hover:bg-rose-500/10 text-white/20 hover:text-rose-400 rounded-lg transition-all active:scale-95"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                    <div className="space-y-6">
+                        {/* Desktop View */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="text-white/30 font-black text-[10px] uppercase tracking-[0.2em] border-b border-white/5">
+                                    <tr>
+                                        <th className="px-6 py-4">Description</th>
+                                        <th className="px-6 py-6">CATEGORY</th>
+                                        <th className="px-6 py-6">DATE</th>
+                                        <th className="px-6 py-6 text-right">AMOUNT</th>
+                                        {onDelete && <th className="px-6 py-4 w-12"></th>}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {expenses.length === 0 ? (
+                                        <tr><td colSpan={onDelete ? 5 : 4} className="px-6 py-8 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No expenses</td></tr>
+                                    ) : (
+                                        expenses.map((e) => (
+                                            <tr key={e.id} className="hover:bg-white/5 transition-colors group">
+                                                <td className="px-6 py-4 font-bold text-white group-hover:text-orange-400 transition-colors">
+                                                    {e.description}
                                                 </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="px-2 py-1 rounded-lg bg-orange-500/10 text-orange-400 text-[9px] font-black uppercase tracking-wider border border-orange-500/20">
+                                                        {categoryLabels[e.category] || e.category}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-white/60 text-xs font-mono">{format(new Date(e.expense_date), 'MMM dd, yyyy')}</td>
+                                                <td className="px-6 py-4 text-right font-black text-orange-400 tracking-tight text-xl">
+                                                    -{Number(e.amount).toLocaleString()} <span className="text-[10px] text-white/10 uppercase tracking-widest">{currency.code}</span>
+                                                </td>
+                                                {onDelete && (
+                                                    <td className="px-6 py-4">
+                                                        <button
+                                                            onClick={() => onDelete(e.id, 'expenses')}
+                                                            className="p-2 bg-white/5 hover:bg-rose-500/10 text-white/20 hover:text-rose-400 rounded-lg transition-all active:scale-95"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile View: Premium Cards */}
+                        <div className="md:hidden space-y-4">
+                            {expenses.length === 0 ? (
+                                <div className="p-12 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No expenses</div>
+                            ) : (
+                                expenses.map((e) => (
+                                    <div key={e.id} className="glass-card p-5 rounded-3xl bg-white/[0.02] border border-white/5 space-y-4">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400 border border-orange-500/20">
+                                                    <Receipt className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-white text-sm truncate max-w-[150px]">{e.description}</p>
+                                                    <span className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                                                        {categoryLabels[e.category] || e.category}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xl font-black text-orange-400 tracking-tighter">-{Number(e.amount).toLocaleString()}</p>
+                                                <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">{currency.code}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">{format(new Date(e.expense_date), 'dd MMM yyyy')}</span>
+                                            {onDelete && (
+                                                <button onClick={() => onDelete(e.id, 'expenses')} className="p-2 bg-rose-500/10 text-rose-500 rounded-xl border border-rose-500/20 active:scale-95 transition-all">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
                                             )}
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 );
 

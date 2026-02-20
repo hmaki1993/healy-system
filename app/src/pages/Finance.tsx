@@ -192,15 +192,15 @@ export default function Finance() {
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header */}
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 lg:gap-12 border-b border-white/5 pb-8 md:pb-12">
-                <div className="max-w-2xl text-center lg:text-left">
+                <div className="max-w-2xl text-center lg:text-left flex-shrink-0">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary mb-4 animate-in slide-in-from-left duration-500">
                         <Wallet className="w-3.5 h-3.5" />
                         <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-brand-label)' }}>{t('finance.title')}</span>
                     </div>
-                    <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tighter uppercase leading-[0.9] mb-3">
+                    <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tighter uppercase leading-[0.9] mb-3">
                         {t('finance.titlePart1')} <span className="premium-gradient-text">{t('finance.titlePart2')}</span>
                     </h1>
-                    <p className="text-white/40 text-[10px] sm:text-xs font-bold tracking-wide uppercase max-w-xl mx-auto lg:mx-0">
+                    <p className="text-white/40 text-[9px] sm:text-xs font-bold tracking-wide uppercase max-w-xl mx-auto lg:mx-0">
                         {t('finance.subtitle')}
                     </p>
                 </div>
@@ -241,37 +241,37 @@ export default function Finance() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full sm:w-auto max-w-md sm:max-w-none">
+                    <div className="flex flex-wrap items-center justify-center lg:justify-end gap-2 w-full">
                         <button
                             onClick={async () => {
                                 // Add check for PT sessions if needed
                                 setShowAddModal(true);
                             }}
-                            className="group flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-black uppercase tracking-widest text-[9px] hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20 relative overflow-hidden"
+                            className="group flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary text-white rounded-xl font-black uppercase tracking-widest text-[8px] sm:text-[9px] hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20 relative overflow-hidden"
                         >
                             <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                             <div className="p-1 bg-white/20 rounded-md group-hover:rotate-90 transition-transform duration-500 relative z-10">
-                                <Plus className="w-3 h-3" />
+                                <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                             </div>
                             <span className="relative z-10">{t('finance.addPayment')}</span>
                         </button>
                         <button
                             onClick={() => setShowRefundModal(true)}
-                            className="group flex items-center gap-2 px-4 py-2.5 bg-rose-500 text-white rounded-xl font-black uppercase tracking-widest text-[9px] hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-rose-500/20 relative overflow-hidden"
+                            className="group flex items-center gap-2 px-3 sm:px-4 py-2 bg-rose-500 text-white rounded-xl font-black uppercase tracking-widest text-[8px] sm:text-[9px] hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-rose-500/20 relative overflow-hidden"
                         >
                             <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                             <div className="p-1 bg-white/20 rounded-md group-hover:rotate-12 transition-transform duration-500 relative z-10">
-                                <RefreshCw className="w-3 h-3" />
+                                <RefreshCw className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                             </div>
                             <span className="relative z-10">{t('finance.addRefund')}</span>
                         </button>
                         <button
                             onClick={() => setShowExpenseModal(true)}
-                            className="group flex items-center gap-2 px-4 py-2.5 bg-orange-500 text-white rounded-xl font-black uppercase tracking-widest text-[9px] hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-orange-500/20 relative overflow-hidden"
+                            className="group flex items-center gap-2 px-3 sm:px-4 py-2 bg-orange-500 text-white rounded-xl font-black uppercase tracking-widest text-[8px] sm:text-[9px] hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-orange-500/20 relative overflow-hidden"
                         >
                             <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                             <div className="p-1 bg-white/20 rounded-md group-hover:-rotate-12 transition-transform duration-500 relative z-10">
-                                <Receipt className="w-3 h-3" />
+                                <Receipt className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                             </div>
                             <span className="relative z-10">{t('finance.addExpense')}</span>
                         </button>
@@ -468,8 +468,8 @@ export default function Finance() {
                     )}
                 </div>
 
-                {/* Mobile Transaction List */}
-                <div className="md:hidden divide-y divide-white/5 bg-white/[0.01]">
+                {/* Mobile Transaction List: Premium Card Layout */}
+                <div className="md:hidden space-y-4 p-4">
                     {loading ? (
                         <div className="p-20 text-center">
                             <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
@@ -486,59 +486,62 @@ export default function Finance() {
                             return (
                                 <div
                                     key={payment.id}
-                                    className={`p-5 flex items-start gap-4 transition-all duration-500 ${isSelected ? 'bg-primary/5' : 'active:bg-white/[0.05]'}`}
-                                    onClick={() => {
-                                        setSelectedItems(prev =>
-                                            prev.includes(payment.id)
-                                                ? prev.filter(id => id !== payment.id)
-                                                : [...prev, payment.id]
-                                        );
-                                    }}
+                                    className={`glass-card p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden flex flex-col gap-4 ${isSelected ? 'bg-primary/5 border-primary/40' : 'bg-white/[0.02] border-white/10'}`}
                                 >
-                                    <div className="pt-1">
-                                        <PremiumCheckbox
-                                            checked={isSelected}
-                                            onChange={() => {
-                                                setSelectedItems(prev =>
-                                                    prev.includes(payment.id)
-                                                        ? prev.filter(id => id !== payment.id)
-                                                        : [...prev, payment.id]
-                                                );
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <div className="w-10 h-10 shrink-0 rounded-xl bg-white/5 flex items-center justify-center text-xs font-black text-white/40">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="relative">
+                                                <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-primary font-black text-lg shadow-inner">
                                                     {payment.students?.full_name?.[0] || (payment.notes?.split(' - ')[1]?.[0] || 'G')}
                                                 </div>
-                                                <div className="min-w-0">
-                                                    <div className="font-black text-white text-sm tracking-tight truncate">
-                                                        {payment.students?.full_name || (payment.notes?.split(' - ')[1] || t('common.guest'))}
-                                                    </div>
-                                                    <div className="text-[8px] font-black uppercase tracking-widest text-white/20">
+                                                <div className="absolute -top-1 -right-1">
+                                                    <PremiumCheckbox
+                                                        checked={isSelected}
+                                                        onChange={() => {
+                                                            setSelectedItems(prev =>
+                                                                prev.includes(payment.id)
+                                                                    ? prev.filter(id => id !== payment.id)
+                                                                    : [...prev, payment.id]
+                                                            );
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h3 className="font-black text-white text-base truncate tracking-tight">{payment.students?.full_name || (payment.notes?.split(' - ')[1] || t('common.guest'))}</h3>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${!isPT ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-primary/10 text-primary border-primary/20'}`}>
+                                                        {isPT ? t('pt.title') : t('common.student')}
+                                                    </span>
+                                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">
                                                         {format(new Date(payment.payment_date), 'dd MMM yyyy')}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="text-lg font-black text-emerald-400 tracking-tighter">
-                                                    +{Number(payment.amount).toLocaleString()}
-                                                </div>
-                                                <div className="text-[8px] font-black text-white/10 uppercase tracking-widest">
-                                                    {currency.code}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
+                                        <div className="text-right flex flex-col items-end">
+                                            <span className="text-xl font-black text-emerald-400 tracking-tighter">
+                                                +{Number(payment.amount).toLocaleString()}
+                                            </span>
+                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{currency.code}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
                                         <div className="flex items-center gap-2">
-                                            <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border ${!isPT ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-primary/10 text-primary border-primary/20'}`}>
-                                                {isPT ? t('pt.title') : t('common.student')}
-                                            </span>
-                                            <span className="px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest bg-white/5 text-white/40 border border-white/5">
+                                            <div className="px-2 py-1 rounded-lg bg-white/5 border border-white/5 text-[8px] font-black text-white/40 uppercase tracking-widest">
                                                 {(payment.payment_method || 'Cash').replace('_', ' ')}
-                                            </span>
+                                            </div>
                                         </div>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteTransaction(payment.id, 'payments');
+                                            }}
+                                            className="p-2 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/20 active:scale-90 transition-transform"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
                                     </div>
                                 </div>
                             );
@@ -550,8 +553,8 @@ export default function Finance() {
                 <div className="hidden md:block overflow-x-auto overflow-y-visible">
                     <table className="w-full text-left border-separate border-spacing-0">
                         <thead className="sticky top-0 z-10">
-                            <tr className="bg-white/[0.02] backdrop-blur-md">
-                                <th className="px-6 py-4">
+                            <tr className="bg-[#0a0c10] backdrop-blur-md">
+                                <th className="px-4 py-4 w-12 text-center">
                                     <PremiumCheckbox
                                         checked={payments.length > 0 && selectedItems.length === payments.length}
                                         onChange={() => {
@@ -563,25 +566,26 @@ export default function Finance() {
                                         }}
                                     />
                                 </th>
-                                <th className="pl-16 pr-6 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">{t('common.student')}</th>
-                                <th className="pl-10 pr-6 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">{t('common.role')}</th>
-                                <th className="pl-8 pr-6 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">{t('common.date')}</th>
-                                <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">{t('common.method')}</th>
-                                <th className="pl-6 pr-10 py-4 text-right text-[9px] font-black uppercase tracking-widest text-white/20">{t('common.amount')}</th>
+                                <th className="px-4 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">{t('common.student')}</th>
+                                <th className="px-4 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">{t('common.role')}</th>
+                                <th className="px-4 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">{t('common.date')}</th>
+                                <th className="px-4 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">{t('common.method')}</th>
+                                <th className="px-4 py-4 text-right text-[9px] font-black uppercase tracking-widest text-white/20">{t('common.amount')}</th>
+                                <th className="px-4 py-4 w-12"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
                             {loading ? (
-                                <tr><td colSpan={6} className="px-6 py-20 text-center"><div className="flex flex-col items-center gap-4"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div><p className="text-[9px] font-black uppercase tracking-widest text-white/20">{t('common.loading')}</p></div></td></tr>
+                                <tr><td colSpan={7} className="px-6 py-20 text-center"><div className="flex flex-col items-center gap-4"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div><p className="text-[9px] font-black uppercase tracking-widest text-white/20">{t('common.loading')}</p></div></td></tr>
                             ) : payments.length === 0 ? (
-                                <tr><td colSpan={6} className="px-6 py-20 text-center text-white/10 font-black uppercase tracking-[0.3em] italic text-xs">{t('common.noResults')}</td></tr>
+                                <tr><td colSpan={7} className="px-6 py-20 text-center text-white/10 font-black uppercase tracking-[0.3em] italic text-xs">{t('common.noResults')}</td></tr>
                             ) : (
                                 payments.map((payment) => {
                                     const isPT = payment.notes?.toLowerCase().includes('pt');
                                     const isSelected = selectedItems.includes(payment.id);
                                     return (
                                         <tr key={payment.id} className={`group hover:bg-white/[0.04] transition-all duration-500 ${isSelected ? 'bg-primary/5' : ''}`}>
-                                            <td className="px-6 py-4">
+                                            <td className="px-4 py-2 text-center">
                                                 <PremiumCheckbox
                                                     checked={isSelected}
                                                     onChange={() => {
@@ -593,17 +597,17 @@ export default function Finance() {
                                                     }}
                                                 />
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-xs font-black text-white/40 group-hover:bg-primary/20 group-hover:text-primary group-hover:scale-105 transition-all duration-500 shadow-inner">
+                                            <td className="px-4 py-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[10px] font-black text-white/40 group-hover:bg-primary/20 group-hover:text-primary group-hover:scale-105 transition-all duration-500 shadow-inner shrink-0">
                                                         {payment.students?.full_name?.[0] || (payment.notes?.split(' - ')[1]?.[0] || 'G')}
                                                     </div>
-                                                    <div>
-                                                        <div className="font-black text-white text-sm tracking-tight leading-none mb-1 group-hover:text-primary transition-colors">
+                                                    <div className="min-w-0">
+                                                        <div className="font-black text-white text-xs tracking-tight truncate group-hover:text-primary transition-colors">
                                                             {payment.students?.full_name || (payment.notes?.split(' - ')[1] || t('common.guest'))}
                                                         </div>
                                                         <div
-                                                            className="text-[9px] font-black uppercase tracking-[0.1em]"
+                                                            className="text-[8px] font-black uppercase tracking-[0.1em] truncate"
                                                             style={{ color: payment.students?.full_name ? 'var(--color-brand-label)' : '#f59e0b' }}
                                                         >
                                                             {payment.students?.full_name ? t('pt.academyStudent') : t('pt.guestStudent')}
@@ -611,9 +615,9 @@ export default function Finance() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-4 py-2">
                                                 <span
-                                                    className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] border transition-all duration-500 ${!isPT ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 group-hover:bg-emerald-500/20' : ''}`}
+                                                    className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-[0.1em] border transition-all duration-500 ${!isPT ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 group-hover:bg-emerald-500/20' : ''}`}
                                                     style={isPT ? {
                                                         color: 'var(--color-brand-label)',
                                                         backgroundColor: 'color-mix(in srgb, var(--color-brand-label), transparent 90%)',
@@ -623,26 +627,31 @@ export default function Finance() {
                                                     {isPT ? t('pt.title') : t('common.student')}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-white/60 font-black text-xs tracking-widest uppercase">
+                                            <td className="px-4 py-2">
+                                                <div className="text-white/40 font-black text-[10px] tracking-wider uppercase">
                                                     {format(new Date(payment.payment_date), 'dd MMM yyyy')}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <span className="inline-flex items-center px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em] bg-white/5 text-white/40 border border-white/5 group-hover:border-primary/30 group-hover:text-primary transition-all duration-500 shadow-inner">
+                                            <td className="px-4 py-2">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded bg-white/5 text-[8px] font-black uppercase tracking-widest text-white/30 border border-white/5 group-hover:border-primary/30 group-hover:text-primary transition-all duration-500 shadow-inner">
                                                     {(payment.payment_method || 'Cash').replace('_', ' ')}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-right">
+                                            <td className="px-4 py-2 text-right">
                                                 <div className="flex flex-col items-end group-hover:scale-105 transition-transform duration-500 origin-right">
-                                                    <span className="text-2xl font-black text-emerald-400 tracking-tighter drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]">
+                                                    <span className="text-lg font-black text-emerald-400 tracking-tighter">
                                                         +{Number(payment.amount).toLocaleString()}
                                                     </span>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[9px] font-black text-white/10 uppercase tracking-[0.3em]">{currency.code}</span>
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                                    </div>
+                                                    <span className="text-[7px] font-black text-white/10 uppercase tracking-[0.3em]">{currency.code}</span>
                                                 </div>
+                                            </td>
+                                            <td className="px-4 py-2 text-right">
+                                                <button
+                                                    onClick={() => handleDeleteTransaction(payment.id, 'payments')}
+                                                    className="p-2 text-white/20 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-90"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
                                             </td>
                                         </tr>
                                     );

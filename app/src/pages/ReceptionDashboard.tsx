@@ -976,37 +976,30 @@ export default function ReceptionDashboard({ role }: { role?: string }) {
 
                     {/* Ultra-Chic Duty Control Center */}
                     {myCoachId && (
-                        <div className="relative group/duty lg:ml-auto">
-                            <div className={`relative flex items-center gap-2.5 p-1.5 pr-3 rounded-2xl border transition-all duration-500 shadow-lg
-                                ${isCheckedIn
-                                    ? 'bg-emerald-500/5 border-emerald-500/10'
-                                    : 'bg-white/[0.02] border-white/5'}`}>
+                        <div className="relative lg:ml-auto">
+                            <div className={`flex items-center gap-3 p-1.5 pr-4 rounded-full border transition-all duration-500 ${isCheckedIn
+                                ? 'bg-emerald-500/5 border-emerald-500/10 shadow-lg shadow-emerald-500/5'
+                                : 'bg-white/[0.02] border-white/5 shadow-inner'}`}>
 
                                 <button
                                     onClick={isCheckedIn ? handleSelfCheckOut : handleSelfCheckIn}
-                                    className={`relative w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-500 hover:scale-105 active:scale-95
-                                        ${isCheckedIn
-                                            ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20'
-                                            : 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'}`}
+                                    className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${isCheckedIn
+                                        ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                                        : 'bg-white text-black shadow-lg shadow-white/20'}`}
                                 >
-                                    {isCheckedIn ? <XCircle className="w-4.5 h-4.5" /> : <Clock className="w-4.5 h-4.5" />}
+                                    {isCheckedIn ? <XCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                                 </button>
 
-                                <div className="space-y-0 min-w-[70px]">
-                                    <span className="text-[6px] font-black text-white/20 uppercase tracking-[0.2em] block leading-none mb-0.5">Status</span>
+                                <div className="min-w-[60px]">
+                                    <p className="text-[7px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">On Duty</p>
                                     {isCheckedIn ? (
-                                        <div className="space-y-0">
-                                            <div className="text-base font-black text-white font-mono tracking-tighter tabular-nums leading-none">
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-xs font-black text-white font-mono tracking-tight leading-none tabular-nums">
                                                 {formatTimer(elapsedTime)}
-                                            </div>
-                                            <div className="text-emerald-400/60 text-[6px] font-black uppercase tracking-widest leading-none mt-0.5">
-                                                ACTIVE
-                                            </div>
+                                            </span>
                                         </div>
                                     ) : (
-                                        <div className="space-y-0">
-                                            <div className="text-xs font-black text-white/20 uppercase tracking-tighter leading-none">Offline</div>
-                                        </div>
+                                        <p className="text-[10px] font-black text-white/40 uppercase tracking-tight leading-none">Offline</p>
                                     )}
                                 </div>
                             </div>
