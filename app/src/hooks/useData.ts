@@ -270,6 +270,9 @@ export function useMonthlyPayroll(month: string) {
 
             if (coachError) throw coachError;
 
+            // Filter out admins from payroll
+            const filteredCoaches = (coaches || []).filter(c => c.role !== 'admin');
+
             // 2. Get attendance and PT sessions for the selected month
             const startOfMonth = `${month}-01`;
             const lastDay = new Date(Number(month.split('-')[0]), Number(month.split('-')[1]), 0).getDate();
@@ -283,7 +286,7 @@ export function useMonthlyPayroll(month: string) {
                     .lte('date', endOfMonth),
                 supabase
                     .from('pt_sessions')
-                    .select('coach_id, sessions_count, coach_share')
+                    .select('id, coach_id, sessions_count, coach_share, student_name, date, created_at')
                     .gte('date', startOfMonth)
                     .lte('date', endOfMonth)
             ]);
@@ -293,7 +296,7 @@ export function useMonthlyPayroll(month: string) {
 
             // 3. Aggregate data
             let totalPayroll = 0;
-            const stats = coaches.map(coach => {
+            const stats = filteredCoaches.map(coach => {
                 const coachAttendance = attendanceRes.data?.filter(a => a.coach_id === coach.id) || [];
                 const coachSessions = sessionsRes.data?.filter(s => s.coach_id === coach.id) || [];
 
@@ -329,6 +332,8 @@ export function useMonthlyPayroll(month: string) {
                     pt_rate: coach.pt_rate || 0,
                     salary: salary,
                     total_pt_sessions: totalSessions,
+                    pt_earnings: ptEarnings,
+                    pt_sessions: coachSessions, // ADDED: include raw sessions
                     total_hours: totalHours,
                     total_earnings: totalEarnings
                 };

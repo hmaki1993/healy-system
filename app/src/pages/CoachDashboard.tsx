@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Clock, Calendar, CheckCircle, XCircle, Globe, User, Users, ChevronRight, ChevronLeft, TrendingUp, Wallet, RotateCcw, Trash2, AlertCircle } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, XCircle, Globe, User, Users, ChevronRight, ChevronLeft, TrendingUp, Wallet, RotateCcw, Trash2, AlertCircle, Activity, ExternalLink, X, History } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useOutletContext } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { format, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, setMonth, setYear, isBefore, startOfDay } from 'date-fns';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
@@ -15,6 +15,7 @@ import PremiumClock from '../components/PremiumClock';
 import { useTheme } from '../context/ThemeContext';
 import BatchAssessmentModal from '../components/BatchAssessmentModal';
 import AssessmentHistoryModal from '../components/AssessmentHistoryModal';
+import PremiumCalendarModal from '../components/PremiumCalendarModal';
 
 export default function CoachDashboard() {
     const { t, i18n } = useTranslation();
@@ -37,16 +38,17 @@ export default function CoachDashboard() {
     const [showClearModal, setShowClearModal] = useState(false);
     const [showClearHistoryModal, setShowClearHistoryModal] = useState(false);
     const [showGroupForm, setShowGroupForm] = useState(false);
+    const [showFullHistoryModal, setShowFullHistoryModal] = useState(false);
+    const [selectedSubForHistory, setSelectedSubForHistory] = useState<any>(null);
     const [showBatchTest, setShowBatchTest] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
     const [editingGroup, setEditingGroup] = useState<any>(null);
     const [pendingAssignments, setPendingAssignments] = useState<any[]>([]);
     const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
-    const [showBackdateModal, setShowBackdateModal] = useState(false);
-    const [selectedSubForBackdate, setSelectedSubForBackdate] = useState<any>(null);
-    const [viewDate, setViewDate] = useState(new Date()); // For calendar navigation
-    const [backdateDate, setBackdateDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [showEarningsModal, setShowEarningsModal] = useState(false);
+    const [monthSessions, setMonthSessions] = useState<any[]>([]);
 
+    // History Modal State
     // No longer need interval here as PremiumClock handles it
     // But we might need currentTime for the date display if we don't want it to be static
     // Actually, format(new Date(), ...) is fine for a static date if it doesn't cross midnight during the session.
@@ -61,7 +63,7 @@ export default function CoachDashboard() {
         if (isCheckedIn) {
             interval = setInterval(() => {
                 const today = format(new Date(), 'yyyy-MM-dd');
-                const startTime = localStorage.getItem(`checkInStart_${today}`);
+                const startTime = localStorage.getItem(`checkInStart_${today} `);
                 if (startTime) {
                     const params = JSON.parse(startTime);
                     const now = new Date().getTime();
@@ -126,7 +128,7 @@ export default function CoachDashboard() {
                                 setElapsedTime(Math.floor((new Date().getTime() - start.getTime()) / 1000));
 
                                 // Ensure local storage is in sync for the timer
-                                localStorage.setItem(`checkInStart_${format(new Date(), 'yyyy-MM-dd')}`, JSON.stringify({
+                                localStorage.setItem(`checkInStart_${format(new Date(), 'yyyy-MM-dd')} `, JSON.stringify({
                                     timestamp: start.getTime(),
                                     recordId: attendance.id
                                 }));
@@ -174,9 +176,9 @@ export default function CoachDashboard() {
         if (!coachId) return;
 
         // If Head Coach, listen to ALL changes, otherwise only for THIS coach
-        const filter = (role === 'head_coach') ? undefined : `coach_id=eq.${coachId}`;
+        const filter = (role === 'head_coach') ? undefined : `coach_id = eq.${coachId} `;
 
-        const ptSessionsSubscription = supabase.channel(`pt_sessions_changes_${coachId}`)
+        const ptSessionsSubscription = supabase.channel(`pt_sessions_changes_${coachId} `)
             .on('postgres_changes', {
                 event: '*',
                 schema: 'public',
@@ -187,7 +189,7 @@ export default function CoachDashboard() {
             })
             .subscribe();
 
-        const ptSubscriptionsChannel = supabase.channel(`pt_subscriptions_changes_${coachId}`)
+        const ptSubscriptionsChannel = supabase.channel(`pt_subscriptions_changes_${coachId} `)
             .on('postgres_changes', {
                 event: '*',
                 schema: 'public',
@@ -307,9 +309,10 @@ export default function CoachDashboard() {
             // For earnings, sum up the coach_share from individual sessions
             const { data: sessionsData } = await supabase
                 .from('pt_sessions')
-                .select('sessions_count, coach_share')
+                .select('id, date, created_at, student_name, sessions_count, coach_share')
                 .eq('coach_id', id)
-                .gte('date', startOfMonth);
+                .gte('date', startOfMonth)
+                .order('date', { ascending: false });
 
             const earnings = sessionsData?.reduce((sum, s) => {
                 const count = s.sessions_count || 1;
@@ -318,11 +321,12 @@ export default function CoachDashboard() {
             }, 0) || 0;
 
             setTotalEarnings(earnings);
+            setMonthSessions(sessionsData || []);
 
             // Fetch PT Subscriptions: Head Coach sees ALL, Coach sees their own
             let query = supabase
                 .from('pt_subscriptions')
-                .select('*, students(id, full_name), coaches(full_name)')
+                .select('*, students(id, full_name, training_days, training_schedule), coaches(full_name)')
                 .order('status', { ascending: true });
 
             if (role !== 'head_coach' && role !== 'admin') {
@@ -344,13 +348,13 @@ export default function CoachDashboard() {
             const { data, error } = await supabase
                 .from('skill_assessments')
                 .select(`
-                    id,
-                    title,
-                    date,
-                    coach_id,
-                    skills,
-                    students(id, full_name, photo_url, coaches(full_name))
-                `)
+id,
+    title,
+    date,
+    coach_id,
+    skills,
+    students(id, full_name, photo_url, coaches(full_name))
+        `)
                 .eq('coach_id', coachId)
                 .eq('evaluation_status', 'assigned')
                 .order('created_at', { ascending: false });
@@ -359,7 +363,7 @@ export default function CoachDashboard() {
 
             if (data) {
                 const grouped = data.reduce((acc: any, curr: any) => {
-                    const key = `${curr.title}-${curr.date}`;
+                    const key = `${curr.title} -${curr.date} `;
                     if (!acc[key]) {
                         acc[key] = {
                             key,
@@ -407,7 +411,7 @@ export default function CoachDashboard() {
             if (error) throw error;
             setIsCheckedIn(true);
             setCheckInTime(format(now, 'HH:mm:ss'));
-            localStorage.setItem(`checkInStart_${todayStr}`, JSON.stringify({ timestamp: now.getTime(), recordId: data.id }));
+            localStorage.setItem(`checkInStart_${todayStr} `, JSON.stringify({ timestamp: now.getTime(), recordId: data.id }));
             toast.success(t('coach.checkInSuccess'));
         } catch (error: any) {
             console.error('Check-in error detailed:', error);
@@ -418,7 +422,7 @@ export default function CoachDashboard() {
     const handleCheckOut = async () => {
         const now = new Date();
         const today = format(now, 'yyyy-MM-dd');
-        const savedStart = localStorage.getItem(`checkInStart_${today}`);
+        const savedStart = localStorage.getItem(`checkInStart_${today} `);
         try {
             if (savedStart) {
                 const { recordId, timestamp } = JSON.parse(savedStart);
@@ -428,7 +432,7 @@ export default function CoachDashboard() {
             setIsCheckedIn(false);
             setCheckInTime(null);
             setElapsedTime(0);
-            localStorage.removeItem(`checkInStart_${today}`);
+            localStorage.removeItem(`checkInStart_${today} `);
             toast.success(t('coach.checkOutSuccess'));
         } catch (error) {
             toast.error(t('common.error'));
@@ -456,20 +460,35 @@ export default function CoachDashboard() {
             const studentData = Array.isArray(sub.students) ? sub.students[0] : sub.students;
             const studentName = (studentData?.full_name || sub.student_name || '').trim();
 
-            // Construct payload with explicit created_at for backdated sessions
+            const now = new Date();
+            let sessionTime = now.toISOString();
+
+            if (!customDate) {
+                // Align with scheduled time if present for TODAY
+                const dayMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+                const todayDay = dayMap[new Date().getDay()];
+                const schedule = studentData?.training_schedule?.find((s: any) => s.day === todayDay);
+
+                if (schedule && schedule.start) {
+                    const [hours, minutes] = schedule.start.split(':');
+                    const scheduledDate = new Date();
+                    scheduledDate.setHours(parseInt(hours) || 16, parseInt(minutes) || 0, 0, 0);
+                    sessionTime = scheduledDate.toISOString();
+                }
+            } else {
+                // Set backdated session to noon to avoid timezone shift
+                sessionTime = new Date(`${customDate}T12:00:00`).toISOString();
+            }
+
             const payload: any = {
                 coach_id: sub.coach_id,
                 date: sessionDate,
                 sessions_count: 1,
                 student_name: studentName,
                 subscription_id: sub.id,
-                coach_share: sub.coach_share
+                coach_share: sub.coach_share,
+                created_at: sessionTime
             };
-
-            if (customDate) {
-                // Set to noon to avoid timezone shifting the date when viewing
-                payload.created_at = new Date(`${customDate}T12:00:00`).toISOString();
-            }
 
             const { error: sessionError } = await supabase.from('pt_sessions').insert(payload);
             if (sessionError) throw sessionError;
@@ -647,7 +666,7 @@ export default function CoachDashboard() {
                     <div className="flex items-center justify-between mb-4 relative z-10">
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
-                                <span className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${isCheckedIn ? 'bg-emerald-400 shadow-[0_0_10px_2px_rgba(52,211,153,0.8)] animate-pulse' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`}></span>
+                                <span className={`w - 1.5 h - 1.5 rounded - full transition - all duration - 500 ${isCheckedIn ? 'bg-emerald-400 shadow-[0_0_10px_2px_rgba(52,211,153,0.8)] animate-pulse' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'} `}></span>
                                 <span className={isCheckedIn ? 'text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.5)]' : 'text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.3)]'}>
                                     {isCheckedIn ? t('coaches.workingNow') : t('coaches.away')}
                                 </span>
@@ -676,7 +695,7 @@ export default function CoachDashboard() {
                         )}
                         <button
                             onClick={isCheckedIn ? handleCheckOut : handleCheckIn}
-                            className={`group/btn w-full py-4 rounded-[1.5rem] font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 transition-all hover:scale-102 active:scale-98 shadow-premium ${isCheckedIn ? 'bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white' : 'bg-primary text-white hover:bg-primary/90'}`}
+                            className={`group / btn w - full py - 4 rounded - [1.5rem] font - black uppercase tracking - widest text - [11px] flex items - center justify - center gap - 3 transition - all hover: scale - 102 active: scale - 98 shadow - premium ${isCheckedIn ? 'bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white' : 'bg-primary text-white hover:bg-primary/90'} `}
                         >
                             {isCheckedIn ? <XCircle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
                             {isCheckedIn ? t('coach.checkOut') : t('coach.checkIn')}
@@ -685,8 +704,11 @@ export default function CoachDashboard() {
                 </div>
 
                 {/* Total Earnings Card */}
-                <div className="glass-card p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-white/10 shadow-premium relative overflow-hidden group col-span-1 md:col-span-2">
-                    <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl transition-all duration-700"></div>
+                <div
+                    onClick={() => setShowEarningsModal(true)}
+                    className="glass-card p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-white/10 shadow-premium relative overflow-hidden group col-span-1 md:col-span-2 cursor-pointer hover:border-amber-500/40 transition-all active:scale-[0.98]"
+                >
+                    <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl transition-all duration-700 group-hover:bg-amber-500/10"></div>
                     <div className="flex items-center justify-between mb-4 relative z-10">
                         <div>
                             <h2 className="text-lg font-black text-white uppercase tracking-tight">Earnings</h2>
@@ -717,77 +739,92 @@ export default function CoachDashboard() {
             </div>
 
             {/* PT Sessions Recording Card */}
-            <div className="glass-card p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-white/10 shadow-premium relative overflow-hidden">
+            <div className="glass-card p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-white/10 shadow-premium relative overflow-hidden bg-gradient-to-br from-white/[0.02] to-transparent">
                 <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
-                            <div className="p-2.5 bg-primary/20 rounded-xl text-primary"><User className="w-5 h-5" /></div>
-                            {t('coach.ptSessions', 'PT History Log')}
-                        </h2>
+                    <div className="space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2.5 bg-primary/20 rounded-xl text-primary shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] shrink-0">
+                                    <Clock className="w-5 h-5" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight truncate">{t('coach.ptSessions', 'PT History Log')}</h2>
+                                    <p className="text-[9px] sm:text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">{savedSessions.length} Total Sessions Recorded</p>
+                                </div>
+                            </div>
 
-                        {savedSessions.length > 0 && (
                             <button
-                                onClick={() => setShowClearHistoryModal(true)}
-                                className="flex items-center gap-2 px-6 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 rounded-2xl transition-all font-black uppercase tracking-widest text-[10px] group"
+                                onClick={() => setShowFullHistoryModal(true)}
+                                className="flex items-center justify-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-2xl transition-all font-black uppercase tracking-widest text-[10px] active:scale-95 group w-full sm:w-auto"
                             >
-                                <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                                Clear All
+                                <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                <span className="inline">Open Full History</span>
                             </button>
+                        </div>
+
+                        {/* Compact Summary Bar */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="p-5 rounded-[2rem] bg-[#12141c]/40 border border-white/5 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                        <CheckCircle className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">Today</p>
+                                        <p className="text-lg font-black text-white leading-none">
+                                            {savedSessions.filter(s => s.date === format(new Date(), 'yyyy-MM-dd')).length} <span className="text-xs text-white/40 uppercase ml-1">Sessions</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-5 rounded-[2rem] bg-[#12141c]/40 border border-white/5 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <Users className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">This Week</p>
+                                        <p className="text-lg font-black text-white leading-none">
+                                            {savedSessions.filter(s => {
+                                                const d = new Date(s.date);
+                                                const weekAgo = new Date();
+                                                weekAgo.setDate(weekAgo.getDate() - 7);
+                                                return d >= weekAgo;
+                                            }).length} <span className="text-xs text-white/40 uppercase ml-1">Sessions</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Recent 2 recorded sessions names bar */}
+                            <div className="lg:col-span-2 p-4 sm:p-5 rounded-[1.5rem] sm:rounded-[2rem] bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 overflow-hidden group/activity">
+                                <span className="text-[10px] font-black text-white/20 uppercase tracking-widest shrink-0">Recent Activity:</span>
+                                <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar mask-fade-right py-1.5 flex-1">
+                                    {savedSessions.slice(0, 3).map((s, idx) => (
+                                        <div key={s.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#12141c] border border-white/5 shrink-0 hover:border-white/20 transition-all cursor-default scale-95 hover:scale-100 origin-left">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(var(--accent-rgb),0.5)]" />
+                                            <span className="text-[9px] sm:text-[10px] font-black text-white/60 uppercase">{s.student_name}</span>
+                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-tighter">
+                                                {format(new Date(s.created_at), 'hh:mm a')}
+                                            </span>
+                                        </div>
+                                    ))}
+                                    {savedSessions.length === 0 && <span className="text-[10px] font-black text-white/10 uppercase italic">No sessions recorded yet</span>}
+                                    {/* Empty div for padding to ensure fade works correctly at the end */}
+                                    <div className="w-8 shrink-0 h-4" />
+                                </div>
+                            </div>
+                        </div>
+                        {savedSessions.length === 0 && (
+                            <p className="text-white/10 text-[9px] font-bold mt-2 uppercase tracking-widest">Sessions logged by you will appear here</p>
                         )}
                     </div>
-
-                    {savedSessions.length > 0 ? (
-                        <div className="space-y-8">
-                            {sortedDates.map((date) => {
-                                const sessions = groupedSessions[date];
-                                const isToday = date === format(new Date(), 'yyyy-MM-dd');
-
-                                return (
-                                    <div key={date} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                                        <div className="flex items-center gap-4 mb-4">
-                                            <div className={`px-4 py-2 rounded-xl border border-white/5 shadow-inner ${isToday ? 'bg-accent/20 text-accent' : 'bg-white/5 text-white/60'}`}>
-                                                <span className="font-black uppercase tracking-widest text-xs">
-                                                    {isToday ? 'Today' : format(new Date(date), 'EEEE, MMM dd')}
-                                                </span>
-                                            </div>
-                                            <div className="h-px flex-1 bg-white/5"></div>
-                                            <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-white/40 font-mono text-xs font-bold">
-                                                {sessions.length} Session{sessions.length !== 1 ? 's' : ''}
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {sessions.map((session: any) => (
-                                                <div key={session.id} className="flex items-center justify-between p-5 rounded-[2rem] bg-white/[0.02] border border-white/5 hover:border-primary/30 transition-all group">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary/80"><User className="w-5 h-5" /></div>
-                                                        <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <p className="font-bold text-white text-sm tracking-tight">{session.student_name}</p>
-                                                            </div>
-                                                            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{format(new Date(session.created_at), 'hh:mm a')}</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <div className="py-16 text-center border-2 border-dashed border-white/5 rounded-[3rem]">
-                            <div className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-white/5 flex items-center justify-center text-white/20">
-                                <User className="w-10 h-10" />
-                            </div>
-                            <p className="text-white/30 font-bold uppercase tracking-widest text-xs">No history found</p>
-                        </div>
-                    )}
                 </div>
             </div>
 
             {/* My Groups Section */}
-            <div className="glass-card p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-white/10 shadow-premium">
+            < div className="glass-card p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-white/10 shadow-premium" >
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
                         <div className="p-2.5 bg-accent/20 rounded-xl text-accent"><User className="w-5 h-5" /></div>
@@ -810,7 +847,7 @@ export default function CoachDashboard() {
                         setShowGroupForm(true);
                     } : undefined}
                 />
-            </div>
+            </div >
 
             {
                 showGroupForm && (
@@ -857,7 +894,7 @@ export default function CoachDashboard() {
                     {ptSubscriptions.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {ptSubscriptions.map((subscription) => (
-                                <div className="group relative overflow-hidden rounded-[2.5rem] bg-[#12141c]/60 border border-white/5 p-5 sm:p-6 transition-all duration-500 hover:border-white/10 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] backdrop-blur-xl flex flex-col h-full">
+                                <div key={subscription.id} className="group relative overflow-hidden rounded-[2.5rem] bg-[#12141c]/60 border border-white/5 p-5 sm:p-6 transition-all duration-500 hover:border-white/10 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] backdrop-blur-xl flex flex-col h-full">
                                     {/* Premium Glow Effects */}
                                     <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                                     <div className="absolute -top-32 -right-32 w-64 h-64 bg-accent/5 rounded-full blur-[100px] pointer-events-none group-hover:opacity-100 transition-opacity duration-700 opacity-50" />
@@ -878,16 +915,47 @@ export default function CoachDashboard() {
                                                 <h3 className="font-black text-white text-lg tracking-tight leading-none mb-1 truncate">
                                                     {subscription.students?.full_name || subscription.student_name || 'Unknown'}
                                                 </h3>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/5 text-[9px] font-black text-white/40 uppercase tracking-widest">
-                                                        PT Student
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/5 text-[8px] font-black text-white/40 uppercase tracking-widest">
+                                                        PT Athlete
                                                     </span>
+                                                    {(() => {
+                                                        const dayMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+                                                        const todayDay = dayMap[new Date().getDay()];
+                                                        const studentData = Array.isArray(subscription.students) ? subscription.students[0] : subscription.students;
+
+                                                        // Prioritize today's schedule
+                                                        const todaySchedule = studentData?.training_schedule?.find((s: any) => s.day === todayDay);
+                                                        const displaySchedule = todaySchedule || studentData?.training_schedule?.[0];
+
+                                                        if (!displaySchedule) return null;
+
+                                                        const [h, m] = displaySchedule.start.split(':');
+                                                        const hr = parseInt(h);
+                                                        const timeStr = `${hr % 12 || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+
+                                                        return (
+                                                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border transition-all duration-300 ${todaySchedule ? 'bg-accent/20 border-accent/40 shadow-[0_0_10px_rgba(var(--accent-rgb),0.2)]' : 'bg-white/5 border-white/10'}`}>
+                                                                <Clock className={`w-2.5 h-2.5 ${todaySchedule ? 'text-accent' : 'text-white/20'}`} />
+                                                                <span className={`text-[8px] font-black uppercase tracking-widest ${todaySchedule ? 'text-accent' : 'text-white/40'}`}>
+                                                                    {timeStr} {todaySchedule ? 'Today' : ''}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Status Badge */}
-                                        <div className="flex-shrink-0">
+                                        <div className="flex-shrink-0 flex items-center gap-2">
+                                            <button
+                                                onClick={() => setSelectedSubForHistory(subscription)}
+                                                className="w-9 h-9 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20 transition-all active:scale-95"
+                                                title="PT History / Edit"
+                                            >
+                                                <Clock className="w-5 h-5" />
+                                            </button>
                                             {(() => {
                                                 const isExpired = new Date(subscription.expiry_date) < new Date() || subscription.status === 'expired' || subscription.sessions_remaining <= 0;
                                                 return isExpired ? (
@@ -926,31 +994,32 @@ export default function CoachDashboard() {
 
                                     {/* Progress Bar & Actions Wrapper */}
                                     <div className="space-y-6 relative z-10">
-                                        {/* Integrated Progress */}
+                                        {/* Integrated Progress & Schedule */}
                                         <div className="px-1">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">• Training Progress</span>
-                                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/5 border border-white/5">
-                                                    <Clock className="w-3 h-3 text-accent" />
-                                                    <span className="text-[9px] font-bold text-white/60">{subscription.sessions_remaining}/{subscription.sessions_total}</span>
+                                            <div className="flex items-center justify-between mb-3">
+                                                <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">• Training Progression</span>
+                                                <div className="flex items-center gap-2">
+                                                    {subscription.students?.training_days?.slice(0, 3).map((day: string) => (
+                                                        <span key={day} className="text-[9px] font-black text-accent/60 uppercase">{day}</span>
+                                                    ))}
+                                                    {subscription.students?.training_days?.length > 3 && <span className="text-[9px] font-black text-white/20">...</span>}
                                                 </div>
                                             </div>
                                             <div className="h-2 bg-black/40 rounded-full overflow-hidden border border-white/5 relative">
                                                 <div
                                                     className="h-full bg-gradient-to-r from-accent via-amber-200 to-accent rounded-full shadow-[0_0_10px_rgba(var(--accent-rgb),0.4)] relative"
-                                                    style={{ width: `${(subscription.sessions_remaining / subscription.sessions_total) * 100}%` }}
+                                                    style={{ width: `${(subscription.sessions_remaining / subscription.sessions_total) * 100}% ` }}
                                                 ></div>
                                             </div>
                                         </div>
 
                                         {/* Action Bar - ALWAYS VISIBLE */}
-                                        <div className="grid grid-cols-4 gap-2.5 pt-5 border-t border-white/5">
+                                        <div className="grid grid-cols-3 gap-2.5 pt-5 border-t border-white/5">
                                             {(() => {
+                                                const todayStr = format(new Date(), 'yyyy-MM-dd');
                                                 const recentSession = savedSessions.find(s => {
                                                     const isMatch = s.subscription_id === subscription.id;
-                                                    const sDate = new Date(s.created_at);
-                                                    const hoursAgo = (new Date().getTime() - sDate.getTime()) / (1000 * 60 * 60);
-                                                    return isMatch && hoursAgo < 24;
+                                                    return isMatch && s.date === todayStr;
                                                 });
                                                 const isRecentlyRecorded = !!recentSession;
                                                 const isLoading = recordingId === subscription.id;
@@ -981,19 +1050,9 @@ export default function CoachDashboard() {
                                                             )}
                                                         </button>
 
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedSubForBackdate(subscription);
-                                                                setBackdateDate(format(new Date(), 'yyyy-MM-dd'));
-                                                                setViewDate(new Date());
-                                                                setShowBackdateModal(true);
-                                                            }}
-                                                            disabled={isLoading || (subscription.sessions_remaining <= 0 && !isRecentlyRecorded)}
-                                                            className="col-span-1 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white flex items-center justify-center transition-all active:scale-95 text-white/60 hover:text-white"
-                                                            title="Backdate Session"
-                                                        >
-                                                            <Calendar className="w-4 h-4" />
-                                                        </button>
+                                                        {/* Backdate button removed */}
+
+                                                        {/* History Button moved to header */}
 
                                                         {!isRecentlyRecorded && subscription.sessions_remaining > 0 && (
                                                             <button
@@ -1121,140 +1180,196 @@ export default function CoachDashboard() {
                 )
             }
 
-            {/* Backdate Session Modal */}
+            {/* Backdate modal removed */}
+            {/* Premium Full History Modal */}
             {
-                showBackdateModal && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#0a0c10]/60 backdrop-blur-md animate-in fade-in duration-500">
-                        <div className="w-full max-w-md glass-card rounded-[3rem] border border-white/10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] animate-in zoom-in-95 duration-500 relative overflow-hidden bg-[#12141c]/40 backdrop-blur-2xl">
-                            {/* Premium Decorative Elements */}
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-accent/20 rounded-full blur-[100px] -mr-32 -mt-32 opacity-50"></div>
-                            <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/10 rounded-full blur-[100px] -ml-32 -mb-32 opacity-30"></div>
-
-                            <div className="relative z-10 p-10">
-                                <div className="flex flex-col items-center text-center mb-10">
-                                    <div className="relative mb-6">
-                                        <div className="absolute -inset-4 bg-accent/20 rounded-full blur-2xl opacity-50 animate-pulse"></div>
-                                        <div className="relative w-20 h-20 bg-gradient-to-br from-accent to-primary rounded-[2rem] flex items-center justify-center text-white shadow-2xl transform hover:rotate-6 transition-transform duration-500">
-                                            <Calendar className="w-10 h-10 drop-shadow-lg" />
-                                        </div>
+                showFullHistoryModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-2xl bg-black/60 animate-in fade-in duration-300">
+                        <div className="relative w-full max-w-5xl max-h-[90vh] glass-card rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+                            {/* Modal Header */}
+                            <div className="p-5 sm:p-7 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 bg-white/[0.02]">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary shadow-[0_0_30px_rgba(var(--primary-rgb),0.3)] shrink-0">
+                                        <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
                                     </div>
-                                    <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Backdate Session</h3>
-                                    <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-4">Manual Entry Correction</p>
-                                    <div className="px-4 py-2 bg-white/5 rounded-full border border-white/10 flex items-center gap-2">
-                                        <User className="w-3 h-3 text-accent" />
-                                        <span className="text-xs font-bold text-white/60 tracking-tight">{selectedSubForBackdate?.students?.full_name || selectedSubForBackdate?.student_name}</span>
+                                    <div className="min-w-0">
+                                        <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight leading-tight mb-1 truncate">PT Session History</h2>
+                                        <p className="text-[9px] sm:text-[10px] font-black text-white/20 uppercase tracking-[0.2em] sm:tracking-[0.3em] truncate">Full audit log of recorded sessions</p>
                                     </div>
                                 </div>
 
-                                <div className="space-y-8">
-                                    <div className="space-y-3 group/field">
-                                        <label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 ml-2 group-focus-within/field:text-accent transition-colors flex items-center gap-2">
-                                            <div className="w-1 h-1 rounded-full bg-accent/40"></div>
-                                            Select Attendance Date
-                                        </label>
-                                        <div className="relative bg-[#0a0c10]/40 border border-white/10 rounded-[2rem] p-4 overflow-hidden">
-                                            {/* Calendar Header */}
-                                            <div className="flex items-center justify-between mb-4 px-2">
-                                                <button
-                                                    onClick={() => setViewDate(subMonths(viewDate, 1))}
-                                                    className="p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors"
-                                                >
-                                                    <ChevronLeft className="w-5 h-5" />
-                                                </button>
-                                                <h4 className="text-white font-black uppercase tracking-widest text-sm">
-                                                    {format(viewDate, 'MMMM yyyy')}
-                                                </h4>
-                                                <button
-                                                    onClick={() => setViewDate(addMonths(viewDate, 1))}
-                                                    className="p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-colors"
-                                                    disabled={isSameMonth(viewDate, new Date()) || viewDate > new Date()}
-                                                >
-                                                    <ChevronRight className="w-5 h-5" />
-                                                </button>
-                                            </div>
+                                <div className="flex items-center justify-end gap-2 sm:gap-3">
+                                    {savedSessions.length > 0 && (
+                                        <button
+                                            onClick={() => {
+                                                setShowFullHistoryModal(false);
+                                                setShowClearHistoryModal(true);
+                                            }}
+                                            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 rounded-xl sm:rounded-2xl transition-all font-black uppercase tracking-widest text-[9px] sm:text-[10px] group active:scale-95"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5 sm:w-4 h-4 group-hover:rotate-12 transition-transform" />
+                                            <span className="inline sm:inline">Clear History</span>
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setShowFullHistoryModal(false)}
+                                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/5 flex items-center justify-center text-white/40 hover:bg-white/10 transition-all shrink-0"
+                                    >
+                                        <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                                    </button>
+                                </div>
+                            </div>
 
-                                            {/* Days Grid */}
-                                            <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                                                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-                                                    <div key={day} className="text-[9px] font-black uppercase text-white/20 py-1">
-                                                        {day}
+                            {/* Modal Content - SCROLLABLE */}
+                            <div className="flex-1 overflow-y-auto p-6 sm:p-7 custom-scrollbar">
+                                {savedSessions.length > 0 ? (
+                                    <div className="space-y-8">
+                                        {sortedDates.map((date) => {
+                                            const sessions = groupedSessions[date];
+                                            const isToday = date === format(new Date(), 'yyyy-MM-dd');
+
+                                            return (
+                                                <div key={date} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                                    <div className="flex items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
+                                                        <div className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl border shadow-premium backdrop-blur-md ${isToday ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-white/5 border-white/10 text-white/50'} `}>
+                                                            <span className="font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] text-[9px] sm:text-[10px]">
+                                                                {isToday ? 'Today' : (date === format(new Date(Date.now() - 86400000), 'yyyy-MM-dd') ? 'Yesterday' : format(new Date(date + 'T12:00:00'), 'EEEE, MMM dd'))}
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent"></div>
+                                                        <div className="px-2 py-1 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl bg-white/[0.02] border border-white/5 text-white/30 font-mono text-[8px] sm:text-[9px] font-black uppercase tracking-widest shrink-0">
+                                                            {sessions.length} {sessions.length !== 1 ? 'Sess' : 'Sess'}
+                                                        </div>
                                                     </div>
-                                                ))}
-                                            </div>
-                                            <div className="grid grid-cols-7 gap-1">
-                                                {eachDayOfInterval({
-                                                    start: startOfWeek(startOfMonth(viewDate)),
-                                                    end: endOfWeek(endOfMonth(viewDate))
-                                                }).map((day, dayIdx) => {
-                                                    const isSelected = backdateDate === format(day, 'yyyy-MM-dd');
-                                                    const isToday = isSameDay(day, new Date());
-                                                    const isCurrentMonth = isSameMonth(day, viewDate);
 
-                                                    // Validation: Cannot backdate before subscription started
-                                                    const subStartDate = selectedSubForBackdate?.created_at ? new Date(selectedSubForBackdate.created_at) : new Date();
-                                                    const isBeforeStart = isBefore(day, startOfDay(subStartDate));
-                                                    const isFuture = day > new Date();
-                                                    const isDisabled = isFuture || isBeforeStart;
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                        {sessions.map((session: any) => (
+                                                            <div key={session.id} className="group/item relative flex items-center justify-between p-4 rounded-[2rem] bg-[#12141c]/40 border border-white/5 hover:border-primary/40 transition-all duration-300 hover:shadow-2xl overflow-hidden active:scale-[0.98]">
+                                                                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover/item:opacity-100 transition-opacity" />
 
-                                                    return (
-                                                        <button
-                                                            key={day.toString()}
-                                                            onClick={() => !isDisabled && setBackdateDate(format(day, 'yyyy-MM-dd'))}
-                                                            disabled={isDisabled}
-                                                            className={`
-                                                                relative h-9 rounded-xl flex items-center justify-center text-xs font-bold transition-all
-                                                                ${!isCurrentMonth ? 'invisible' : ''}
-                                                                ${isDisabled ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer hover:bg-white/5'}
-                                                                ${isSelected && !isDisabled
-                                                                    ? 'bg-gradient-to-br from-accent to-primary text-white shadow-lg scale-105 z-10'
-                                                                    : 'text-white/60'}
-                                                                ${isToday && !isSelected && !isDisabled ? 'border border-accent/30 text-accent' : ''}
-                                                            `}
-                                                            title={isBeforeStart ? 'Cannot select date before subscription start' : ''}
-                                                        >
-                                                            {format(day, 'd')}
-                                                            {isSelected && !isDisabled && (
-                                                                <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse" />
-                                                            )}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
+                                                                <div className="flex items-center gap-4 relative z-10">
+                                                                    <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover/item:scale-110 transition-transform duration-500">
+                                                                        <User className="w-5 h-5" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="font-black text-white text-base tracking-tight mb-0.5 group-hover/item:text-primary transition-colors">{session.student_name}</p>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                                                                {format(new Date(session.created_at), 'hh:mm a')}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="relative z-10">
+                                                                    <div className="w-8 h-8 rounded-full border border-white/5 flex items-center justify-center text-white/10 group-hover/item:text-primary/40 group-hover/item:border-primary/20 transition-all">
+                                                                        <CheckCircle className="w-4 h-4" />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-24">
+                                        <div className="w-20 h-20 rounded-3xl bg-white/5 flex items-center justify-center text-white/20 mb-5">
+                                            <History className="w-10 h-10" />
                                         </div>
+                                        <p className="text-white/20 font-black uppercase tracking-[0.4em] text-xs">Audit Log is Empty</p>
                                     </div>
-
-                                    <div className="flex flex-col gap-3">
-                                        <button
-                                            onClick={() => {
-                                                handleRecordSession(selectedSubForBackdate, backdateDate);
-                                                setShowBackdateModal(false);
-                                                setSelectedSubForBackdate(null);
-                                            }}
-                                            className="w-full py-5 rounded-[1.8rem] bg-gradient-to-r from-accent to-primary text-white font-black uppercase tracking-[0.2em] text-[11px] transition-all hover:scale-[1.02] hover:shadow-[0_20px_40px_-8px_rgba(var(--accent-rgb),0.3)] active:scale-98 shadow-xl relative overflow-hidden group"
-                                        >
-                                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
-                                            <span className="relative z-10 flex items-center justify-center gap-2">
-                                                <CheckCircle className="w-4 h-4" />
-                                                Record Session Now
-                                            </span>
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setShowBackdateModal(false);
-                                                setSelectedSubForBackdate(null);
-                                            }}
-                                            className="w-full py-4 rounded-[1.5rem] bg-white/5 hover:bg-white/10 text-white/30 hover:text-white/60 font-black uppercase tracking-widest text-[9px] transition-all border border-transparent hover:border-white/10"
-                                        >
-                                            Return to Dashboard
-                                        </button>
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 )
             }
-        </div>
+
+            {/* Earnings Breakdown Modal */}
+            {showEarningsModal && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 backdrop-blur-2xl bg-black/60 animate-in fade-in duration-300">
+                    <div className="relative w-full max-w-2xl max-h-[85vh] glass-card rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+                        {/* Modal Header */}
+                        <div className="p-5 sm:p-7 border-b border-white/5 flex items-center justify-between shrink-0 bg-white/[0.02]">
+                            <div className="flex items-center gap-3 sm:gap-4">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center text-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.3)] shrink-0">
+                                    <Wallet className="w-5 h-5 sm:w-6 sm:h-6" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight leading-tight mb-1 truncate">Earnings Breakdown</h2>
+                                    <p className="text-[9px] sm:text-[10px] font-black text-white/20 uppercase tracking-[0.2em] sm:tracking-[0.3em] truncate">{format(new Date(), 'MMMM yyyy')}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowEarningsModal(false)}
+                                className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/5 flex items-center justify-center text-white/40 hover:bg-white/10 transition-all shrink-0"
+                            >
+                                <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                            </button>
+                        </div>
+
+                        {/* Summary Bar */}
+                        <div className="grid grid-cols-2 bg-white/[0.01] border-b border-white/5">
+                            <div className="p-4 sm:p-6 border-r border-white/5 text-center">
+                                <p className="text-[9px] sm:text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Base Salary</p>
+                                <p className="text-xl sm:text-2xl font-black text-white">{baseSalary.toLocaleString()} <span className="text-[10px] sm:text-xs text-white/20">{currency.code}</span></p>
+                            </div>
+                            <div className="p-4 sm:p-6 text-center">
+                                <p className="text-[9px] sm:text-[10px] font-black text-amber-500/40 uppercase tracking-widest mb-1">PT Earnings</p>
+                                <p className="text-xl sm:text-2xl font-black text-amber-500">{totalEarnings.toLocaleString()} <span className="text-[10px] sm:text-xs text-amber-500/20">{currency.code}</span></p>
+                            </div>
+                        </div>
+
+                        {/* Modal Content - Scrollable List */}
+                        <div className="flex-1 overflow-y-auto p-6 sm:p-7 custom-scrollbar">
+                            <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-6">• Monthly PT Sessions ({monthSessions.length})</h3>
+
+                            <div className="space-y-3">
+                                {monthSessions.map((session) => (
+                                    <div key={session.id} className="group/item relative flex items-center justify-between p-4 rounded-2xl bg-[#12141c]/40 border border-white/5 hover:border-amber-500/20 transition-all">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover/item:scale-110 transition-transform">
+                                                <User className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-white text-sm tracking-tight mb-0.5">{session.student_name}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{format(new Date(session.date), 'dd MMM')}</span>
+                                                    <span className="w-1 h-1 rounded-full bg-white/10" />
+                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{format(new Date(session.created_at), 'hh:mm a')}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-black text-amber-500 text-sm">+{((session.coach_share ?? ptRate) * (session.sessions_count || 1)).toLocaleString()} <span className="text-[10px] opacity-40">{currency.code}</span></p>
+                                            <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">{session.sessions_count || 1} Session{(session.sessions_count || 1) > 1 ? 's' : ''}</p>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {monthSessions.length === 0 && (
+                                    <div className="flex flex-col items-center justify-center py-12 opacity-20">
+                                        <Activity className="w-12 h-12 mb-4" />
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-center">No PT sessions recorded<br />this month yet</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-5 sm:p-7 border-t border-white/5 bg-white/[0.02] flex items-center justify-between">
+                            <span className="text-[9px] sm:text-[10px] font-black text-white/20 uppercase tracking-widest">Estimated Total</span>
+                            <div className="flex items-baseline gap-1.5 sm:gap-2">
+                                <span className="text-xl sm:text-2xl font-black text-white">{(totalEarnings + baseSalary).toLocaleString()}</span>
+                                <span className="text-[10px] sm:text-xs font-black text-white/20">{currency.code}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div >
     );
 };
 
@@ -1265,5 +1380,5 @@ function formatTimer(seconds: number) {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')} `;
 }

@@ -146,8 +146,7 @@ export default function Finance() {
     // Separate PT earnings from base salaries
     const monthlyBaseSalaries = payrollData?.payrollData?.reduce((sum, coach) => sum + Number(coach.salary), 0) || 0;
     const monthlyPTEarnings = payrollData?.payrollData?.reduce((sum, coach) => {
-        const ptEarnings = Number(coach.total_pt_sessions) * Number(coach.pt_rate);
-        return sum + ptEarnings;
+        return sum + (Number((coach as any).pt_earnings) || 0);
     }, 0) || 0;
     const monthlyPayroll = payrollData?.totalPayroll || 0; // Total (Salaries + PT)
 

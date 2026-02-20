@@ -250,6 +250,21 @@ input[type=number] {
   -moz-appearance: textfield;
 }
 
+/* Premium Component Utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.mask-fade-right {
+  mask-image: linear-gradient(to right, black 80%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
+}
+
 /* Mobile Performance & Chic Optimizations */
 @media (max-width: 768px) {
   .glass-card {

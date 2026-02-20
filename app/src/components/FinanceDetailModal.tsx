@@ -1,6 +1,5 @@
-
-
-import { X, TrendingUp, Calendar, Wallet, AlertTriangle, DollarSign, Receipt, Dumbbell, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { X, TrendingUp, Calendar, Wallet, AlertTriangle, DollarSign, Receipt, Dumbbell, Trash2, ArrowLeft, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrency } from '../context/CurrencyContext';
 
@@ -16,11 +15,21 @@ interface Payment {
 }
 
 interface PayrollEntry {
+    coach_id?: string;
     coach_name: string;
     salary: number;
     total_earnings: number;
     total_pt_sessions: number;
     pt_rate: number;
+    pt_earnings?: number;
+    pt_sessions?: Array<{
+        id: string;
+        student_name: string;
+        sessions_count: number;
+        coach_share: number;
+        date: string;
+        created_at: string;
+    }>;
 }
 
 interface Refund {
@@ -58,7 +67,11 @@ interface FinanceDetailModalProps {
 
 export default function FinanceDetailModal({ isOpen, onClose, type, title, data, onDelete }: FinanceDetailModalProps) {
     const { currency } = useCurrency();
+    const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null);
+
     if (!isOpen || !type || !data) return null;
+
+    const selectedCoach = type === 'pt_sessions' ? (data as PayrollEntry[]).find(p => p.coach_id === selectedCoachId) : null;
 
     const renderContent = () => {
         switch (type) {
@@ -160,38 +173,177 @@ export default function FinanceDetailModal({ isOpen, onClose, type, title, data,
 
             case 'pt_sessions':
                 const ptPayroll = data as PayrollEntry[];
-                return (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="text-white/30 font-black text-[10px] uppercase tracking-[0.2em] border-b border-white/5">
-                                <tr>
-                                    <th className="px-6 py-4">Coach</th>
-                                    <th className="px-6 py-4 text-center">PT Sessions</th>
-                                    <th className="px-6 py-4 text-center">Rate/Session</th>
-                                    <th className="px-6 py-4 text-right">Total Earnings</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {ptPayroll.length === 0 ? (
-                                    <tr><td colSpan={4} className="px-6 py-8 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No PT sessions</td></tr>
-                                ) : (
-                                    ptPayroll.map((p, i) => {
-                                        const ptEarnings = p.total_pt_sessions * (p.pt_rate || 0);
-                                        if (ptEarnings === 0) return null;
-                                        return (
-                                            <tr key={i} className="hover:bg-white/5 transition-colors group">
-                                                <td className="px-6 py-4 font-bold text-white group-hover:text-purple-400 transition-colors">{p.coach_name}</td>
-                                                <td className="px-6 py-4 text-center text-white/60 font-bold">{p.total_pt_sessions}</td>
-                                                <td className="px-6 py-4 text-center text-white/40 text-xs font-mono">{(p.pt_rate || 0).toLocaleString()} {currency.code}</td>
+
+                if (selectedCoach) {
+                    return (
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between bg-white/[0.02] p-4 rounded-2xl border border-white/5">
+                                <button
+                                    onClick={() => setSelectedCoachId(null)}
+                                    className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors"
+                                >
+                                    <ArrowLeft className="w-4 h-4" /> Back to Coaches
+                                </button>
+                                <div className="text-right">
+                                    <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">{selectedCoach.coach_name}</p>
+                                    <p className="text-sm font-black text-purple-400">Total: {selectedCoach.pt_earnings?.toLocaleString()} {currency.code}</p>
+                                </div>
+                            </div>
+
+                            {/* Desktop View: Table */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead className="text-white/30 font-black text-[10px] uppercase tracking-[0.2em] border-b border-white/5">
+                                        <tr>
+                                            <th className="px-6 py-4">Student</th>
+                                            <th className="px-6 py-4 text-center">Date</th>
+                                            <th className="px-6 py-4 text-center">Sessions</th>
+                                            <th className="px-6 py-4 text-right">Earnings</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5">
+                                        {(selectedCoach.pt_sessions || []).map((s) => (
+                                            <tr key={s.id} className="hover:bg-white/5 transition-colors group">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40 group-hover:bg-purple-500/20 group-hover:text-purple-400 transition-all">
+                                                            <User className="w-4 h-4" />
+                                                        </div>
+                                                        <div className="font-bold text-white text-sm">{s.student_name}</div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <div className="text-white/60 text-[10px] font-mono">{format(new Date(s.date), 'dd MMM yyyy')}</div>
+                                                    <div className="text-[8px] text-white/20 font-black uppercase tracking-widest">{format(new Date(s.created_at), 'hh:mm a')}</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-center text-white/60 font-bold">{s.sessions_count}</td>
                                                 <td className="px-6 py-4 text-right font-black text-purple-400 tracking-tight">
-                                                    -{ptEarnings.toLocaleString()} <span className="text-[9px] text-white/20">{currency.code}</span>
+                                                    +{(s.sessions_count * (s.coach_share || selectedCoach.pt_rate || 0)).toLocaleString()} <span className="text-[9px] text-white/20">{currency.code}</span>
                                                 </td>
                                             </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile View: High-End Cards */}
+                            <div className="md:hidden space-y-4">
+                                {(selectedCoach.pt_sessions || []).map((s) => (
+                                    <div key={s.id} className="p-5 rounded-3xl bg-white/[0.02] border border-white/5 space-y-4 relative overflow-hidden group active:scale-[0.98] transition-all">
+                                        <div className="flex items-center justify-between relative z-10">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 border border-purple-500/20">
+                                                    <User className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-black text-white uppercase tracking-tight">{s.student_name}</p>
+                                                    <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">{format(new Date(s.date), 'EEEE')}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-lg font-black text-purple-400 tracking-tighter">+{(s.sessions_count * (s.coach_share || selectedCoach.pt_rate || 0)).toLocaleString()} <span className="text-[9px] text-white/20">{currency.code}</span></p>
+                                                <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">{s.sessions_count} {s.sessions_count === 1 ? 'Session' : 'Sessions'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between pt-4 border-t border-white/5 relative z-10">
+                                            <div className="flex items-center gap-2">
+                                                <Calendar className="w-3 h-3 text-white/20" />
+                                                <span className="text-[10px] font-black text-white/60 font-mono tracking-tight">{format(new Date(s.date), 'dd MMM yyyy')}</span>
+                                            </div>
+                                            <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">{format(new Date(s.created_at), 'hh:mm a')}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="space-y-4">
+                        {/* Desktop View: Table */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="text-white/30 font-black text-[10px] uppercase tracking-[0.2em] border-b border-white/5">
+                                    <tr>
+                                        <th className="px-6 py-4">Coach</th>
+                                        <th className="px-6 py-4 text-center">PT Sessions</th>
+                                        <th className="px-6 py-4 text-center">Rate/Session</th>
+                                        <th className="px-6 py-4 text-right">Total Earnings</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {ptPayroll.length === 0 ? (
+                                        <tr><td colSpan={4} className="px-6 py-8 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No PT sessions</td></tr>
+                                    ) : (
+                                        ptPayroll.map((p, i) => {
+                                            const ptEarnings = p.pt_earnings ?? (p.total_pt_sessions * (p.pt_rate || 0));
+                                            if (ptEarnings === 0) return null;
+                                            return (
+                                                <tr
+                                                    key={i}
+                                                    className="hover:bg-white/5 transition-colors group cursor-pointer"
+                                                    onClick={() => setSelectedCoachId(p.coach_id || null)}
+                                                >
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-white group-hover:text-purple-400 transition-colors">{p.coach_name}</span>
+                                                            <span className="text-[8px] font-black text-purple-500/40 uppercase tracking-widest group-hover:opacity-100 transition-opacity">Click to view breakdown →</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center text-white/60 font-bold">{p.total_pt_sessions}</td>
+                                                    <td className="px-6 py-4 text-center text-white/40 text-xs font-mono">{(p.pt_rate || 0).toLocaleString()} {currency.code}</td>
+                                                    <td className="px-6 py-4 text-right font-black text-purple-400 tracking-tight">
+                                                        {ptEarnings.toLocaleString()} <span className="text-[9px] text-white/20">{currency.code}</span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile View: High-End Cards */}
+                        <div className="md:hidden space-y-3">
+                            {ptPayroll.length === 0 ? (
+                                <div className="p-12 text-center text-white/20 font-black uppercase tracking-widest text-[10px]">No PT sessions</div>
+                            ) : (
+                                ptPayroll.map((p, i) => {
+                                    const ptEarnings = p.pt_earnings ?? (p.total_pt_sessions * (p.pt_rate || 0));
+                                    if (ptEarnings === 0) return null;
+                                    return (
+                                        <button
+                                            key={i}
+                                            onClick={() => setSelectedCoachId(p.coach_id || null)}
+                                            className="w-full text-left p-5 rounded-3xl bg-white/[0.02] border border-white/5 relative overflow-hidden group active:scale-[0.98] transition-all"
+                                        >
+                                            <div className="flex items-center justify-between relative z-10">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 border border-purple-500/20">
+                                                        <Dumbbell className="w-5 h-5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-black text-white uppercase tracking-tight">{p.coach_name}</p>
+                                                        <p className="text-[8px] font-black text-purple-400 uppercase tracking-widest animate-pulse">View Breakdown →</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-lg font-black text-purple-400 tracking-tighter">{ptEarnings.toLocaleString()} <span className="text-[9px] text-white/20">{currency.code}</span></p>
+                                                    <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">{p.total_pt_sessions} Sessions</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/5 relative z-10">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Rate per Session:</span>
+                                                    <span className="text-[10px] font-black text-white/60 font-mono tracking-tight">{(p.pt_rate || 0).toLocaleString()} {currency.code}</span>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    );
+                                })
+                            )}
+                        </div>
                     </div>
                 );
 
