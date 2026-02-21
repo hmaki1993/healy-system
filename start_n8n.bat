@@ -1,33 +1,31 @@
 @echo off
 title n8n Automation Service
 color 0B
-echo ===================================================
-echo           STARTING N8N AUTOMATION SYSTEM
-echo ===================================================
-echo.
 
-:: Switch to Node 20 (required for n8n v2.7.5)
-set NVM_HOME=C:\Users\skinz\AppData\Local\nvm
-set NVM_SYMLINK=C:\nvm4w\nodejs
-call %NVM_HOME%\nvm.exe use 20.19.0
+:: === Use Node 20 directly from nvm folder ===
+set "NODE20=C:\Users\skinz\AppData\Local\nvm\v20.19.0"
+set "PATH=%NODE20%;%PATH%"
 
 :: Change to n8n directory
 cd /d F:\n8n_restored
 
-:: Kill any existing n8n on port 5678
-echo [1/3] Cleaning up old processes...
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5678 2^>nul') do taskkill /f /pid %%a 2>nul
+echo [1/3] Cleaning up ALL active Node processes...
+:: Be more aggressive to ensure port is free
+taskkill /F /IM node.exe /T >nul 2>&1
+timeout /t 2 /nobreak >nul
 
-echo [2/3] Will open Chrome after 10 seconds...
+echo [2/3] Chrome will open after 20 seconds...
+:: Run chrome opener in background
 start /b cmd /c "timeout /t 20 /nobreak >nul && start chrome http://localhost:5678"
 
-echo [3/3] Launching n8n (keep this window open)...
+echo [3/3] Launching n8n... (keep this window open)
 echo.
 echo ===================================================
-echo    n8n will be ready at: http://localhost:5678
-echo    Chrome will open automatically in 10 seconds
+echo    Running on Node:
+node --version
+echo    Dashboard: http://localhost:5678
 echo ===================================================
 echo.
 
-npx n8n
+"%NODE20%\npx.cmd" n8n
 pause
