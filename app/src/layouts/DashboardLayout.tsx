@@ -553,9 +553,9 @@ export default function DashboardLayout() {
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2 sm:gap-6">
                         {/* Quick Action Hub */}
-                        <div className="flex items-center gap-3 md:p-2 md:bg-text-base/5 md:border md:border-surface-border md:rounded-[2rem] md:shadow-inner md:backdrop-blur-md">
+                        <div className="flex items-center gap-1.5 sm:gap-3 md:p-2 md:bg-text-base/5 md:border md:border-surface-border md:rounded-[2rem] md:shadow-inner md:backdrop-blur-md">
                             {settings.clock_position === 'header' && (
                                 <div className="hidden md:flex items-center gap-3">
                                     <PremiumClock className="!bg-transparent !border-none !shadow-none !px-2" />

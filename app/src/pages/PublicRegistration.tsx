@@ -294,13 +294,13 @@ export default function PublicRegistration() {
             </div>
 
             {/* Back to App Button */}
-            <div className="fixed top-4 left-4 md:top-8 md:left-8 z-50">
+            <div className="fixed top-3 left-3 md:top-6 md:left-6 z-50">
                 <a
                     href="/"
-                    className="group flex items-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 hover:border-white/20 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+                    className="group flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 hover:border-white/20 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
                 >
-                    <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 text-white/70 group-hover:text-white transition-colors" />
-                    <span className="text-xs md:text-sm font-black text-white/70 group-hover:text-white uppercase tracking-wider transition-colors">
+                    <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4 text-white/70 group-hover:text-white transition-colors" />
+                    <span className="text-[10px] md:text-xs font-black text-white/70 group-hover:text-white uppercase tracking-wider transition-colors">
                         Back to App
                     </span>
                 </a>

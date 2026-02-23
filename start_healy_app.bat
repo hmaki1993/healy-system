@@ -5,11 +5,12 @@ cd /d "%~dp0app"
 :: Start the dev server in the background
 start /b npm run dev
 
-:: Wait for 7 seconds to let the server start
-echo Waiting for server to initialize...
-timeout /t 7 >nul
+:: Wait for 30 seconds to let the server start
+echo Waiting for server to initialize (this takes ~30s)...
+timeout /t 30 >nul
 
 :: Open the browser in Chrome specifically
+echo Opening http://localhost:3000 in Chrome...
 start chrome http://localhost:3000
 
 :: Keep the window open to show logs

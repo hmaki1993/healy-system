@@ -479,7 +479,7 @@ export default function WalkieTalkie({ role, userId }: { role: string; userId: s
     }, [isMuted, userId]);
 
     return (
-        <div className="flex items-center gap-2 relative">
+        <div className="flex items-center gap-1.5 sm:gap-2 relative">
             {/* Recipients Selection - ADMIN ONLY */}
             {role === 'admin' && (
                 <>
