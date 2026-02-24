@@ -5,6 +5,11 @@ import { Loader2, Globe, Sparkles, Award, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 
+const stripAlpha = (hex: string) => {
+    if (!hex) return '#000000';
+    return hex.length === 9 || hex.length === 8 ? hex.slice(0, 7) : hex;
+};
+
 export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -86,11 +91,15 @@ export default function Login() {
     return (
         <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 md:p-6 relative overflow-x-hidden font-cairo select-none">
 
-            {/* Dynamic Background with Natural Scaling */}
-            <div className="fixed inset-0 z-0">
+            {/* Dynamic Background with Natural Scaling & Repositioning */}
+            <div className="fixed inset-0 z-0 overflow-hidden">
                 <div
-                    className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 transition-transform duration-1000"
-                    style={{ backgroundImage: `url('${bgPath}')` }}
+                    className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 transition-all duration-1000"
+                    style={{
+                        backgroundImage: `url('${bgPath}')`,
+                        filter: `blur(${settings.login_bg_blur || 0}px) brightness(${settings.login_bg_brightness || 1.0})`,
+                        transform: `scale(${settings.login_bg_zoom || 1.0}) translate(${settings.login_bg_x_offset || 0}%, ${settings.login_bg_y_offset || 0}%)`
+                    }}
                 ></div>
 
                 {/* Dark Vignette Overlay */}
@@ -104,7 +113,12 @@ export default function Login() {
                 <div className="flex justify-center mb-8 relative group">
                     <div className="relative">
                         <div className="absolute inset-[-30px] bg-[#D4AF37]/10 blur-3xl rounded-full opacity-40 group-hover:opacity-80 transition-opacity duration-700"></div>
-                        <div className="w-20 h-20 md:w-36 md:h-36 rounded-full overflow-hidden flex items-center justify-center relative z-10">
+                        <div
+                            className="w-20 h-20 md:w-36 md:h-36 rounded-full overflow-hidden flex items-center justify-center relative z-10 transition-transform duration-500"
+                            style={{
+                                transform: `translate(${settings.login_logo_x_offset || 0}px, ${settings.login_logo_y_offset || 0}px) scale(${settings.login_logo_scale || 1.0})`
+                            }}
+                        >
                             <img
                                 src={logoPath}
                                 alt="Healy Academy"
@@ -128,9 +142,11 @@ export default function Login() {
                 {/* Login Card - V2.1 Smart Hover & Toggle */}
                 {/* Login Card - Clean Universal Glass View (Matched to Epic) */}
                 <div
-                    className="group/card border-2 border-[#D4AF37] md:border-white/[0.05] rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-[0_0_100px_rgba(0,0,0,1)] transition-all duration-700 ease-out bg-black glass-effect"
+                    className="group/card border-2 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-[0_0_100px_rgba(0,0,0,1)] transition-all duration-700 ease-out bg-black glass-effect"
                     style={{
-                        backgroundColor: settings.login_card_color ? `${settings.login_card_color}${Math.round((settings.login_card_opacity || 0.6) * 255).toString(16).padStart(2, '0')}` : undefined
+                        backgroundColor: settings.login_card_color ? `${stripAlpha(settings.login_card_color)}${Math.round((settings.login_card_opacity || 0.6) * 255).toString(16).padStart(2, '0')}` : undefined,
+                        borderColor: settings.login_card_border_color || '#D4AF37',
+                        transform: `scale(${settings.login_card_scale || 1.0}) translate(${settings.login_card_x_offset || 0}px, ${settings.login_card_y_offset || 0}px)`
                     }}
                 >
 

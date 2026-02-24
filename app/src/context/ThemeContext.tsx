@@ -33,6 +33,18 @@ export interface GymSettings {
     login_logo_url?: string;
     login_card_opacity?: number;
     login_card_color?: string;
+    login_logo_scale?: number;
+    login_logo_x_offset?: number;
+    login_logo_y_offset?: number;
+    login_bg_blur?: number;
+    login_bg_brightness?: number;
+    login_bg_zoom?: number;
+    login_bg_x_offset?: number;
+    login_bg_y_offset?: number;
+    login_card_x_offset?: number;
+    login_card_y_offset?: number;
+    login_card_border_color?: string;
+    login_card_scale?: number;
 }
 
 export const applySettingsToRoot = (settings: GymSettings) => {
@@ -168,6 +180,27 @@ export const defaultSettings: GymSettings = {
     login_card_opacity: 0.6,
     login_card_color: '#000000'
 };
+
+// Keys that are shared across the entire gym
+export const GYM_WIDE_KEYS: (keyof GymSettings)[] = [
+    'academy_name', 'logo_url', 'gym_address', 'gym_phone',
+    'login_bg_url', 'login_logo_url', 'login_card_opacity', 'login_card_color',
+    'login_logo_scale', 'login_logo_x_offset', 'login_logo_y_offset',
+    'login_bg_blur', 'login_bg_brightness', 'login_bg_zoom',
+    'login_bg_x_offset', 'login_bg_y_offset',
+    'login_card_x_offset', 'login_card_y_offset',
+    'login_card_border_color', 'login_card_scale'
+];
+
+// Keys that can be customized per user
+export const USER_SPECIFIC_KEYS: (keyof GymSettings)[] = [
+    'primary_color', 'secondary_color', 'accent_color', 'font_family',
+    'font_scale', 'border_radius', 'glass_opacity', 'surface_color',
+    'search_icon_color', 'search_bg_color', 'search_border_color', 'search_text_color',
+    'hover_color', 'hover_border_color', 'input_bg_color', 'clock_position',
+    'clock_integration', 'weather_integration', 'language', 'premium_badge_color',
+    'brand_label_color'
+];
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
@@ -305,9 +338,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
                 if (userSettingsRes.data) {
                     console.log('📥 Found user personal settings:', userSettingsRes.data);
-                    // Filter out nulls from user settings
+                    // Filter out nulls AND only include user-specific keys to prevent overwriting gym-wide settings
                     const filteredUser = Object.fromEntries(
-                        Object.entries(userSettingsRes.data).filter(([_, v]) => v !== null)
+                        Object.entries(userSettingsRes.data).filter(([key, v]) =>
+                            v !== null && USER_SPECIFIC_KEYS.includes(key as keyof GymSettings)
+                        )
                     );
                     finalSettings = { ...finalSettings, ...filteredUser };
                 }
@@ -404,25 +439,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                 return;
             }
 
-            // Separate gym-wide settings from user-specific settings
-            const gymWideKeys: (keyof GymSettings)[] = [
-                'academy_name', 'logo_url', 'gym_address', 'gym_phone',
-                'login_bg_url', 'login_logo_url', 'login_card_opacity', 'login_card_color'
-            ];
-
-            const userSpecificKeys: (keyof GymSettings)[] = [
-                'primary_color', 'secondary_color', 'accent_color', 'font_family',
-                'font_scale', 'border_radius', 'glass_opacity', 'surface_color',
-                'search_icon_color', 'search_bg_color', 'search_border_color', 'search_text_color',
-                'hover_color', 'hover_border_color', 'input_bg_color', 'clock_position',
-                'clock_integration', 'weather_integration', 'language', 'premium_badge_color',
-                'brand_label_color'
-            ];
-
             // Build gym_settings payload
             const gymPayload: any = {};
             let hasGymUpdates = false;
-            gymWideKeys.forEach(key => {
+            GYM_WIDE_KEYS.forEach(key => {
                 if (key in newSettings) {
                     gymPayload[key] = newSettings[key];
                     hasGymUpdates = true;
@@ -432,7 +452,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             // Build user_settings payload
             const userPayload: any = { user_id: user.id };
             let hasUserUpdates = false;
-            userSpecificKeys.forEach(key => {
+            USER_SPECIFIC_KEYS.forEach(key => {
                 if (key in newSettings) {
                     userPayload[key] = newSettings[key];
                     hasUserUpdates = true;
@@ -492,7 +512,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             toast.success('Settings saved successfully');
         } catch (error: any) {
             console.error('Error updating theme:', error);
-            toast.error(`Failed to update settings: ${error.message || 'Unknown error'}`);
+            const msg = error.message || '';
+            if (msg.includes('column') || msg.includes('does not exist')) {
+                toast.error('Database sync error. Please run the provided SQL scripts in Supabase Editor.');
+            } else {
+                toast.error(`Update failed: ${msg || 'Unknown error'}`);
+            }
             fetchSettings(); // Revert to server state on failure
         }
     };
