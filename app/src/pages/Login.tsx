@@ -44,8 +44,8 @@ export default function Login() {
         };
     }, []);
 
-    const logoPath = "/logo.png";
-    const bgPath = "/Tom Roberton Images _ Balance-and-Form _ 2.jpg";
+    const logoPath = settings.login_logo_url || "/logo.png";
+    const bgPath = settings.login_bg_url || "/Tom Roberton Images _ Balance-and-Form _ 2.jpg";
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -122,12 +122,15 @@ export default function Login() {
                 {/* Login Card - Clean Universal Glass View (Matched to Epic) */}
                 <div
                     className="group/card border-2 border-[#D4AF37] md:border-white/[0.05] rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-[0_0_100px_rgba(0,0,0,1)] transition-all duration-700 ease-out bg-black glass-effect"
+                    style={{
+                        backgroundColor: settings.login_card_color ? `${settings.login_card_color}${Math.round((settings.login_card_opacity || 0.6) * 255).toString(16).padStart(2, '0')}` : undefined
+                    }}
                 >
 
                     {/* Header - Inside Card */}
                     <div className="text-center mb-6">
                         <h1 className="text-xl font-black text-white tracking-[0.3em] uppercase mb-1">
-                            Healy Gymnastic
+                            {settings.academy_name || 'Healy Gymnastic'}
                         </h1>
                         <div className="flex items-center justify-center gap-4">
                             <div className="h-[1px] w-8 bg-[#D4AF37]/30"></div>
@@ -227,16 +230,16 @@ export default function Login() {
                 }
                 /* Universal Glass Effect */
                 .glass-effect {
-                    background-color: rgba(0, 0, 0, 0.4) !important;
-                    backdrop-filter: blur(64px) !important;
-                    opacity: 0.5 !important;
-                    border-color: rgba(255, 255, 255, 0.05) !important;
+                    background-color: var(--card-bg, rgba(0, 0, 0, 0.6)) !important;
+                    backdrop-filter: blur(40px) !important;
+                    opacity: 1 !important;
+                    border-color: rgba(212, 175, 55, 0.2) !important;
                     transition: all 0.7s ease-out;
                 }
 
                 @media (min-width: 1024px) {
                     .glass-effect {
-                        opacity: 0.3 !important;
+                        opacity: 0.95 !important;
                     }
                 }
 

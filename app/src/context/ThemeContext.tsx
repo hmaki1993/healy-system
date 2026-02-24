@@ -29,6 +29,10 @@ export interface GymSettings {
     logo_url?: string;
     gym_address?: string;
     gym_phone?: string;
+    login_bg_url?: string;
+    login_logo_url?: string;
+    login_card_opacity?: number;
+    login_card_color?: string;
 }
 
 export const applySettingsToRoot = (settings: GymSettings) => {
@@ -158,7 +162,11 @@ export const defaultSettings: GymSettings = {
     brand_label_color: '#A30000',
     academy_name: 'Healy Academy',
     gym_address: 'Cairo, Egypt',
-    gym_phone: '+20 123 456 7890'
+    gym_phone: '+20 123 456 7890',
+    login_bg_url: '/Tom Roberton Images _ Balance-and-Form _ 2.jpg',
+    login_logo_url: '/logo.png',
+    login_card_opacity: 0.6,
+    login_card_color: '#000000'
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -407,7 +415,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                 'search_icon_color', 'search_bg_color', 'search_border_color', 'search_text_color',
                 'hover_color', 'hover_border_color', 'input_bg_color', 'clock_position',
                 'clock_integration', 'weather_integration', 'language', 'premium_badge_color',
-                'brand_label_color'
+                'brand_label_color', 'login_bg_url', 'login_logo_url', 'login_card_opacity',
+                'login_card_color'
             ];
 
             // Build gym_settings payload

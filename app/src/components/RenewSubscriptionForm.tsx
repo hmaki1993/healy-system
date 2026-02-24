@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSubscriptionPlans } from '../hooks/useData';
 import { useCurrency } from '../context/CurrencyContext';
+import PremiumSelect from './PremiumSelect';
 
 interface RenewSubscriptionFormProps {
     student: any;
@@ -152,21 +153,15 @@ export default function RenewSubscriptionForm({ student, onClose, onSuccess }: R
                     {/* Plan Selection */}
                     <div className="space-y-2 group/field">
                         <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Target Service Tier</label>
-                        <div className="relative">
-                            <select
-                                required
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs font-bold tracking-wide"
-                                value={formData.subscription_plan_id}
-                                onChange={e => setFormData({ ...formData, subscription_plan_id: e.target.value })}
-                            >
-                                {plans.map(plan => (
-                                    <option key={plan.id} value={plan.id} className="bg-[#0a0a0f]">
-                                        {plan.name} — {plan.price} {currency.code}
-                                    </option>
-                                ))}
-                            </select>
-                            <RefreshCw className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/10 pointer-events-none group-focus-within/field:text-primary transition-colors" />
-                        </div>
+                        <PremiumSelect
+                            required
+                            value={formData.subscription_plan_id}
+                            onChange={val => setFormData({ ...formData, subscription_plan_id: val })}
+                            options={plans.map(plan => ({
+                                value: plan.id,
+                                label: `${plan.name} — ${plan.price} ${currency.code}`
+                            }))}
+                        />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -177,7 +172,7 @@ export default function RenewSubscriptionForm({ student, onClose, onSuccess }: R
                                 <input
                                     required
                                     type="date"
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center"
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest"
                                     value={formData.start_date}
                                     onChange={e => setFormData({ ...formData, start_date: e.target.value })}
                                 />
@@ -191,7 +186,7 @@ export default function RenewSubscriptionForm({ student, onClose, onSuccess }: R
                                 <input
                                     required
                                     type="date"
-                                    className="w-full px-5 py-3 bg-primary/5 border border-primary/20 rounded-2xl focus:ring-4 focus:ring-primary/10 outline-none transition-all text-primary font-black text-[10px] tracking-widest text-center"
+                                    className="w-full px-8 py-3.5 bg-primary/5 border border-primary/20 rounded-2xl focus:ring-4 focus:ring-primary/10 outline-none transition-all text-primary font-black text-sm tracking-widest"
                                     value={formData.expiry_date}
                                     onChange={e => setFormData({ ...formData, expiry_date: e.target.value })}
                                 />

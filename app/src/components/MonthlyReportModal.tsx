@@ -201,19 +201,19 @@ ${evaluations.behavior || 'Great attitude and focus!'}
                 <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent pointer-events-none"></div>
 
                 {/* Header Section */}
-                <div className="relative z-10 px-10 pt-10 pb-6 flex items-center justify-between border-b border-white/5 bg-[#0E1D21]/50">
-                    <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-lg">
-                            <FileText className="w-7 h-7" />
+                <div className="relative z-10 px-6 sm:px-10 pt-8 sm:pt-10 pb-4 sm:pb-6 flex items-center justify-between border-b border-white/5 bg-[#0E1D21]/50">
+                    <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-lg flex-shrink-0">
+                            <FileText className="w-5 h-5 sm:w-7 sm:h-7" />
                         </div>
-                        <div>
-                            <h2 className="text-xl font-black text-white uppercase tracking-[0.2em] mb-1">
+                        <div className="min-w-0">
+                            <h2 className="text-sm sm:text-xl font-black text-white uppercase tracking-[0.2em] mb-1 truncate">
                                 Monthly Report
                             </h2>
-                            <div className="flex items-center gap-3">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-primary">{student?.full_name}</span>
-                                <div className="w-1 h-1 rounded-full bg-white/20"></div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-white/30">
+                            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-primary truncate max-w-[120px] sm:max-w-none">{student?.full_name}</span>
+                                <div className="hidden xs:block w-1 h-1 rounded-full bg-white/20"></div>
+                                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/30 whitespace-nowrap">
                                     {format(new Date(selectedMonth), 'MMMM yyyy')}
                                 </span>
                             </div>
@@ -221,13 +221,13 @@ ${evaluations.behavior || 'Great attitude and focus!'}
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-3 rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/10 active:scale-90"
+                        className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/10 active:scale-90 flex-shrink-0 ml-4"
                     >
-                        <X className="w-5 h-5" />
+                        <X className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                 </div>
 
-                <div className="relative z-10 p-10 space-y-10 max-h-[65vh] overflow-y-auto custom-scrollbar">
+                <div className="relative z-10 p-6 sm:p-10 space-y-8 sm:space-y-10 max-h-[70vh] overflow-y-auto custom-scrollbar">
 
                     {/* Configuration & Analytics */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -257,18 +257,18 @@ ${evaluations.behavior || 'Great attitude and focus!'}
                                 ) : (
                                     <>
                                         <div className="flex-1 text-center">
-                                            <div className="text-2xl font-black text-white/80 leading-none mb-1">{stats.total}</div>
-                                            <div className="text-[8px] font-black uppercase tracking-widest text-white/10">Sessions</div>
+                                            <div className="text-xl sm:text-2xl font-black text-white/80 leading-none mb-1">{stats.total}</div>
+                                            <div className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-white/10">Sessions</div>
                                         </div>
-                                        <div className="w-px h-8 bg-white/5"></div>
+                                        <div className="w-px h-6 sm:h-8 bg-white/5"></div>
                                         <div className="flex-1 text-center">
-                                            <div className="text-2xl font-black text-emerald-500 leading-none mb-1">{stats.present}</div>
-                                            <div className="text-[8px] font-black uppercase tracking-widest text-emerald-500/20">Present</div>
+                                            <div className="text-xl sm:text-2xl font-black text-emerald-500 leading-none mb-1">{stats.present}</div>
+                                            <div className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-emerald-500/20">Present</div>
                                         </div>
-                                        <div className="w-px h-8 bg-white/5"></div>
+                                        <div className="w-px h-6 sm:h-8 bg-white/5"></div>
                                         <div className="flex-1 text-center">
-                                            <div className="text-2xl font-black text-rose-500 leading-none mb-1">{stats.absent}</div>
-                                            <div className="text-[8px] font-black uppercase tracking-widest text-rose-500/20">Absent</div>
+                                            <div className="text-xl sm:text-2xl font-black text-rose-500 leading-none mb-1">{stats.absent}</div>
+                                            <div className="text-[7px] sm:text-[8px] font-black uppercase tracking-widest text-rose-500/20">Absent</div>
                                         </div>
                                     </>
                                 )}
@@ -303,7 +303,7 @@ ${evaluations.behavior || 'Great attitude and focus!'}
                                 </div>
 
                                 {/* Absent List */}
-                                <div className="space-y-3 border-l border-white/5 pl-8">
+                                <div className="space-y-3 pt-6 sm:pt-0 border-t sm:border-t-0 sm:border-l border-white/5 sm:pl-8">
                                     <div className="flex items-center gap-2 text-rose-500/60 mb-1">
                                         <AlertCircle className="w-3.5 h-3.5" />
                                         <span className="text-[9px] font-black uppercase tracking-widest">Absence</span>

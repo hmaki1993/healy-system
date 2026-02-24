@@ -4,6 +4,7 @@ import { X, Save, DollarSign, ChevronDown } from 'lucide-react';
 import { useCurrency } from '../context/CurrencyContext';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
+import PremiumSelect from './PremiumSelect';
 
 interface Student {
     id: string;
@@ -134,20 +135,16 @@ export default function AddPaymentForm({ onClose, onSuccess }: AddPaymentFormPro
 
                         {!formData.is_guest ? (
                             <div className="space-y-2 group/field">
-                                <div className="relative">
-                                    <select
-                                        required
-                                        className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs tracking-wide font-bold"
-                                        value={formData.student_id}
-                                        onChange={e => setFormData({ ...formData, student_id: e.target.value })}
-                                    >
-                                        <option value="" className="bg-[#0a0a0f]">Select Athlete</option>
-                                        {students.map(s => (
-                                            <option key={s.id} value={s.id} className="bg-[#0a0a0f]">{s.full_name}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
-                                </div>
+                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Gymnast Name</label>
+                                <PremiumSelect
+                                    value={formData.student_id}
+                                    onChange={val => setFormData({ ...formData, student_id: val })}
+                                    options={[
+                                        { value: "", label: "Search Student..." },
+                                        ...(students || []).map(s => ({ value: s.id, label: s.full_name }))
+                                    ]}
+                                    placeholder="Gymnast Name"
+                                />
                             </div>
                         ) : (
                             <div className="space-y-2 group/field">
@@ -180,7 +177,7 @@ export default function AddPaymentForm({ onClose, onSuccess }: AddPaymentFormPro
                             <input
                                 required
                                 type="date"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-xs font-bold tracking-widest text-center"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center"
                                 value={formData.date}
                                 onChange={e => setFormData({ ...formData, date: e.target.value })}
                             />
@@ -211,7 +208,7 @@ export default function AddPaymentForm({ onClose, onSuccess }: AddPaymentFormPro
                     <div className="space-y-2 group/field">
                         <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Internal Notes</label>
                         <textarea
-                            className="w-full px-5 py-4 bg-white/[0.02] border border-white/5 rounded-3xl focus:border-primary/40 outline-none transition-all h-24 resize-none text-white placeholder:text-white/10 text-xs font-bold tracking-wide"
+                            className="w-full px-5 py-4 bg-white/[0.02] border border-white/5 rounded-3xl focus:border-primary/40 outline-none transition-all h-24 resize-none text-white placeholder:text-white/10 text-[10px] font-bold tracking-wide"
                             value={formData.notes}
                             onChange={e => setFormData({ ...formData, notes: e.target.value })}
                             placeholder=""

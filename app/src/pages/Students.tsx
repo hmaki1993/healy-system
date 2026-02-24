@@ -1008,11 +1008,15 @@ export default function Students() {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="min-w-0">
-                                                    <h3 className={`font-black text-white text-base truncate leading-tight ${!student.is_active && 'opacity-40'}`}>
+                                                <div className="min-w-0 pr-2 flex-1">
+                                                    <h3 className={`font-black text-white text-lg leading-tight ${!student.is_active && 'opacity-40'} whitespace-nowrap overflow-hidden`}
+                                                        style={{
+                                                            maskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent 100%)',
+                                                            WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent 100%)'
+                                                        }}>
                                                         {student.full_name}
                                                     </h3>
-                                                    <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mt-1">ID: {String(student.id).slice(0, 8)}</p>
+                                                    <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mt-1">ID: {String(student.id).slice(0, 8)}</p>
 
                                                     <div className="mt-3 space-y-2">
                                                         {/* Coach & Group */}
@@ -1037,45 +1041,62 @@ export default function Students() {
                                                 </div>
                                             </div>
 
-                                            <button
-                                                onClick={() => toggleStudentStatus(student.id, student.is_active)}
-                                                className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-wider border transition-all ${!student.is_active ? 'bg-red-500/10 border-red-500/20 text-red-500' : `${subscriptionStatus.color}`}`}
-                                            >
-                                                {!student.is_active ? t('common.inactive') : subscriptionStatus.label}
-                                            </button>
                                         </div>
 
-                                        {/* Action Bar */}
-                                        <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
-                                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">
-                                                {format(new Date(student.created_at), 'dd MMM yyyy')}
-                                            </span>
-                                            <div className="flex items-center gap-2">
-                                                {subscriptionStatus.label !== t('students.active') && (
-                                                    <button
-                                                        onClick={() => { setStudentToRenew(student); setShowRenewModal(true); }}
-                                                        className="p-2.5 rounded-lg bg-accent/10 text-accent border border-accent/20"
-                                                    >
-                                                        <RefreshCw className="w-4 h-4" />
-                                                    </button>
-                                                )}
+                                        <div className="mt-6 pt-5 border-t border-white/[0.04] flex flex-col gap-5">
+                                            {/* Row 1: Info & Status */}
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none mb-0.5">Added</span>
+                                                    <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.1em]">
+                                                        {format(new Date(student.created_at), 'dd MMM yyyy')}
+                                                    </span>
+                                                </div>
+
+                                                <button
+                                                    onClick={() => toggleStudentStatus(student.id, student.is_active)}
+                                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all duration-300 shadow-sm whitespace-nowrap ${!student.is_active
+                                                            ? 'bg-rose-500/10 border-rose-500/20 text-rose-500 shadow-lg shadow-rose-500/10'
+                                                            : subscriptionStatus.label === t('students.active')
+                                                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500 shadow-lg shadow-emerald-500/10'
+                                                                : 'bg-amber-500/10 border-amber-500/20 text-amber-500 shadow-lg shadow-amber-500/10'
+                                                        }`}
+                                                >
+                                                    {!student.is_active ? t('common.inactive') : subscriptionStatus.label}
+                                                </button>
+                                            </div>
+
+                                            {/* Row 2: Action Buttons - Full Width Spreading */}
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={() => { setEditingStudent(student); setShowAddModal(true); }}
+                                                    className="flex-1 h-11 rounded-xl bg-white/[0.03] hover:bg-primary/10 text-primary/60 hover:text-primary border border-white/5 hover:border-primary/20 flex items-center justify-center transition-all duration-300 active:scale-95"
+                                                    title={t('common.edit')}
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
                                                 {(role === 'admin' || role === 'head_coach') && (
                                                     <button
                                                         onClick={() => { setStudentForReport(student); setShowReportModal(true); }}
-                                                        className="p-2.5 rounded-lg bg-white/5 text-emerald-500"
+                                                        className="flex-1 h-11 rounded-xl bg-white/[0.03] hover:bg-emerald-500/10 text-emerald-500/60 hover:text-emerald-500 border border-white/5 hover:border-emerald-500/20 flex items-center justify-center transition-all duration-300 active:scale-95"
+                                                        title={t('students.generateReport')}
                                                     >
                                                         <FileText className="w-4 h-4" />
                                                     </button>
                                                 )}
-                                                <button
-                                                    onClick={() => { setEditingStudent(student); setShowAddModal(true); }}
-                                                    className="p-2.5 rounded-lg bg-white/5 text-primary"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </button>
+                                                {subscriptionStatus.label !== t('students.active') && (
+                                                    <button
+                                                        onClick={() => { setStudentToRenew(student); setShowRenewModal(true); }}
+                                                        className="flex-1 h-11 rounded-xl bg-accent/5 hover:bg-accent/10 text-accent border border-accent/10 hover:border-accent/20 flex items-center justify-center transition-all duration-300 active:scale-95"
+                                                        title={t('students.renew')}
+                                                    >
+                                                        <RefreshCw className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => setIdToDelete(student.id)}
-                                                    className="p-2.5 rounded-lg bg-white/5 text-rose-500"
+                                                    className="flex-1 h-11 rounded-xl bg-rose-500/5 hover:bg-rose-500/15 text-rose-500/60 hover:text-rose-500 border border-rose-500/10 hover:border-rose-500/30 flex items-center justify-center transition-all duration-300 active:scale-95"
+                                                    title={t('common.delete')}
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>

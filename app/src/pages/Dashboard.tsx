@@ -8,6 +8,7 @@ import { useDashboardStats } from '../hooks/useData';
 import CoachDashboard from './CoachDashboard';
 import HeadCoachDashboard from './HeadCoachDashboard';
 import ReceptionDashboard from './ReceptionDashboard';
+import CleanerDashboard from './CleanerDashboard';
 import LiveStudentsWidget from '../components/LiveStudentsWidget';
 import GroupsList from '../components/GroupsList';
 import BatchAssessmentModal from '../components/BatchAssessmentModal';
@@ -49,6 +50,11 @@ export default function Dashboard() {
     // Show Reception Dashboard
     if (role === 'reception' || role === 'receptionist') {
         return <ReceptionDashboard role={role} />;
+    }
+
+    // Show Cleaner Dashboard
+    if (role === 'cleaner') {
+        return <CleanerDashboard />;
     }
 
     // If Admin or any other role, continue to show the main admin dashboard stats below
@@ -214,7 +220,12 @@ export default function Dashboard() {
                             <span className="w-2 h-8 bg-primary rounded-full"></span>
                             {t('dashboard.newJoiners')}
                         </h3>
-                        <button className="text-[10px] font-black text-primary uppercase tracking-widest hover:text-white transition-colors">{t('dashboard.viewAll')}</button>
+                        <button
+                            onClick={() => navigate('/app/students')}
+                            className="text-[10px] font-black text-primary uppercase tracking-widest hover:text-white transition-colors"
+                        >
+                            {t('dashboard.viewAll')}
+                        </button>
                     </div>
 
                     <div className="p-8 space-y-4">
@@ -224,17 +235,17 @@ export default function Dashboard() {
                             <p className="text-white/20 text-sm font-black uppercase tracking-widest text-center py-10">{t('dashboard.noRecentActivity')}</p>
                         ) : (
                             displayStats.recentActivity.map((student: any) => (
-                                <div key={student.id} className="flex items-center justify-between p-5 bg-white/[0.02] rounded-3xl border border-white/5 hover:bg-white/5 transition-all duration-300 group">
-                                    <div className="flex items-center gap-4 min-w-0 flex-1 mr-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black group-hover:scale-110 transition-transform flex-shrink-0">
-                                            {student.full_name.charAt(0)}
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="font-extrabold text-white group-hover:text-primary transition-colors text-lg truncate uppercase tracking-tight">{student.full_name}</p>
-                                            <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">{t('dashboard.joined', { date: format(new Date(student.created_at), 'MMM dd') })}</p>
+                                <div key={student.id} className="flex items-start gap-4 p-5 bg-white/[0.02] rounded-3xl border border-white/5 hover:bg-white/5 transition-all duration-300 group">
+                                    <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black group-hover:scale-110 transition-transform flex-shrink-0 mt-1">
+                                        {student.full_name.charAt(0)}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-extrabold text-white group-hover:text-primary transition-colors text-lg uppercase tracking-tight leading-tight mb-3 whitespace-nowrap overflow-hidden pr-4" style={{ maskImage: 'linear-gradient(to right, black calc(100% - 32px), transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 32px), transparent 100%)' }}>{student.full_name}</p>
+                                        <div className="flex items-center justify-start gap-3">
+                                            <p className="text-[10px] text-white/30 font-black uppercase tracking-widest flex-shrink-0">{t('dashboard.joined', { date: format(new Date(student.created_at), 'MMM dd') })}</p>
+                                            <span className="inline-flex items-center px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-lg shadow-emerald-500/5">{t('students.active')}</span>
                                         </div>
                                     </div>
-                                    <span className="inline-flex items-center px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex-shrink-0 shadow-lg shadow-emerald-500/5">{t('students.active')}</span>
                                 </div>
                             ))
                         )}

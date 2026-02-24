@@ -432,7 +432,7 @@ export default function GroupFormModal({ initialData, onClose, onSuccess }: Grou
                                     value={studentSearch}
                                     onChange={e => setStudentSearch(e.target.value)}
                                     placeholder=""
-                                    className="w-full bg-white/[0.02] border border-white/5 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-primary/40 text-xs font-bold placeholder:text-white/20 transition-all"
+                                    className="w-full bg-white/[0.02] border border-white/5 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-primary/40 text-[10px] font-bold placeholder:text-white/20 transition-all"
                                 />
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within/search:text-primary transition-colors" />
                             </div>
@@ -461,7 +461,7 @@ export default function GroupFormModal({ initialData, onClose, onSuccess }: Grou
                                                     {student.full_name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <p className={`text-xs font-bold transition-colors ${isSelected ? 'text-white' : 'text-white/50 group-hover:text-white'}`}>
+                                                    <p className={`text-[10px] font-bold transition-colors ${isSelected ? 'text-white' : 'text-white/50 group-hover:text-white'}`}>
                                                         {student.full_name}
                                                     </p>
                                                     {student.training_groups?.name && (

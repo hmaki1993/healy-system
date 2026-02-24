@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { X, Save, UserPlus, ChevronDown, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ImageLightbox from './ImageLightbox';
+import PremiumSelect from './PremiumSelect';
 
 interface AddCoachFormProps {
     onClose: () => void;
@@ -222,7 +223,7 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
                         <input
                             required
                             type="text"
-                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs tracking-wide font-bold"
+                            className="w-full px-8 py-3.5 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-sm tracking-wide font-bold"
                             value={formData.full_name}
                             onChange={(e) => {
                                 const newName = e.target.value;
@@ -302,21 +303,18 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
                     {!['reception', 'cleaner'].includes(formData.role) && (
                         <div className="space-y-2 group/field">
                             <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Program</label>
-                            <div className="relative">
-                                <select
-                                    required={!['reception', 'cleaner'].includes(formData.role)}
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs tracking-wide font-bold"
-                                    value={formData.specialty}
-                                    onChange={e => setFormData({ ...formData, specialty: e.target.value })}
-                                >
-                                    <option value="" disabled className="bg-[#0a0a0f]">Select Discipline</option>
-                                    <option value="Artistic Gymnastics (Boys)" className="bg-[#0a0a0f]">Artistic Gymnastics (Boys)</option>
-                                    <option value="Artistic Gymnastics (Girls)" className="bg-[#0a0a0f]">Artistic Gymnastics (Girls)</option>
-                                    <option value="Artistic Gymnastics (Mixed)" className="bg-[#0a0a0f]">Artistic Gymnastics (Mixed)</option>
-                                    <option value="Rhythmic Gymnastics" className="bg-[#0a0a0f]">Rhythmic Gymnastics</option>
-                                </select>
-                                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 pointer-events-none" />
-                            </div>
+                            <PremiumSelect
+                                required
+                                value={formData.specialty}
+                                onChange={val => setFormData({ ...formData, specialty: val })}
+                                options={[
+                                    { value: "Artistic Gymnastics (Boys)", label: "Artistic Gymnastics (Boys)" },
+                                    { value: "Artistic Gymnastics (Girls)", label: "Artistic Gymnastics (Girls)" },
+                                    { value: "Artistic Gymnastics (Mixed)", label: "Artistic Gymnastics (Mixed)" },
+                                    { value: "Rhythmic Gymnastics", label: "Rhythmic Gymnastics" }
+                                ]}
+                                placeholder="Discipline"
+                            />
                         </div>
                     )}
 
@@ -327,7 +325,7 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
                             <input
                                 required
                                 type="email"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold"
+                                className="w-full px-8 py-3.5 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-sm font-bold tracking-wide"
                                 value={formData.email}
                                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                             />
@@ -337,7 +335,7 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
                             <input
                                 required={!initialData}
                                 type="password"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs font-bold"
+                                className="w-full px-8 py-3.5 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-sm font-bold"
                                 value={formData.password}
                                 onChange={e => setFormData({ ...formData, password: e.target.value })}
                                 placeholder={initialData ? "••••••" : ""}
@@ -349,21 +347,18 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2 group/field">
                             <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Role</label>
-                            <div className="relative">
-                                <select
-                                    required
-                                    className="w-full px-3 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-8 text-[10px] tracking-wider font-bold uppercase text-center"
-                                    value={formData.role}
-                                    onChange={e => setFormData({ ...formData, role: e.target.value })}
-                                >
-                                    <option value="coach" className="bg-[#0a0a0f]">{t('roles.coach')}</option>
-                                    <option value="head_coach" className="bg-[#0a0a0f]">{t('roles.head_coach')}</option>
-                                    <option value="admin" className="bg-[#0a0a0f]">{t('roles.admin')}</option>
-                                    <option value="reception" className="bg-[#0a0a0f]">{t('roles.reception')}</option>
-                                    <option value="cleaner" className="bg-[#0a0a0f]">{t('roles.cleaner')}</option>
-                                </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-white/20 pointer-events-none" />
-                            </div>
+                            <PremiumSelect
+                                required
+                                value={formData.role}
+                                onChange={val => setFormData({ ...formData, role: val })}
+                                options={[
+                                    { value: "coach", label: t('roles.coach') },
+                                    { value: "head_coach", label: t('roles.head_coach') },
+                                    { value: "admin", label: t('roles.admin') },
+                                    { value: "reception", label: t('roles.reception') },
+                                    { value: "cleaner", label: t('roles.cleaner') }
+                                ]}
+                            />
                         </div>
 
                         <div className="space-y-2 group/field">
@@ -371,7 +366,7 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
                             <input
                                 required
                                 type="tel"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold"
+                                className="w-full px-8 py-3.5 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-sm font-bold tracking-wide"
                                 value={formData.phone}
                                 onChange={e => setFormData({ ...formData, phone: e.target.value })}
                             />
@@ -385,18 +380,18 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
                                 <input
                                     required
                                     type="number"
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-xs font-bold"
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-[10px] font-bold"
                                     value={formData.pt_rate}
                                     onChange={e => setFormData({ ...formData, pt_rate: e.target.value })}
                                 />
                             </div>
                         )}
                         <div className="space-y-2 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Monthly Salary</label>
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors whitespace-nowrap">Monthly Salary</label>
                             <input
                                 required
                                 type="number"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-xs font-bold"
+                                className="w-full px-8 py-3.5 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-sm font-bold"
                                 value={formData.salary}
                                 onChange={e => setFormData({ ...formData, salary: e.target.value })}
                             />

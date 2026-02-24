@@ -90,7 +90,7 @@ export default function AddRefundForm({ onClose, onSuccess, onAdd }: AddRefundFo
                         <div className="relative">
                             <select
                                 required
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/ client-border rounded-2xl focus:border-rose-500/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs font-bold tracking-wide"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/ client-border rounded-2xl focus:border-rose-500/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-[10px] font-bold tracking-wide"
                                 value={formData.student_id}
                                 onChange={e => setFormData({ ...formData, student_id: e.target.value })}
                             >
@@ -112,7 +112,7 @@ export default function AddRefundForm({ onClose, onSuccess, onAdd }: AddRefundFo
                                     required
                                     type="number"
                                     step="0.01"
-                                    className="w-full pl-5 pr-10 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-rose-500/40 outline-none transition-all text-white text-xs font-bold"
+                                    className="w-full pl-5 pr-10 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-rose-500/40 outline-none transition-all text-white text-[10px] font-bold"
                                     value={formData.amount}
                                     onChange={e => setFormData({ ...formData, amount: e.target.value })}
                                 />
@@ -137,7 +137,7 @@ export default function AddRefundForm({ onClose, onSuccess, onAdd }: AddRefundFo
                     <div className="space-y-2 group/field">
                         <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-rose-500 transition-colors">Justification Memo</label>
                         <textarea
-                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-rose-500/40 outline-none transition-all text-white placeholder:text-white/10 text-xs font-bold tracking-wide resize-none"
+                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-rose-500/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold tracking-wide resize-none"
                             rows={3}
                             value={formData.reason}
                             onChange={e => setFormData({ ...formData, reason: e.target.value })}

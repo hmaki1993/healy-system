@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Receipt, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../context/CurrencyContext';
+import PremiumSelect from './PremiumSelect';
 
 interface AddExpenseFormProps {
     onClose: () => void;
@@ -12,6 +14,7 @@ interface AddExpenseFormProps {
 }
 
 export default function AddExpenseForm({ onClose, onSuccess, onAdd }: AddExpenseFormProps) {
+    const { t } = useTranslation();
     const { currency } = useCurrency();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -124,7 +127,7 @@ export default function AddExpenseForm({ onClose, onSuccess, onAdd }: AddExpense
                             <input
                                 required
                                 type="date"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-xs font-bold tracking-widest text-center"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center"
                                 value={formData.expense_date}
                                 onChange={e => setFormData({ ...formData, expense_date: e.target.value })}
                             />
@@ -134,21 +137,12 @@ export default function AddExpenseForm({ onClose, onSuccess, onAdd }: AddExpense
                     {/* Category */}
                     <div className="space-y-2 group/field">
                         <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Category *</label>
-                        <div className="relative">
-                            <select
-                                required
-                                value={formData.category}
-                                onChange={e => setFormData({ ...formData, category: e.target.value })}
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs tracking-wide font-bold"
-                            >
-                                {categories.map(cat => (
-                                    <option key={cat.value} value={cat.value} className="bg-[#0a0a0f]">
-                                        {cat.label}
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
-                        </div>
+                        <PremiumSelect
+                            required
+                            value={formData.category}
+                            onChange={val => setFormData({ ...formData, category: val })}
+                            options={categories}
+                        />
                     </div>
                 </form>
 
@@ -162,17 +156,11 @@ export default function AddExpenseForm({ onClose, onSuccess, onAdd }: AddExpense
                         Discard
                     </button>
                     <button
-                        onClick={(e) => handleSubmit(e)}
+                        type="submit"
                         disabled={loading}
-                        className="flex-1 py-4 rounded-3xl bg-white text-black hover:bg-white/90 transition-all duration-500 shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
+                        className="w-full py-3 bg-gradient-to-r from-primary to-primary-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] transition-all active:scale-[0.98] mt-6"
                     >
-                        {loading ? (
-                            <span className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Processing...</span>
-                        ) : (
-                            <span className="font-black uppercase tracking-[0.3em] text-[10px] group-hover:tracking-[0.5em] transition-all duration-500">
-                                Add Expense
-                            </span>
-                        )}
+                        {loading ? t('common.saving') : t('common.save')}
                     </button>
                 </div>
             </div>

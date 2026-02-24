@@ -286,41 +286,41 @@ export default function Evaluations() {
                 </div>
 
                 {/* Quick Stats */}
-                <div className="grid grid-cols-2 sm:flex gap-3 sm:gap-4 w-full sm:w-auto">
-                    <div className="px-4 sm:px-6 py-3 sm:py-4 glass-card rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 flex flex-col items-center min-w-[100px] sm:min-w-[120px]">
-                        <span className="text-xl sm:text-2xl font-black text-white">{stats.totalThisMonth}</span>
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-1">Evaluations</span>
+                <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-4 w-full sm:w-auto">
+                    <div className="px-3 sm:px-6 py-3 sm:py-4 glass-card rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 flex flex-col items-center min-w-0 flex-1 sm:min-w-[120px]">
+                        <span className="text-lg sm:text-2xl font-black text-white">{stats.totalThisMonth}</span>
+                        <span className="text-[7px] sm:text-[8px] font-black text-white/20 uppercase tracking-widest mt-1">Evaluations</span>
                     </div>
-                    <div className="px-4 sm:px-6 py-3 sm:py-4 glass-card rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 flex flex-col items-center min-w-[100px] sm:min-w-[120px]">
-                        <span className="text-xl sm:text-2xl font-black text-emerald-400">{stats.completionRate}%</span>
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-1">Success</span>
+                    <div className="px-3 sm:px-6 py-3 sm:py-4 glass-card rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 flex flex-col items-center min-w-0 flex-1 sm:min-w-[120px]">
+                        <span className="text-lg sm:text-2xl font-black text-emerald-400">{stats.completionRate}%</span>
+                        <span className="text-[7px] sm:text-[8px] font-black text-white/20 uppercase tracking-widest mt-1">Success</span>
                     </div>
                 </div>
             </div>
 
             {/* Tab Navigation */}
             <div className="flex flex-col md:flex-row gap-4 items-center md:items-center justify-between">
-                <div className="w-full md:w-auto overflow-x-auto pb-2 scrollbar-hide">
-                    <div className="flex gap-2 p-1.5 bg-white/[0.03] border border-white/5 rounded-[2rem] w-fit min-w-max mx-auto md:mx-0">
+                <div className="w-full">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1.5 bg-white/[0.03] border border-white/5 rounded-[1.5rem] sm:rounded-[2rem]">
                         <button
                             onClick={() => setActiveTab('live')}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all min-w-max ${activeTab === 'live' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'live' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                         >
-                            <LayoutDashboard className="w-4 h-4" />
+                            <LayoutDashboard className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             Assessment Desk
                         </button>
                         <button
                             onClick={() => setActiveTab('history')}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all min-w-max ${activeTab === 'history' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                         >
-                            <History className="w-4 h-4" />
+                            <History className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             Test History
                         </button>
                         <button
                             onClick={() => setActiveTab('reports')}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all min-w-max ${activeTab === 'reports' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'reports' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                         >
-                            <FileText className="w-4 h-4" />
+                            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             Reporting Desk
                         </button>
                     </div>
@@ -484,9 +484,9 @@ export default function Evaluations() {
                                 {reportingData.filter(s => s.full_name.toLowerCase().includes(reportSearch.toLowerCase())).map((student) => (
                                     <div
                                         key={student.id}
-                                        className="glass-card rounded-[2.5rem] border border-white/5 p-6 flex items-center justify-between group hover:border-white/10 transition-all"
+                                        className="glass-card rounded-[2rem] sm:rounded-[2.5rem] border border-white/5 p-4 sm:p-6 flex flex-col xs:flex-row items-center justify-between group hover:border-white/10 transition-all gap-4"
                                     >
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-4 w-full xs:w-auto">
                                             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
                                                 {student.photo_url ? (
                                                     <img src={student.photo_url} alt="" className="w-full h-full object-cover" />
@@ -494,8 +494,8 @@ export default function Evaluations() {
                                                     <Users className="w-6 h-6 text-white/20" />
                                                 )}
                                             </div>
-                                            <div>
-                                                <h3 className="text-base font-black text-white uppercase italic leading-tight">{student.full_name}</h3>
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="text-sm sm:text-base font-black text-white uppercase italic leading-tight truncate">{student.full_name}</h3>
                                                 <div className="flex items-center gap-3 mt-1.5">
                                                     <div className="flex items-center gap-1.5">
                                                         <div className={`w-1.5 h-1.5 rounded-full ${student.attendance.ratio >= 80 ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-amber-400'}`} />
@@ -513,11 +513,11 @@ export default function Evaluations() {
 
                                         <button
                                             onClick={() => setSelectedStudentForReport(student)}
-                                            className="px-5 py-3 rounded-2xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary transition-all hover:text-white font-black uppercase tracking-widest text-[9px] flex items-center gap-2 group/btn"
+                                            className="w-full xs:w-auto px-5 py-3 rounded-2xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary transition-all hover:text-white font-black uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 group/btn"
                                         >
                                             <FileText className="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" />
                                             Build Report
-                                            <ArrowRight className="w-3 h-3 opacity-0 -ml-1 group-hover/btn:opacity-100 group-hover/btn:ml-0 transition-all" />
+                                            <ArrowRight className="w-3 h-3 hidden xs:block opacity-0 -ml-1 group-hover/btn:opacity-100 group-hover/btn:ml-0 transition-all" />
                                         </button>
                                     </div>
                                 ))}
@@ -599,29 +599,29 @@ export default function Evaluations() {
             )}
             {/* Floating Premium Bulk Action Bar */}
             {isSelectMode && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 duration-500 fill-mode-forwards px-4 w-full max-w-lg">
-                    <div className="glass-card bg-[#16292E]/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5),0_0_20px_rgba(139,92,246,0.1)] flex items-center justify-between gap-6">
-                        <div className="flex items-center gap-4 pl-4">
-                            <div className="flex flex-col">
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 duration-500 fill-mode-forwards px-4 w-full sm:max-w-lg">
+                    <div className="glass-card bg-[#16292E]/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-3 sm:p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5),0_0_20px_rgba(139,92,246,0.1)] flex flex-col xs:flex-row items-center justify-between gap-3 sm:gap-6">
+                        <div className="flex items-center gap-4 pl-0 xs:pl-4">
+                            <div className="flex flex-col items-center xs:items-start">
                                 <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Selected</span>
-                                <span className="text-xl font-black text-white italic leading-tight">{selectedBatchKeys.length} Batches</span>
+                                <span className="text-lg sm:text-xl font-black text-white italic leading-tight">{selectedBatchKeys.length} Batches</span>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 sm:gap-3 w-full xs:w-auto">
                             <button
                                 onClick={selectAll}
-                                className="px-6 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all font-black uppercase tracking-[0.2em] text-[10px]"
+                                className="flex-1 xs:flex-none px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] text-[9px] sm:text-[10px] truncate"
                             >
                                 {selectedBatchKeys.length === history.length ? 'Deselect All' : 'Select All'}
                             </button>
                             <button
                                 onClick={() => setShowBulkConfirm(true)}
                                 disabled={selectedBatchKeys.length === 0}
-                                className="px-8 py-3.5 rounded-2xl bg-red-500 text-white hover:bg-red-600 shadow-[0_15px_30px_rgba(239,68,68,0.3)] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-black uppercase tracking-[0.15em] text-[11px] flex items-center justify-center gap-2 active:scale-95 group"
+                                className="flex-1 xs:flex-none px-4 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-red-500 text-white hover:bg-red-600 shadow-[0_15px_30px_rgba(239,68,68,0.3)] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-black uppercase tracking-[0.1em] sm:tracking-[0.15em] text-[9px] sm:text-[11px] flex items-center justify-center gap-2 active:scale-95 group truncate"
                             >
-                                <Trash2 className="w-4 h-4 group-hover:animate-bounce" />
-                                DELETE ALL
+                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:animate-bounce shrink-0" />
+                                DELETE
                             </button>
                         </div>
                     </div>

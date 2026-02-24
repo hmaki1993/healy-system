@@ -268,52 +268,53 @@ id,
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative w-[95vw] sm:w-full max-w-4xl bg-[#0E1D21] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[85vh] sm:h-[70vh] max-h-[90vh]">
+            <div className="relative w-full max-w-4xl bg-[#0E1D21] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90vh] sm:h-[70vh] max-h-[90vh]">
 
                 {/* Header */}
-                <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/20">
+                <div className="p-4 sm:p-6 border-b border-white/10 flex justify-between items-center bg-black/20">
                     <div>
-                        <h2 className="text-xl font-black text-white uppercase tracking-wider">Batch Assessment</h2>
-                        <p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">Step {step}: {step === 1 ? 'Setup' : step === 2 ? 'Define Test' : 'Enter Grades'}</p>
+                        <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-wider">Batch Assessment</h2>
+                        <p className="text-[9px] sm:text-[10px] text-white/40 uppercase tracking-widest mt-1">Step {step}: {step === 1 ? 'Setup' : step === 2 ? 'Define Test' : 'Enter Grades'}</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
                         <X className="w-5 h-5 text-white/60" />
                     </button>
                 </div>
 
-                {/* Step 1: Setup */}
                 {step === 1 && (
-                    <div className="p-8 space-y-6 flex-1 overflow-y-auto">
-                        <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Assessment Title</label>
-                            <input
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary/50 outline-none"
-                            />
-                        </div>
+                    <div className="p-4 sm:p-8 space-y-4 sm:space-y-6 flex-1 overflow-y-auto">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5 block">Assessment Title</label>
+                                <input
+                                    type="text"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-white focus:border-primary/50 outline-none"
+                                />
+                            </div>
 
-                        <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Assessing Coach</label>
-                            <div className="relative">
-                                <select
-                                    value={assessorId}
-                                    onChange={(e) => setAssessorId(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary/50 outline-none appearance-none"
-                                >
-                                    <option value="" className="bg-[#0E1D21]"></option>
-                                    {coaches.map(c => (
-                                        <option key={c.id} value={c.id} className="bg-[#0E1D21]">{c.full_name}</option>
-                                    ))}
-                                </select>
-                                <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 rotate-90 pointer-events-none" />
+                            <div>
+                                <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5 block">Assessing Coach</label>
+                                <div className="relative">
+                                    <select
+                                        value={assessorId}
+                                        onChange={(e) => setAssessorId(e.target.value)}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-white focus:border-primary/50 outline-none appearance-none"
+                                    >
+                                        <option value="" className="bg-[#0E1D21]"></option>
+                                        {coaches.map(c => (
+                                            <option key={c.id} value={c.id} className="bg-[#0E1D21]">{c.full_name}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 rotate-90 pointer-events-none" />
+                                </div>
                             </div>
                         </div>
 
                         <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Select Group</label>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Select Group</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-4">
                                 {/* Mixed Group Option */}
                                 <div
                                     onClick={() => {
@@ -321,14 +322,14 @@ id,
                                         setSelectedGroupId('mixed');
                                         setStudents([]);
                                     }}
-                                    className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isMixedMode ? 'bg-amber-500/20 border-amber-500 text-white shadow-[0_0_20px_rgba(245,158,11,0.15)]' : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10 hover:border-white/10'}`}
+                                    className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isMixedMode ? 'bg-amber-500/20 border-amber-500 text-white shadow-[0_0_20px_rgba(245,158,11,0.15)]' : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10 hover:border-white/10'}`}
                                 >
-                                    <div className="font-bold flex items-center gap-2">
-                                        <Users className="w-4 h-4 text-amber-500" />
-                                        Mixed Group
+                                    <div className="font-bold flex items-center gap-2 text-[11px] sm:text-base">
+                                        <Users className="w-3.5 h-3.5 text-amber-500" />
+                                        Mixed
                                     </div>
-                                    <div className="text-[9px] opacity-60 uppercase tracking-tighter mt-1">
-                                        Select athletes manually across all groups
+                                    <div className="text-[7px] sm:text-[9px] opacity-60 uppercase tracking-tighter mt-1 truncate">
+                                        Manual Selection
                                     </div>
                                 </div>
 
@@ -336,12 +337,12 @@ id,
                                     <div
                                         key={group.id}
                                         onClick={() => handleGroupSelect(group.id)}
-                                        className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${selectedGroupId === group.id ? 'bg-primary/20 border-primary text-white shadow-[0_0_20px_rgba(139,92,246,0.15)]' : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10 hover:border-white/10'}`}
+                                        className={`p-3 sm:p-4 rounded-xl border cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${selectedGroupId === group.id ? 'bg-primary/20 border-primary text-white shadow-[0_0_20px_rgba(139,92,246,0.15)]' : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10 hover:border-white/10'}`}
                                     >
-                                        <div className="font-bold">{group.name}</div>
-                                        <div className="text-xs opacity-60 flex justify-between">
+                                        <div className="font-bold text-[11px] sm:text-base truncate">{group.name}</div>
+                                        <div className="text-[7px] sm:text-xs opacity-60 flex justify-between">
                                             <span>{group.level || 'General'}</span>
-                                            <span className="text-primary/80 font-black uppercase tracking-wider">{group.coaches?.full_name?.split(' ')[0] || ''}</span>
+                                            <span className="text-primary/80 font-black uppercase tracking-wider hidden xs:block">{group.coaches?.full_name?.split(' ')[0] || ''}</span>
                                         </div>
                                     </div>
                                 ))}
@@ -349,20 +350,20 @@ id,
 
                             {/* Manual Student Selector */}
                             {isMixedMode && (
-                                <div className="mt-6 p-6 bg-black/40 border border-white/10 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                                <div className="mt-4 p-4 sm:p-6 bg-black/40 border border-white/10 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-4 duration-300">
                                     <div className="flex justify-between items-center">
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-amber-500">Pick Athletes</div>
-                                        <div className="text-[10px] font-black text-white/40">{selectedStudentIds.length} Selected</div>
+                                        <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-500">Pick Athletes</div>
+                                        <div className="text-[9px] sm:text-[10px] font-black text-white/40">{selectedStudentIds.length} Selected</div>
                                     </div>
 
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-col xs:flex-row gap-2">
                                         <div className="relative flex-1">
                                             <input
                                                 type="text"
                                                 value={studentSearch}
                                                 onChange={(e) => setStudentSearch(e.target.value)}
-                                                style={{ paddingLeft: '45px' }}
-                                                className="w-full bg-white/5 border border-white/10 rounded-xl pr-10 py-2.5 text-xs text-white focus:border-amber-500/50 outline-none"
+                                                style={{ paddingLeft: '40px' }}
+                                                className="w-full bg-white/5 border border-white/10 rounded-xl pr-10 py-2 sm:py-2.5 text-[11px] text-white focus:border-amber-500/50 outline-none"
                                             />
                                             <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
                                             {studentSearch && (
@@ -377,16 +378,16 @@ id,
                                         <select
                                             value={coachFilter}
                                             onChange={(e) => setCoachFilter(e.target.value)}
-                                            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-[10px] text-white/60 focus:border-amber-500/50 outline-none min-w-[120px]"
+                                            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 sm:py-2.5 text-[10px] text-white/60 focus:border-amber-500/50 outline-none min-w-[100px]"
                                         >
-                                            <option value="" className="bg-[#0E1D21]">All Coaches</option>
+                                            <option value="" className="bg-[#0E1D21]">Coaches</option>
                                             {Array.from(new Set(allStudents.map(s => s.coaches?.full_name).filter(Boolean))).map(coachName => (
                                                 <option key={coachName as string} value={coachName as string} className="bg-[#0E1D21]">{coachName as string}</option>
                                             ))}
                                         </select>
                                     </div>
 
-                                    <div className="max-h-[250px] overflow-y-auto custom-scrollbar pr-2 space-y-1.5">
+                                    <div className="max-h-[180px] sm:max-h-[250px] overflow-y-auto custom-scrollbar pr-2 space-y-1.5">
                                         {allStudents.filter(s => {
                                             const matchesSearch = s.full_name.toLowerCase().includes(studentSearch.toLowerCase());
                                             const matchesCoach = !coachFilter || s.coaches?.full_name === coachFilter;
@@ -401,16 +402,16 @@ id,
                                                             : [...prev, student.id]
                                                     );
                                                 }}
-                                                className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${selectedStudentIds.includes(student.id) ? 'bg-amber-500/10 border-amber-500/30 text-white' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}
+                                                className={`p-2.5 sm:p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${selectedStudentIds.includes(student.id) ? 'bg-amber-500/10 border-amber-500/30 text-white' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}
                                             >
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-2 h-2 rounded-full ${selectedStudentIds.includes(student.id) ? 'bg-amber-500 animate-pulse' : 'bg-white/10'}`} />
-                                                    <div className="flex flex-col">
-                                                        <span className="text-xs font-bold">{student.full_name}</span>
-                                                        <span className="text-[9px] text-white/20 font-medium">Coach: {student.coaches?.full_name || 'N/A'}</span>
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${selectedStudentIds.includes(student.id) ? 'bg-amber-500' : 'bg-white/10'}`} />
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span className="text-[11px] sm:text-xs font-bold truncate">{student.full_name}</span>
+                                                        <span className="text-[8px] sm:text-[9px] text-white/20 font-medium truncate">@{((student.coaches?.full_name || 'N/A').split(' ')[0] || '').toLowerCase()}</span>
                                                     </div>
                                                 </div>
-                                                <span className="text-[9px] uppercase font-black opacity-30">{student.training_groups?.name || 'No Group'}</span>
+                                                <span className="text-[8px] uppercase font-black opacity-30 shrink-0 ml-2">{student.training_groups?.name || 'N/A'}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -491,7 +492,7 @@ id,
                         {/* Bulk Selection Overlay */}
                         {isBulkSelecting && (
                             <div className="absolute inset-0 z-20 bg-[#0E1D21] flex flex-col p-8 animate-in fade-in zoom-in-95 duration-200">
-                                <div className="flex justify-between items-center mb-4 p-1">
+                                <div className="flex justify-between items-center mb-6 p-1">
                                     <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
                                         <CheckSquare className="w-4 h-4 text-primary" />
                                         Select Skills
@@ -507,7 +508,7 @@ id,
                                     </button>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2">
+                                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3 pb-20 sm:pb-4">
                                     {availableSkills.filter(s => !selectedSkills.some(sel => String(sel.skill_id) === String(s.id))).length === 0 ? (
                                         <div className="text-center py-12 text-white/20 text-sm">
                                             All available skills selected

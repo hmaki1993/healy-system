@@ -124,7 +124,7 @@ export default function RenewPTSubscriptionForm({ subscription, onClose, onSucce
                         <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1">Current Specialist</label>
                         <div className="flex items-center gap-3 px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl text-white/40">
                             <User className="w-3.5 h-3.5" />
-                            <span className="text-xs font-bold tracking-wide">{subscription.coaches?.full_name || 'N/A'}</span>
+                            <span className="text-[10px] font-bold tracking-wide">{subscription.coaches?.full_name || 'N/A'}</span>
                         </div>
                     </div>
 
@@ -168,7 +168,7 @@ export default function RenewPTSubscriptionForm({ subscription, onClose, onSucce
                                     <input
                                         required
                                         type="number"
-                                        className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-accent/40 outline-none transition-all text-white text-xs font-bold"
+                                        className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-accent/40 outline-none transition-all text-white text-[10px] font-bold"
                                         value={formData.renewal_price}
                                         onChange={e => setFormData({ ...formData, renewal_price: parseFloat(e.target.value) || 0 })}
                                     />

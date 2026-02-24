@@ -156,7 +156,7 @@ export default function LiveStudentsWidget({ coachId }: { coachId?: string | nul
                                 <span className={`relative inline-flex rounded-full h-2 w-2 ${activeGroups.length === 0 ? 'bg-white/20' : 'bg-emerald-500'}`}></span>
                             </span>
                         </h2>
-                        <p className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em] mt-1.5 truncate">
+                        <p className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em] mt-1.5">
                             {presentInActiveGroupsCount} {t('dashboard.gymnastsOnFloor', 'Gymnasts')}
                         </p>
                     </div>
@@ -215,30 +215,30 @@ export default function LiveStudentsWidget({ coachId }: { coachId?: string | nul
                                         const isPresent = !!record;
 
                                         return (
-                                            <div key={student.id} className={`flex items-center justify-between p-3 rounded-2xl transition-all duration-300 border ${isPresent ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-white/[0.02] border-white/5 opacity-60'}`}>
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${isPresent ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-white/20'}`}>
-                                                        {student.full_name?.charAt(0) || '?'}
-                                                    </div>
-                                                    <div>
-                                                        <p className={`text-xs font-bold leading-none ${isPresent ? 'text-white' : 'text-white/40'}`}>
-                                                            {student.full_name}
-                                                        </p>
-                                                        {isPresent && record && (
-                                                            <p className="text-[8px] font-mono font-bold text-emerald-400/60 mt-1 uppercase">
-                                                                In at {record.check_in_time ? format(parseISO(record.check_in_time), 'hh:mm a') : '--:--'}
+                                            <div key={student.id} className={`flex items-start gap-3 p-3 rounded-2xl transition-all duration-300 border ${isPresent ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-white/[0.02] border-white/5 opacity-60'}`}>
+                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs flex-shrink-0 mt-0.5 ${isPresent ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-white/20'}`}>
+                                                    {student.full_name?.charAt(0) || '?'}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className={`text-xs font-bold leading-tight ${isPresent ? 'text-white' : 'text-white/40'} mb-1.5 whitespace-nowrap overflow-hidden pr-2`} style={{ maskImage: 'linear-gradient(to right, black calc(100% - 16px), transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 16px), transparent 100%)' }}>
+                                                        {student.full_name}
+                                                    </p>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        {isPresent && record ? (
+                                                            <p className="text-[8px] font-mono font-bold text-emerald-400/60 uppercase">
+                                                                {record.check_in_time ? format(parseISO(record.check_in_time), 'hh:mm a') : '--:--'}
                                                             </p>
+                                                        ) : (
+                                                            <span className="text-[7px] font-black text-white/10 uppercase tracking-widest">{t('students.expected', 'Expected')}</span>
+                                                        )}
+                                                        {isPresent && (
+                                                            <div className="flex h-1.5 w-1.5 flex-shrink-0">
+                                                                <span className="animate-ping absolute inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400 opacity-75"></span>
+                                                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
-                                                {isPresent ? (
-                                                    <div className="flex h-2 w-2">
-                                                        <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-emerald-400 opacity-75"></span>
-                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{t('students.expected', 'Expected')}</span>
-                                                )}
                                             </div>
                                         );
                                     })}

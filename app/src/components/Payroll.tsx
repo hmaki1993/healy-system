@@ -43,8 +43,8 @@ export default function Payroll({ onViewAttendance }: PayrollProps) {
 
 
     return (
-        <div className="glass-card rounded-[2rem] md:rounded-[3rem] overflow-hidden border border-white/10 shadow-premium mt-12 bg-white/[0.01] animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="p-6 md:p-10 border-b border-white/5 flex flex-col sm:flex-row items-center justify-between bg-white/[0.02] gap-6">
+        <div className="glass-card rounded-[2rem] overflow-hidden border border-white/10 shadow-premium mt-8 bg-white/[0.01] animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="p-5 md:p-8 border-b border-white/5 flex flex-col sm:flex-row items-center justify-between bg-white/[0.02] gap-4">
                 <h3 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-4">
                     <div className="p-3 bg-primary/20 rounded-2xl text-primary shadow-inner">
                         <Banknote className="w-6 h-6" />
@@ -134,17 +134,16 @@ export default function Payroll({ onViewAttendance }: PayrollProps) {
                     )}
                 </div>
 
-                {/* Desktop Table (Visible only on medium screens and up) */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto no-scrollbar">
                     <table className="w-full text-left">
-                        <thead className="bg-white/[0.03] text-white/30 font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] md:tracking-[0.3em] border-b border-white/5">
+                        <thead className="bg-white/[0.03] text-white/30 font-black text-[9px] uppercase tracking-[0.15em] border-b border-white/5">
                             <tr>
-                                <th className="px-4 md:px-10 py-6 md:py-8">{t('common.name')}</th>
-                                <th className="px-4 md:px-10 py-6 md:py-8 text-center">{t('coaches.workHours')}</th>
-                                <th className="px-4 md:px-10 py-6 md:py-8 text-center">{t('coaches.sessionCount')}</th>
-                                <th className="px-4 md:px-10 py-6 md:py-8 text-center">{t('coaches.rate')}</th>
-                                <th className="px-4 md:px-10 py-6 md:py-8 text-center">{t('coaches.baseSalary')}</th>
-                                <th className="px-4 md:px-10 py-6 md:py-8 text-right">{t('coaches.totalEarnings')}</th>
+                                <th className="px-6 py-5">{t('common.name')}</th>
+                                <th className="px-4 py-5 text-center">{t('coaches.workHours')}</th>
+                                <th className="px-4 py-5 text-center">{t('coaches.sessionCount')}</th>
+                                <th className="px-4 py-5 text-center">{t('coaches.rate')}</th>
+                                <th className="px-4 py-5 text-center">{t('coaches.baseSalary')}</th>
+                                <th className="px-6 py-5 text-right">{t('coaches.totalEarnings')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
@@ -155,17 +154,17 @@ export default function Payroll({ onViewAttendance }: PayrollProps) {
                             ) : (
                                 payrollData.map((row) => (
                                     <tr key={row.coach_id} className="hover:bg-white/[0.02] transition-all duration-500 group border-l-2 border-transparent hover:border-primary">
-                                        <td className="px-4 md:px-10 py-6 md:py-8">
+                                        <td className="px-6 py-5">
                                             <div className="flex items-center justify-between group/name">
-                                                <div className="flex items-center gap-3 md:gap-5">
-                                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/5 flex items-center justify-center text-[10px] md:text-xs font-black text-white/40 group-hover:bg-primary/20 group-hover:text-primary transition-all duration-500 shadow-inner">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-[10px] font-black text-white/40 group-hover:bg-primary/20 group-hover:text-primary transition-all duration-500 shadow-inner">
                                                         {row.coach_name?.[0] || '?'}
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className="font-black text-white text-base md:text-xl tracking-tight group-hover:text-primary transition-colors">{row.coach_name}</span>
+                                                        <span className="font-black text-white text-sm md:text-base tracking-tight group-hover:text-primary transition-colors">{row.coach_name}</span>
                                                         {row.role && (
-                                                            <div className={`mt-1.5 px-2 py-0.5 md:px-3 md:py-1 rounded-lg flex items-center self-start border transition-all duration-300 ${getRoleBadgeStyles(row.role)}`}>
-                                                                <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em]">
+                                                            <div className={`mt-1 px-2 py-0.5 rounded-lg flex items-center self-start border transition-all duration-300 ${getRoleBadgeStyles(row.role)}`}>
+                                                                <span className="text-[8px] font-black uppercase tracking-widest">
                                                                     {t(`roles.${row.role}`)}
                                                                 </span>
                                                             </div>
@@ -175,35 +174,35 @@ export default function Payroll({ onViewAttendance }: PayrollProps) {
                                                 {onViewAttendance && (
                                                     <button
                                                         onClick={() => onViewAttendance(row.coach_id)}
-                                                        className="p-2 md:p-3 hover:bg-white/10 rounded-xl md:rounded-2xl text-white/20 hover:text-primary transition-all opacity-0 group-hover:opacity-100"
+                                                        className="p-2 hover:bg-white/10 rounded-xl text-white/20 hover:text-primary transition-all opacity-0 group-hover:opacity-100"
                                                         title="View Logs"
                                                     >
-                                                        <Clock className="w-4 h-4 md:w-5 md:h-5" />
+                                                        <Clock className="w-4 h-4 ml-2" />
                                                     </button>
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-4 md:px-10 py-6 md:py-8 text-center">
-                                            <span className="text-white/60 font-black text-xs md:text-sm tracking-widest uppercase bg-white/5 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl group-hover:text-white transition-colors">{row.total_hours}H</span>
+                                        <td className="px-4 py-5 text-center">
+                                            <span className="text-white/60 font-black text-xs tracking-widest uppercase bg-white/5 px-2.5 py-1.5 rounded-lg group-hover:text-white transition-colors">{row.total_hours}H</span>
                                         </td>
-                                        <td className="px-4 md:px-10 py-6 md:py-8 text-center">
-                                            <span className="text-white/40 font-black text-base md:text-lg group-hover:text-white transition-colors">{row.total_pt_sessions}</span>
+                                        <td className="px-4 py-5 text-center">
+                                            <span className="text-white/40 font-black text-sm md:text-base group-hover:text-white transition-colors">{row.total_pt_sessions}</span>
                                         </td>
-                                        <td className="px-4 md:px-10 py-6 md:py-8 text-center">
+                                        <td className="px-4 py-5 text-center">
                                             <div className="flex flex-col items-center">
-                                                <span className="text-white/40 font-bold text-xs md:text-sm">{row.pt_rate}</span>
-                                                <span className="text-[6px] md:text-[7px] font-black text-white/20 uppercase tracking-widest">Base Rate</span>
+                                                <span className="text-white/40 font-bold text-[10px] md:text-xs">{row.pt_rate}</span>
+                                                <span className="text-[6px] font-black text-white/20 uppercase tracking-widest">Base Rate</span>
                                             </div>
                                         </td>
-                                        <td className="px-4 md:px-10 py-6 md:py-8 text-center">
-                                            <span className="text-white/40 font-bold text-xs md:text-sm tracking-tight">{row.salary?.toLocaleString()}</span>
+                                        <td className="px-4 py-5 text-center">
+                                            <span className="text-white/40 font-bold text-[10px] md:text-xs tracking-tight">{row.salary?.toLocaleString()}</span>
                                         </td>
-                                        <td className="px-4 md:px-10 py-6 md:py-8 text-right">
-                                            <div className="flex flex-col items-end group-hover:scale-105 md:group-hover:scale-110 transition-transform duration-500 origin-right">
-                                                <span className="text-2xl md:text-3xl font-black text-emerald-400 tracking-tighter drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]">
+                                        <td className="px-6 py-5 text-right">
+                                            <div className="flex flex-col items-end group-hover:scale-105 transition-transform duration-500 origin-right">
+                                                <span className="text-xl md:text-2xl font-black text-emerald-400 tracking-tighter drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]">
                                                     {row.total_earnings.toLocaleString()}
                                                 </span>
-                                                <span className="text-[8px] md:text-[10px] font-black text-white/20 uppercase tracking-[0.2em] md:tracking-[0.3em]">{currency.code}</span>
+                                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{currency.code}</span>
                                             </div>
                                         </td>
                                     </tr>

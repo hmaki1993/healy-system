@@ -96,26 +96,6 @@ const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendan
                             </span>
                         )}
                     </div>
-
-                    {/* Admin Actions (Top Right - visible on hover like GroupCard) */}
-                    {(role === 'admin') && (
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                                className="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
-                                title={t('common.edit')}
-                            >
-                                <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                                className="p-2 rounded-lg hover:bg-rose-500/10 text-white/40 hover:text-rose-500 transition-colors"
-                                title={t('common.delete')}
-                            >
-                                <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
-                    )}
                 </div>
 
                 {/* Main Content: Avatar & Name */}
@@ -170,59 +150,78 @@ const CoachCard = memo(({ coach, role, t, currency, onEdit, onDelete, onAttendan
                     </div>
                 </div>
 
-                {/* Metrics / Info Rows */}
-                <div className="space-y-1.5 mb-4 flex-1">
-                    {/* Worked Time */}
-                    {(coach as any).daily_total_seconds > 0 && (
-                        <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 bg-white/[0.02] p-1.5 rounded-lg border border-white/[0.02]">
-                            <Clock className="w-2.5 h-2.5 text-primary" />
-                            <span>
-                                {Math.floor(liveSeconds / 3600)}h {Math.floor((liveSeconds % 3600) / 60)}m
-                            </span>
-                            {isWorking && <span className="text-emerald-500 ml-auto animate-pulse">{liveSeconds % 60}s</span>}
-                        </div>
-                    )}
-
-                    {/* PT Stats (Admin/Coach only) */}
-                    {!['reception', 'cleaner'].includes(coachRole || '') && (
-                        <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 bg-white/[0.02] p-1.5 rounded-lg border border-white/[0.02]">
-                            <div className="flex items-center gap-1.5 flex-1">
-                                <span className="text-white/20">SESSIONS:</span>
-                                <span className="text-white font-bold">{(coach as any).pt_sessions_today || 0}</span>
+                {/* Optimized Footer: Row 1 (Metrics) & Row 2 (Full Width Actions) */}
+                <div className="mt-auto space-y-4">
+                    {/* Metrics / Info Rows */}
+                    <div className="grid grid-cols-1 gap-1.5">
+                        {/* Worked Time */}
+                        {(coach as any).daily_total_seconds > 0 && (
+                            <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 bg-white/[0.02] p-2 rounded-lg border border-white/[0.02]">
+                                <Clock className="w-2.5 h-2.5 text-primary" />
+                                <span>
+                                    {Math.floor(liveSeconds / 3600)}h {Math.floor((liveSeconds % 3600) / 60)}m
+                                </span>
+                                {isWorking && <span className="text-emerald-500 ml-auto animate-pulse">{liveSeconds % 60}s</span>}
                             </div>
-                            {role === 'admin' && (
-                                <div className="flex items-center gap-1">
-                                    <span className="text-primary font-bold">{coach.pt_rate}</span>
-                                    <span className="text-[7px] text-primary/50">{currency.code}</span>
+                        )}
+
+                        {/* PT Stats (Admin/Coach only) */}
+                        {!['reception', 'cleaner'].includes(coachRole || '') && (
+                            <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/40 bg-white/[0.02] p-2 rounded-lg border border-white/[0.02]">
+                                <div className="flex items-center gap-1.5 flex-1">
+                                    <span className="text-white/20">SESSIONS:</span>
+                                    <span className="text-white font-bold">{(coach as any).pt_sessions_today || 0}</span>
                                 </div>
-                            )}
-                        </div>
-                    )}
-                </div>
+                                {role === 'admin' && (
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-primary font-bold">{coach.pt_rate}</span>
+                                        <span className="text-[7px] text-primary/50">{currency.code}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
 
-                {/* Footer Buttons */}
-                <div className="mt-auto grid gap-2">
-                    {/* View Attendance (Primary Action) */}
-                    {['admin', 'reception', 'receptionist'].includes(role || '') && (
-                        <button
-                            onClick={onAttendance}
-                            className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-primary hover:text-white border border-white/10 hover:border-primary/20 text-white/60 font-black text-[10px] uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2 group/btn"
-                        >
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>{t('coaches.viewAttendance')}</span>
-                        </button>
-                    )}
+                    {/* Full-Width Action Row */}
+                    <div className="flex items-center gap-2">
+                        {['admin', 'reception', 'receptionist'].includes(role || '') && (
+                            <button
+                                onClick={onAttendance}
+                                className="flex-1 h-11 rounded-xl bg-white/5 hover:bg-primary/20 text-white border border-white/10 hover:border-primary/20 flex items-center justify-center gap-2 transition-all duration-300 active:scale-95"
+                                title={t('coaches.viewAttendance')}
+                            >
+                                <Clock className="w-4 h-4" />
+                            </button>
+                        )}
 
-                    {/* Manual Attendance (Cleaner/Admin) */}
-                    {coachRole === 'cleaner' && onManualAttendance && (
-                        <button
-                            onClick={onManualAttendance}
-                            className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-emerald-500 hover:text-white border border-white/10 hover:border-emerald-500/20 text-white/60 font-black text-[10px] uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>{t('coaches.checkIn')}</span>
-                        </button>
-                    )}
+                        {role === 'admin' && (
+                            <>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                                    className="flex-1 h-11 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white border border-white/10 flex items-center justify-center transition-all duration-300 active:scale-95"
+                                    title={t('common.edit')}
+                                >
+                                    <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                                    className="flex-1 h-11 rounded-xl bg-rose-500/5 hover:bg-rose-500/15 text-rose-500/60 hover:text-rose-500 border border-rose-500/10 hover:border-rose-500/30 flex items-center justify-center transition-all duration-300 active:scale-95"
+                                    title={t('common.delete')}
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </>
+                        )}
+
+                        {coachRole === 'cleaner' && onManualAttendance && (
+                            <button
+                                onClick={onManualAttendance}
+                                className="flex-1 h-11 rounded-xl bg-emerald-500/5 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/10 flex items-center justify-center gap-2 transition-all duration-300 active:scale-95"
+                            >
+                                <Plus className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -532,18 +531,18 @@ export default function Coaches() {
             {
                 showAttendanceModal && selectedCoachForAttendance && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xl animate-in fade-in duration-300">
-                        <div className="glass-card rounded-[3rem] w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-white/20 overflow-hidden">
-                            <div className="p-10 border-b border-white/5 flex justify-between items-center bg-white/5">
+                        <div className="glass-card rounded-[2.5rem] md:rounded-[3rem] w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-white/20 overflow-hidden">
+                            <div className="p-6 md:p-10 border-b border-white/5 flex justify-between items-center bg-white/5">
                                 <div>
-                                    <h2 className="text-3xl font-black text-white uppercase tracking-tight">{selectedCoachForAttendance.full_name}</h2>
-                                    <p className="text-primary text-xs font-black uppercase tracking-[0.2em] mt-1">{t('coaches.attendanceHistory')}</p>
+                                    <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">{selectedCoachForAttendance.full_name}</h2>
+                                    <p className="text-primary text-[10px] md:text-xs font-black uppercase tracking-[0.2em] mt-1">{t('coaches.attendanceHistory')}</p>
                                 </div>
-                                <button onClick={() => setShowAttendanceModal(false)} className="p-4 hover:bg-white/10 rounded-2xl transition-all text-white/40 hover:text-white">
-                                    <X className="w-6 h-6" />
+                                <button onClick={() => setShowAttendanceModal(false)} className="p-3 md:p-4 hover:bg-white/10 rounded-2xl transition-all text-white/40 hover:text-white">
+                                    <X className="w-5 h-5 md:w-6 h-6" />
                                 </button>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+                            <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar">
                                 {loadingAttendance ? (
                                     <div className="text-center py-20 text-white/20 font-black uppercase tracking-widest animate-pulse">{t('common.loading')}</div>
                                 ) : attendanceLogs.length === 0 ? (
@@ -551,38 +550,77 @@ export default function Coaches() {
                                         {t('common.noResults')}
                                     </div>
                                 ) : (
-                                    <table className="w-full text-left">
-                                        <thead className="bg-white/5 text-white/30 font-black text-[10px] uppercase tracking-[0.2em]">
-                                            <tr>
-                                                <th className="px-6 py-4 rounded-l-2xl">{t('common.date')}</th>
-                                                <th className="px-6 py-4">{t('coaches.checkIn')}</th>
-                                                {selectedCoachForAttendance.role !== 'cleaner' && <th className="px-6 py-4">{t('coaches.checkOut')}</th>}
-                                                <th className="px-6 py-4 rounded-r-2xl text-right">{t('coaches.duration')}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-white/5">
+                                    <>
+                                        {/* Mobile view (Cards) */}
+                                        <div className="md:hidden space-y-4">
                                             {attendanceLogs.map((log: any) => {
                                                 const start = new Date(log.check_in_time);
                                                 const end = log.check_out_time ? new Date(log.check_out_time) : null;
                                                 const duration = end ? ((end.getTime() - start.getTime()) / 1000 / 3600).toFixed(2) + ' HR' : '-';
 
                                                 return (
-                                                    <tr key={log.id} className="hover:bg-white/5 transition-colors group">
-                                                        <td className="px-6 py-6 font-bold text-white/70">{log.date}</td>
-                                                        <td className="px-6 py-6 font-black font-mono text-sm text-white/50">
-                                                            {log.status === 'absent' ? <span className="text-rose-400">ABSENT</span> : start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </td>
-                                                        {selectedCoachForAttendance.role !== 'cleaner' && (
-                                                            <td className="px-6 py-6 font-black font-mono text-sm text-white/50">{end ? end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                                                        )}
-                                                        <td className={`px-6 py-6 font-black text-right text-sm ${end ? 'text-emerald-400' : 'text-orange-400'}`}>
-                                                            {duration}
-                                                        </td>
-                                                    </tr>
+                                                    <div key={log.id} className="p-5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-3">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-xs font-black text-white/80">{log.date}</span>
+                                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${end ? 'bg-emerald-500/10 text-emerald-400' : 'bg-orange-500/10 text-orange-400'}`}>
+                                                                {duration}
+                                                            </span>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
+                                                            <div className="space-y-1">
+                                                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{t('coaches.checkIn')}</span>
+                                                                <p className="text-sm font-mono font-black text-white/60">
+                                                                    {log.status === 'absent' ? <span className="text-rose-400">ABSENT</span> : start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </p>
+                                                            </div>
+                                                            {selectedCoachForAttendance.role !== 'cleaner' && (
+                                                                <div className="space-y-1">
+                                                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{t('coaches.checkOut')}</span>
+                                                                    <p className="text-sm font-mono font-black text-white/60">
+                                                                        {end ? end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 );
                                             })}
-                                        </tbody>
-                                    </table>
+                                        </div>
+
+                                        {/* Desktop view (Table) */}
+                                        <table className="hidden md:table w-full text-left">
+                                            <thead className="bg-white/5 text-white/30 font-black text-[10px] uppercase tracking-[0.2em]">
+                                                <tr>
+                                                    <th className="px-6 py-4 rounded-l-2xl">{t('common.date')}</th>
+                                                    <th className="px-6 py-4">{t('coaches.checkIn')}</th>
+                                                    {selectedCoachForAttendance.role !== 'cleaner' && <th className="px-6 py-4">{t('coaches.checkOut')}</th>}
+                                                    <th className="px-6 py-4 rounded-r-2xl text-right">{t('coaches.duration')}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-white/5">
+                                                {attendanceLogs.map((log: any) => {
+                                                    const start = new Date(log.check_in_time);
+                                                    const end = log.check_out_time ? new Date(log.check_out_time) : null;
+                                                    const duration = end ? ((end.getTime() - start.getTime()) / 1000 / 3600).toFixed(2) + ' HR' : '-';
+
+                                                    return (
+                                                        <tr key={log.id} className="hover:bg-white/5 transition-colors group">
+                                                            <td className="px-6 py-6 font-bold text-white/70">{log.date}</td>
+                                                            <td className="px-6 py-6 font-black font-mono text-sm text-white/50">
+                                                                {log.status === 'absent' ? <span className="text-rose-400">ABSENT</span> : start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </td>
+                                                            {selectedCoachForAttendance.role !== 'cleaner' && (
+                                                                <td className="px-6 py-6 font-black font-mono text-sm text-white/50">{end ? end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                                                            )}
+                                                            <td className={`px-6 py-6 font-black text-right text-sm ${end ? 'text-emerald-400' : 'text-orange-400'}`}>
+                                                                {duration}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </>
                                 )}
                             </div>
                         </div>

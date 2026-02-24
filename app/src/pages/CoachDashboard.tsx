@@ -947,19 +947,16 @@ id,
                                     <div className="absolute -top-32 -right-32 w-64 h-64 bg-accent/5 rounded-full blur-[100px] pointer-events-none group-hover:opacity-100 transition-opacity duration-700 opacity-50" />
 
                                     {/* Header: Student Info */}
-                                    <div className="relative z-10 flex items-center justify-between gap-4 mb-6">
-                                        <div className="flex items-center gap-4 min-w-0">
-                                            <div className="relative flex-shrink-0">
+                                    <div className="relative z-10 flex items-start justify-between gap-4 mb-6">
+                                        <div className="flex items-start gap-4 min-w-0 flex-1">
+                                            <div className="relative flex-shrink-0 mt-1">
                                                 <div className="absolute -inset-2 bg-gradient-to-br from-accent/20 to-primary/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                                                 <div className="relative w-12 h-12 rounded-2xl bg-[#0a0c10] border border-white/10 flex items-center justify-center text-white font-black text-lg shadow-2xl">
                                                     {(subscription.students?.full_name || subscription.student_name || 'S')?.[0]}
                                                 </div>
-                                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#0a0c10] rounded-full flex items-center justify-center border border-white/10">
-                                                    <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
-                                                </div>
                                             </div>
-                                            <div className="min-w-0">
-                                                <h3 className="font-black text-white text-lg tracking-tight leading-none mb-1 truncate">
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="font-black text-white text-lg tracking-tight leading-tight mb-2 whitespace-nowrap overflow-hidden pr-6" style={{ maskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent 100%)' }}>
                                                     {subscription.students?.full_name || subscription.student_name || 'Unknown'}
                                                 </h3>
                                                 <div className="flex flex-wrap items-center gap-2">
@@ -994,8 +991,7 @@ id,
                                             </div>
                                         </div>
 
-                                        {/* Status Badge */}
-                                        <div className="flex-shrink-0 flex items-center gap-2">
+                                        <div className="flex flex-col items-center gap-2 flex-shrink-0">
                                             <button
                                                 onClick={() => {
                                                     setSelectedSubForHistory(subscription);
@@ -1009,12 +1005,12 @@ id,
                                             {(() => {
                                                 const isExpired = new Date(subscription.expiry_date) < new Date() || subscription.status === 'expired' || subscription.sessions_remaining <= 0;
                                                 return isExpired ? (
-                                                    <div className="w-9 h-9 rounded-full bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-500" title={t('pt.expired')}>
-                                                        <AlertCircle className="w-5 h-5" />
+                                                    <div className="w-6 h-6 rounded-full bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-500" title={t('pt.expired')}>
+                                                        <AlertCircle className="w-3.5 h-3.5" />
                                                     </div>
                                                 ) : (
-                                                    <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center border border-accent/20 text-accent" title={t('pt.active')}>
-                                                        <CheckCircle className="w-5 h-5" />
+                                                    <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-500" title={t('pt.active')}>
+                                                        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
                                                     </div>
                                                 );
                                             })()}

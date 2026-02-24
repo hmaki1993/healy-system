@@ -23,6 +23,7 @@ interface Session {
     coach_id: string;
     coaches: {
         full_name: string;
+        role?: string;
     };
     capacity: number;
     name?: string;

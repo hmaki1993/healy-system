@@ -3,6 +3,7 @@ import { X, Plus, Save, Settings, Trash2, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import SkillsManagerModal from './SkillsManagerModal';
+import PremiumSelect from './PremiumSelect';
 
 interface AddAssessmentModalProps {
     studentId: any;
@@ -144,7 +145,7 @@ export default function AddAssessmentModal({ studentId, isOpen, onClose, onSucce
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder="e.g. Monthly Level 1 Evaluation..."
-                            className="w-full px-5 py-4 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs font-bold tracking-wide"
+                            className="w-full px-5 py-4 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold tracking-wide"
                         />
                     </div>
 
@@ -159,17 +160,15 @@ export default function AddAssessmentModal({ studentId, isOpen, onClose, onSucce
                             {selectedSkills.map((row, index) => (
                                 <div key={index} className="group/row flex gap-4 items-center p-4 bg-white/[0.01] hover:bg-white/[0.03] border border-white/5 rounded-[2rem] transition-all duration-500 animate-in slide-in-from-right-4">
                                     <div className="flex-1 relative">
-                                        <select
+                                        <PremiumSelect
                                             value={row.skill_id}
-                                            onChange={(e) => updateRow(index, 'skill_id', e.target.value)}
-                                            className="w-full pl-5 pr-12 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer text-xs font-bold"
-                                        >
-                                            <option value="" className="bg-[#0a0a0f]">Select Skill</option>
-                                            {availableSkills.map(s => (
-                                                <option key={s.id} value={s.id} className="bg-[#0a0a0f]">{s.name} (Max {s.max_score})</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/10 pointer-events-none group-focus-within/row:text-primary transition-colors" />
+                                            onChange={val => updateRow(index, 'skill_id', val)}
+                                            options={[
+                                                { value: "", label: "Select Skill" },
+                                                ...availableSkills.map(s => ({ value: s.id.toString(), label: `${s.name} (Max ${s.max_score})` }))
+                                            ]}
+                                            placeholder="Choose Skill"
+                                        />
                                     </div>
 
                                     <div className="w-28 relative">
@@ -177,7 +176,7 @@ export default function AddAssessmentModal({ studentId, isOpen, onClose, onSucce
                                             type="number"
                                             value={row.score}
                                             onChange={(e) => updateRow(index, 'score', parseFloat(e.target.value))}
-                                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-center text-xs font-bold"
+                                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-center text-[10px] font-bold"
                                             min="0"
                                             max={row.max_score}
                                         />

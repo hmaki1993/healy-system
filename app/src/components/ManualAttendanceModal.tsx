@@ -111,7 +111,7 @@ export default function ManualAttendanceModal({ coach, onClose, onSuccess }: Man
                             <input
                                 required
                                 type="date"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-xs font-bold tracking-widest text-center"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center"
                                 value={date}
                                 onChange={e => setDate(e.target.value)}
                             />

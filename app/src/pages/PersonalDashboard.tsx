@@ -393,7 +393,7 @@ export default function PersonalDashboard() {
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <div className="flex items-center gap-2">
-                                                            <h3 className="font-black text-white text-base tracking-tight group-hover:text-accent transition-colors leading-tight truncate">
+                                                            <h3 className="font-black text-white text-base tracking-tight group-hover:text-accent transition-colors leading-tight whitespace-nowrap overflow-hidden pr-4" style={{ maskImage: 'linear-gradient(to right, black calc(100% - 30px), transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 30px), transparent 100%)' }}>
                                                                 {subscription.students?.full_name || subscription.student_name || 'Unknown'}
                                                             </h3>
                                                             {subscription.student_phone && (

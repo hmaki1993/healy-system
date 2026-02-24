@@ -275,14 +275,14 @@ export default function DashboardLayout() {
     };
 
     const allNavItems = [
-        { to: '/app', icon: LayoutDashboard, label: t('common.dashboard'), roles: ['admin', 'head_coach', 'coach', 'reception'] },
+        { to: '/app', icon: LayoutDashboard, label: t('common.dashboard'), roles: ['admin', 'head_coach', 'coach', 'reception', 'cleaner'] },
         { to: '/app/students', icon: Users, label: t('common.students'), roles: ['admin', 'head_coach', 'reception'] },
         { to: '/app/coaches', icon: UserCircle, label: t('common.coaches'), roles: ['admin', 'head_coach'] },
         { to: '/app/schedule', icon: Calendar, label: t('common.schedule'), roles: ['admin', 'head_coach', 'reception'] },
         { to: '/app/finance', icon: Wallet, label: t('common.finance'), roles: ['admin'] },
         { to: '/app/evaluations', icon: ClipboardCheck, label: t('common.evaluations', 'Evaluations'), roles: ['admin', 'head_coach'] },
         { to: '/app/my-work', icon: UserCircle, label: t('dashboard.myWork', 'My Work'), roles: ['head_coach'] },
-        { to: '/app/settings', icon: Settings, label: t('common.settings'), roles: ['admin', 'head_coach', 'coach', 'reception'] },
+        { to: '/app/settings', icon: Settings, label: t('common.settings'), roles: ['admin', 'head_coach', 'coach', 'reception', 'cleaner'] },
         { to: '/app/admin/cameras', icon: Video, label: t('common.cameras'), roles: ['admin'] },
     ];
 
@@ -555,7 +555,7 @@ export default function DashboardLayout() {
 
                     <div className="flex items-center gap-2 sm:gap-6">
                         {/* Quick Action Hub */}
-                        <div className="flex items-center gap-1.5 sm:gap-3 md:p-2 md:bg-text-base/5 md:border md:border-surface-border md:rounded-[2rem] md:shadow-inner md:backdrop-blur-md">
+                        <div className="flex items-center gap-1.5 sm:gap-4 md:p-2 md:bg-text-base/5 md:border md:border-surface-border md:rounded-[2rem] md:shadow-inner md:backdrop-blur-md">
                             {settings.clock_position === 'header' && (
                                 <div className="hidden md:flex items-center gap-3">
                                     <PremiumClock className="!bg-transparent !border-none !shadow-none !px-2" />

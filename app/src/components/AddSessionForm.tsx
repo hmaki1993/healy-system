@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { X, Save, Calendar, Trash2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from './ConfirmModal';
+import PremiumSelect from './PremiumSelect';
 
 interface Coach {
     id: string;
@@ -179,36 +180,26 @@ export default function AddSessionForm({ onClose, onSuccess, initialData }: AddS
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2 group/field">
                             <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Lead Coach</label>
-                            <div className="relative">
-                                <select
-                                    required
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs tracking-wide font-bold"
-                                    value={formData.coach_id}
-                                    onChange={e => setFormData({ ...formData, coach_id: e.target.value })}
-                                >
-                                    <option value="" className="bg-[#0a0a0f]">Assign Coach</option>
-                                    {coaches.map(c => (
-                                        <option key={c.id} value={c.id} className="bg-[#0a0a0f]">{c.full_name}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
-                            </div>
+                            <PremiumSelect
+                                required
+                                value={formData.coach_id}
+                                onChange={val => setFormData({ ...formData, coach_id: val })}
+                                options={[
+                                    { value: "", label: "Assign Coach" },
+                                    ...coaches.map(c => ({ value: c.id, label: c.full_name }))
+                                ]}
+                                placeholder="Lead Coach"
+                            />
                         </div>
                         <div className="space-y-2 group/field">
                             <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Schedule Day</label>
-                            <div className="relative">
-                                <select
-                                    required
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-xs tracking-wide font-bold"
-                                    value={formData.day_of_week}
-                                    onChange={e => setFormData({ ...formData, day_of_week: e.target.value })}
-                                >
-                                    {daysOfWeek.map(day => (
-                                        <option key={day} value={day} className="bg-[#0a0a0f]">{day}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
-                            </div>
+                            <PremiumSelect
+                                required
+                                value={formData.day_of_week}
+                                onChange={val => setFormData({ ...formData, day_of_week: val })}
+                                options={daysOfWeek.map(day => ({ value: day, label: day }))}
+                                placeholder="Training Day"
+                            />
                         </div>
                     </div>
 
@@ -219,7 +210,7 @@ export default function AddSessionForm({ onClose, onSuccess, initialData }: AddS
                             <input
                                 required
                                 type="time"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-xs font-bold tracking-widest text-center"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center"
                                 value={formData.start_time}
                                 onChange={e => setFormData({ ...formData, start_time: e.target.value })}
                             />
@@ -229,7 +220,7 @@ export default function AddSessionForm({ onClose, onSuccess, initialData }: AddS
                             <input
                                 required
                                 type="time"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-xs font-bold tracking-widest text-center"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center"
                                 value={formData.end_time}
                                 onChange={e => setFormData({ ...formData, end_time: e.target.value })}
                             />

@@ -5,6 +5,7 @@ import { X, Save, UserPlus, Upload, ChevronDown } from 'lucide-react';
 import { parseISO, addMonths, format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { sendToN8n } from '../services/n8nService';
+import PremiumSelect from './PremiumSelect';
 
 const COUNTRIES = [
     { code: 'KW', dial_code: '+965', flag: '🇰🇼', name: 'Kuwait' },
@@ -457,7 +458,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                         <input
                             required
                             type="date"
-                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-xs font-bold uppercase tracking-widest"
+                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold uppercase tracking-widest"
                             value={formData.birth_date}
                             onChange={e => setFormData({ ...formData, birth_date: e.target.value })}
                         />
@@ -480,41 +481,35 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                     {/* Training Type */}
                     <div className="space-y-2 group/field">
                         <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Program</label>
-                        <div className="relative">
-                            <select
-                                value={formData.training_type}
-                                onChange={e => setFormData({ ...formData, training_type: e.target.value })}
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none text-xs tracking-wide font-bold cursor-pointer"
-                                required
-                            >
-                                <option value="" disabled className="bg-[#0a0a0f]">Select Sport</option>
-                                <option value="Artistic Gymnastics" className="bg-[#0a0a0f]">Artistic Gymnastics</option>
-                                <option value="Rhythmic Gymnastics" className="bg-[#0a0a0f]">Rhythmic Gymnastics</option>
-                                <option value="Parkour" className="bg-[#0a0a0f]">Parkour</option>
-                                <option value="Fitness" className="bg-[#0a0a0f]">Fitness</option>
-                            </select>
-                            <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
-                        </div>
+                        <PremiumSelect
+                            required
+                            value={formData.training_type}
+                            onChange={val => setFormData({ ...formData, training_type: val })}
+                            options={[
+                                { value: "Artistic Gymnastics", label: "Artistic Gymnastics" },
+                                { value: "Rhythmic Gymnastics", label: "Rhythmic Gymnastics" },
+                                { value: "Parkour", label: "Parkour" },
+                                { value: "Fitness", label: "Fitness" }
+                            ]}
+                            placeholder="Sport Program"
+                        />
                     </div>
 
                     {/* Training Group Selector */}
                     <div className="space-y-2 group/field">
                         <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Training Group</label>
-                        <div className="relative">
-                            <select
-                                value={formData.training_group_id}
-                                onChange={e => handleGroupChange(e.target.value)}
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none text-xs tracking-wide font-bold cursor-pointer"
-                            >
-                                <option value="" className="bg-[#0a0a0f]">None (Individual)</option>
-                                {groups?.map(group => (
-                                    <option key={group.id} value={group.id} className="bg-[#0a0a0f]">
-                                        {group.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 pointer-events-none group-focus-within/field:text-primary transition-colors" />
-                        </div>
+                        <PremiumSelect
+                            value={formData.training_group_id}
+                            onChange={val => handleGroupChange(val)}
+                            options={[
+                                { value: "", label: "None (Individual)" },
+                                ...(groups || []).map(group => ({
+                                    value: group.id,
+                                    label: group.name
+                                }))
+                            ]}
+                            placeholder="Training Group"
+                        />
                         <p className="text-[8px] text-white/20 uppercase tracking-widest ml-1">Selecting a group auto-fills schedule and coach</p>
                     </div>
 
@@ -524,7 +519,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                             <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Primary Guardian</label>
                             <input
                                 type="text"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold"
                                 value={formData.father_name}
                                 onChange={e => setFormData({ ...formData, father_name: e.target.value })}
                             />
@@ -550,7 +545,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                                 <input
                                     required
                                     type="tel"
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs font-bold"
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold tracking-wide"
                                     value={formData.contact_number}
                                     onChange={e => setFormData({ ...formData, contact_number: e.target.value })}
                                 />
@@ -564,7 +559,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                             <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Secondary Guardian</label>
                             <input
                                 type="text"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold"
                                 value={formData.mother_name}
                                 onChange={e => setFormData({ ...formData, mother_name: e.target.value })}
                             />
@@ -589,7 +584,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                                 </div>
                                 <input
                                     type="tel"
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-emerald-500/40 outline-none transition-all text-white placeholder:text-white/10 text-xs font-bold"
+                                    className="w-full px-8 py-3.5 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-emerald-500/40 outline-none transition-all text-white placeholder:text-white/10 text-sm font-bold tracking-wide"
                                     value={formData.parent_contact}
                                     onChange={e => setFormData({ ...formData, parent_contact: e.target.value })}
                                 />
@@ -603,7 +598,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                             <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Email Address</label>
                             <input
                                 type="email"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold"
                                 value={formData.email}
                                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                             />
@@ -612,7 +607,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                             <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Physical Address</label>
                             <input
                                 type="text"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs"
+                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold"
                                 value={formData.address}
                                 onChange={e => setFormData({ ...formData, address: e.target.value })}
                             />
@@ -698,19 +693,18 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                                     </span>
                                 )}
                             </div>
-                            <div className="relative">
-                                <select
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 focus:bg-white/[0.04] text-xs font-bold tracking-wide"
-                                    value={formData.subscription_type}
-                                    onChange={e => setFormData({ ...formData, subscription_type: e.target.value })}
-                                >
-                                    <option value="" className="bg-[#0a0a0f]">Select Plan</option>
-                                    {plans.map(plan => (
-                                        <option key={plan.id} value={plan.id} className="bg-[#0a0a0f]">{plan.name}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute inset-y-0 right-5 my-auto w-3.5 h-3.5 text-white/10 pointer-events-none group-focus-within/field:text-primary transition-colors" />
-                            </div>
+                            <PremiumSelect
+                                value={formData.subscription_type}
+                                onChange={val => setFormData({ ...formData, subscription_type: val })}
+                                options={[
+                                    { value: "", label: "Select Plan" },
+                                    ...plans.map(plan => ({
+                                        value: plan.id,
+                                        label: plan.name
+                                    }))
+                                ]}
+                                placeholder="Subscription Plan"
+                            />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -718,7 +712,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                                 <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Start Date</label>
                                 <input
                                     type="date"
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-xs font-bold tracking-widest"
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest"
                                     value={formData.subscription_start}
                                     onChange={e => setFormData({ ...formData, subscription_start: e.target.value })}
                                 />
@@ -727,7 +721,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                                 <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Expiry Date</label>
                                 <input
                                     type="date"
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-xs font-bold tracking-widest"
+                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest"
                                     value={formData.subscription_expiry}
                                     onChange={e => setFormData({ ...formData, subscription_expiry: e.target.value })}
                                 />
@@ -736,21 +730,17 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
 
                         <div className="space-y-2 group/field">
                             <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Assigned Coach</label>
-                            <div className="relative">
-                                <select
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 focus:bg-white/[0.04] text-xs font-bold tracking-wide"
-                                    value={formData.coach_id}
-                                    onChange={e => setFormData({ ...formData, coach_id: e.target.value })}
-                                >
-                                    <option value="" className="bg-[#0a0a0f]">{t('students.selectCoach')}</option>
-                                    {coaches?.filter(c => c.role !== 'reception' && c.role !== 'cleaner').map(coach => (
-                                        <option key={coach.id} value={coach.id} className="bg-[#0a0a0f]">
-                                            {coach.full_name} ({t(`roles.${coach.role}`)})
-                                        </option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute inset-y-0 right-5 my-auto w-3.5 h-3.5 text-white/10 pointer-events-none group-focus-within/field:text-primary transition-colors" />
-                            </div>
+                            <PremiumSelect
+                                value={formData.coach_id}
+                                onChange={val => setFormData({ ...formData, coach_id: val })}
+                                options={[
+                                    { value: "", label: t('students.selectCoach') },
+                                    ...(coaches?.filter(c => c.role !== 'reception' && c.role !== 'cleaner') || []).map(coach => ({
+                                        value: coach.id,
+                                        label: `${coach.full_name} (${t(`roles.${coach.role}`)})`
+                                    }))
+                                ]}
+                            />
                         </div>
                     </div>
 
@@ -779,12 +769,12 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                     <button
                         onClick={(e) => handleSubmit(e)}
                         disabled={loading}
-                        className="flex-1 py-4 rounded-3xl bg-white text-black hover:bg-white/90 transition-all duration-500 shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
+                        className="flex-1 py-4 rounded-full bg-black text-primary border border-primary/40 shadow-xl hover:bg-primary/5 transition-all active:scale-[0.98] flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
                     >
                         {loading ? (
                             <span className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Processing...</span>
                         ) : (
-                            <span className="font-black uppercase tracking-[0.3em] text-[10px] group-hover:tracking-[0.5em] transition-all duration-500">
+                            <span className="font-black uppercase tracking-[0.5em] text-[11px]">
                                 {initialData ? 'Update Profile' : 'Confirm Registration'}
                             </span>
                         )}
