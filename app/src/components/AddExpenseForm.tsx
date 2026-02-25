@@ -85,6 +85,7 @@ export default function AddExpenseForm({ onClose, onSuccess, onAdd }: AddExpense
                             </p>
                         </div>
                         <button
+                            type="button"
                             onClick={onClose}
                             className="p-3 rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/5 active:scale-90"
                         >
@@ -93,76 +94,78 @@ export default function AddExpenseForm({ onClose, onSuccess, onAdd }: AddExpense
                     </div>
                 </div>
 
-                {/* Scrollable Form Body */}
-                <form onSubmit={handleSubmit} className="relative z-10 px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
-
-                    {/* Description */}
-                    <div className="space-y-2 group/field">
-                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Description *</label>
-                        <input
-                            required
-                            type="text"
-                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs tracking-wide font-bold"
-                            value={formData.description}
-                            onChange={e => setFormData({ ...formData, description: e.target.value })}
-                            placeholder=""
-                        />
-                    </div>
-
-                    {/* Amount & Date */}
-                    <div className="grid grid-cols-2 gap-4">
+                {/* Form Wrapper */}
+                <form onSubmit={handleSubmit} className="relative z-10 flex flex-col flex-1 overflow-hidden">
+                    {/* Scrollable Form Body */}
+                    <div className="px-8 py-8 overflow-y-auto custom-scrollbar flex-1 space-y-8">
+                        {/* Description */}
                         <div className="space-y-2 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Amount ({currency.code}) *</label>
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1 group-focus-within/field:text-primary transition-colors">Description *</label>
                             <input
                                 required
-                                type="number"
-                                step="0.01"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs tracking-wide font-bold"
-                                value={formData.amount}
-                                onChange={e => setFormData({ ...formData, amount: e.target.value })}
+                                type="text"
+                                className="w-full px-5 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs tracking-wide font-bold shadow-inner"
+                                value={formData.description}
+                                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                placeholder="Enter description..."
                             />
                         </div>
-                        <div className="space-y-2 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Date *</label>
-                            <input
+
+                        {/* Amount & Date */}
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2 group/field">
+                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1 group-focus-within/field:text-primary transition-colors">Amount ({currency.code}) *</label>
+                                <input
+                                    required
+                                    type="number"
+                                    step="0.01"
+                                    className="w-full px-5 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs tracking-wide font-bold shadow-inner"
+                                    value={formData.amount}
+                                    onChange={e => setFormData({ ...formData, amount: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2 group/field">
+                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1 group-focus-within/field:text-primary transition-colors">Date *</label>
+                                <input
+                                    required
+                                    type="date"
+                                    className="w-full px-5 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center shadow-inner"
+                                    value={formData.expense_date}
+                                    onChange={e => setFormData({ ...formData, expense_date: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Category */}
+                        <div className="space-y-2 group/field pb-12">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1 group-focus-within/field:text-primary transition-colors">Category *</label>
+                            <PremiumSelect
                                 required
-                                type="date"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center"
-                                value={formData.expense_date}
-                                onChange={e => setFormData({ ...formData, expense_date: e.target.value })}
+                                value={formData.category}
+                                onChange={val => setFormData({ ...formData, category: val })}
+                                options={categories}
                             />
                         </div>
                     </div>
 
-                    {/* Category */}
-                    <div className="space-y-2 group/field">
-                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Category *</label>
-                        <PremiumSelect
-                            required
-                            value={formData.category}
-                            onChange={val => setFormData({ ...formData, category: val })}
-                            options={categories}
-                        />
+                    {/* Footer Section */}
+                    <div className="px-8 py-8 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-6 bg-black/20">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/40 hover:text-white transition-all duration-300 whitespace-nowrap active:scale-95"
+                        >
+                            Discard
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-4 bg-gradient-to-r from-primary to-primary-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.3)] transition-all active:scale-[0.98] disabled:opacity-50"
+                        >
+                            {loading ? t('common.saving') : t('common.save')}
+                        </button>
                     </div>
                 </form>
-
-                {/* Footer Section - Single Premium Button */}
-                <div className="relative z-10 px-8 py-8 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-6">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 whitespace-nowrap"
-                    >
-                        Discard
-                    </button>
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-3 bg-gradient-to-r from-primary to-primary-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] transition-all active:scale-[0.98] mt-6"
-                    >
-                        {loading ? t('common.saving') : t('common.save')}
-                    </button>
-                </div>
             </div>
         </div>
     );

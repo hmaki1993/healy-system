@@ -1,10 +1,72 @@
-import { useState, useEffect } from 'react';
-import { X, Plus, Save, Settings, Trash2, Calendar, Users, ChevronRight, ArrowLeft, CheckSquare } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Plus, Save, Settings, Trash2, Calendar, Users, ChevronRight, ArrowLeft, CheckSquare, ChevronDown, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import SkillsManagerModal from './SkillsManagerModal';
 import { useTheme } from '../context/ThemeContext';
-import PremiumSelect from './PremiumSelect';
+
+// Foolproof UUID Detection: Long strings with multiple dashes
+const isUUID = (str: any) => {
+    if (!str) return false;
+    const s = String(str).trim();
+    return s.length > 20 && (s.match(/-/g) || []).length >= 4;
+};
+
+// Inlined ModernSelect to bypass any caching/import issues
+function ModernSelect({ value, onChange, options, placeholder = "Select option", className = "" }: any) {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const selectedOption = options.find((opt: any) => String(opt.value) === String(value));
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen]);
+
+    return (
+        <div ref={containerRef} className={`relative ${className}`}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className={`w-full px-5 py-3 bg-black/40 border rounded-2xl flex items-center justify-between text-left transition-all ${isOpen ? 'border-primary/40 bg-black shadow-[0_0_20px_rgba(255,255,255,0.05)]' : 'border-white/5'}`}
+            >
+                <div className="flex items-center gap-2 overflow-hidden">
+                    <span className={`text-[11px] truncate ${selectedOption ? 'text-white' : 'text-white/20'}`}>
+                        {selectedOption && selectedOption.label && !isUUID(selectedOption.label)
+                            ? selectedOption.label
+                            : (selectedOption ? 'Coach' : placeholder)}
+                    </span>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isOpen ? 'rotate-180 text-primary' : 'text-white/20'}`} />
+            </button>
+            {isOpen && (
+                <div className="absolute z-[110] top-[calc(100%+8px)] left-0 w-full bg-[#0a0a0f]/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl py-2 animate-in fade-in zoom-in-95 origin-top">
+                    <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                        {options.map((opt: any) => {
+                            const isSel = String(value) === String(opt.value);
+                            return (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => { onChange(opt.value); setIsOpen(false); }}
+                                    className={`w-full px-5 py-3 text-left transition-colors flex items-center justify-between ${isSel ? 'bg-primary/10 text-primary' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+                                >
+                                    <span className="text-xs font-bold">{opt.label && !isUUID(opt.label) ? opt.label : `Coach (${String(opt.value).substring(0, 4)})`}</span>
+                                    {isSel && <Check className="w-3 h-3 text-primary" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 interface BatchAssessmentModalProps {
     isOpen: boolean;
@@ -278,7 +340,7 @@ id,
                 {/* Header */}
                 <div className="p-4 sm:p-6 border-b border-white/10 flex justify-between items-center bg-black/20">
                     <div>
-                        <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-wider">Batch Assessment <span className="text-[8px] text-primary/40">DEBUG_V2</span></h2>
+                        <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-wider">Batch Assessment</h2>
                         <p className="text-[9px] sm:text-[10px] text-white/40 uppercase tracking-widest mt-1">Step {step}: {step === 1 ? 'Setup' : step === 2 ? 'Define Test' : 'Enter Grades'}</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
@@ -300,9 +362,11 @@ id,
                             </div>
 
                             <div>
-                                <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5 block">Assessing Coach</label>
+                                <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/40 mb-1.5 block">
+                                    Assessing Coach
+                                </label>
                                 <div className="mt-1">
-                                    <PremiumSelect
+                                    <ModernSelect
                                         value={assessorId}
                                         onChange={(val) => setAssessorId(val)}
                                         options={coaches.map(c => ({
@@ -379,7 +443,7 @@ id,
                                             )}
                                         </div>
                                         <div className="min-w-[140px]">
-                                            <PremiumSelect
+                                            <ModernSelect
                                                 value={coachFilter}
                                                 onChange={(val) => setCoachFilter(val)}
                                                 options={[
@@ -448,7 +512,7 @@ id,
                                 {selectedSkills.map((row, index) => (
                                     <div key={index} className="flex gap-2 sm:gap-3 items-start animate-in fade-in slide-in-from-left-4 duration-300">
                                         <div className="flex-1 min-w-0">
-                                            <PremiumSelect
+                                            <ModernSelect
                                                 value={row.skill_id}
                                                 onChange={(val) => updateSkillRow(index, 'skill_id', val)}
                                                 options={availableSkills

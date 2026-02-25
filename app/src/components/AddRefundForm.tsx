@@ -71,8 +71,12 @@ export default function AddRefundForm({ onClose, onSuccess, onAdd }: AddRefundFo
                             <h2 className="text-xl font-black text-white tracking-widest uppercase mb-1 drop-shadow-lg leading-tight">
                                 Issue Refund
                             </h2>
+                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                Financial Reversal Protocol
+                            </p>
                         </div>
                         <button
+                            type="button"
                             onClick={onClose}
                             className="p-3 rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/5 active:scale-90"
                         >
@@ -81,94 +85,87 @@ export default function AddRefundForm({ onClose, onSuccess, onAdd }: AddRefundFo
                     </div>
                 </div>
 
-                {/* Scrollable Form Body */}
-                <form onSubmit={handleSubmit} className="relative z-10 px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                {/* Form Wrapper */}
+                <form onSubmit={handleSubmit} className="relative z-10 flex flex-col flex-1 overflow-hidden">
+                    {/* Scrollable Form Body */}
+                    <div className="px-8 py-8 overflow-y-auto custom-scrollbar flex-1 space-y-8">
 
-                    {/* Student Selection */}
-                    <div className="space-y-2 group/field">
-                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-rose-500 transition-colors">Target Recipient</label>
-                        <div className="relative">
-                            <select
-                                required
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/ client-border rounded-2xl focus:border-rose-500/40 outline-none transition-all text-white appearance-none cursor-pointer pr-12 text-[10px] font-bold tracking-wide"
+                        {/* Student Selection */}
+                        <div className="space-y-2 group/field">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1 group-focus-within/field:text-rose-500 transition-colors">Target Recipient *</label>
+                            <PremiumSelect
                                 value={formData.student_id}
-                                onChange={e => setFormData({ ...formData, student_id: e.target.value })}
-                            >
-                                <option value="" className="bg-[#0a0a0f]">Assign Recipient</option>
-                                {students?.map((student: any) => (
-                                    <option key={student.id} value={student.id} className="bg-[#0a0a0f]">{student.full_name}</option>
-                                ))}
-                            </select>
-                            <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 pointer-events-none group-focus-within/field:text-rose-500 transition-colors" />
+                                onChange={val => setFormData({ ...formData, student_id: val })}
+                                options={[
+                                    { value: "", label: "Assign Recipient..." },
+                                    ...(students || []).map((s: any) => ({ value: s.id, label: s.full_name }))
+                                ]}
+                                placeholder="Select Recipient"
+                            />
                         </div>
-                    </div>
 
-                    {/* Amount & Date Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-rose-500 transition-colors">Reversal Amount</label>
-                            <div className="relative">
-                                <input
-                                    required
-                                    type="number"
-                                    step="0.01"
-                                    className="w-full pl-5 pr-10 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-rose-500/40 outline-none transition-all text-white text-[10px] font-bold"
-                                    value={formData.amount}
-                                    onChange={e => setFormData({ ...formData, amount: e.target.value })}
-                                />
-                                <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[9px] font-black text-white/20 uppercase">{currency.code}</span>
+                        {/* Amount & Date Grid */}
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2 group/field">
+                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1 group-focus-within/field:text-rose-500 transition-colors">Reversal Amount</label>
+                                <div className="relative">
+                                    <input
+                                        required
+                                        type="number"
+                                        step="0.01"
+                                        className="w-full pl-5 pr-10 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl focus:border-rose-500/40 outline-none transition-all text-white text-[10px] font-bold shadow-inner"
+                                        value={formData.amount}
+                                        onChange={e => setFormData({ ...formData, amount: e.target.value })}
+                                    />
+                                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[9px] font-black text-white/20 uppercase">{currency.code}</span>
+                                </div>
                             </div>
-                        </div>
-                        <div className="space-y-2 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-rose-500 transition-colors">Effective Date</label>
-                            <div className="relative">
+                            <div className="space-y-2 group/field">
+                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1 group-focus-within/field:text-rose-500 transition-colors">Effective Date</label>
                                 <input
                                     required
                                     type="date"
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-rose-500/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center"
+                                    className="w-full px-5 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl focus:border-rose-500/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center shadow-inner"
                                     value={formData.refund_date}
                                     onChange={e => setFormData({ ...formData, refund_date: e.target.value })}
                                 />
                             </div>
                         </div>
+
+                        {/* Reason */}
+                        <div className="space-y-2 group/field pb-8">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1 group-focus-within/field:text-rose-500 transition-colors">Justification Memo</label>
+                            <textarea
+                                className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-[2rem] focus:border-rose-500/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold tracking-wide resize-none h-28 shadow-inner"
+                                value={formData.reason}
+                                onChange={e => setFormData({ ...formData, reason: e.target.value })}
+                                placeholder="State reason for refund..."
+                            />
+                        </div>
                     </div>
 
-                    {/* Reason */}
-                    <div className="space-y-2 group/field">
-                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-rose-500 transition-colors">Justification Memo</label>
-                        <textarea
-                            className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-rose-500/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold tracking-wide resize-none"
-                            rows={3}
-                            value={formData.reason}
-                            onChange={e => setFormData({ ...formData, reason: e.target.value })}
-                            placeholder=""
-                        />
+                    {/* Footer Section */}
+                    <div className="px-8 py-8 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-6 bg-black/20">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/40 hover:text-white transition-all duration-300 whitespace-nowrap active:scale-95"
+                        >
+                            Discard
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-4 bg-rose-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:shadow-[0_0_40px_rgba(244,63,94,0.25)] transition-all active:scale-[0.98] disabled:opacity-50"
+                        >
+                            {loading ? (
+                                <span className="animate-pulse">Processing...</span>
+                            ) : (
+                                <span>Authorize Refund</span>
+                            )}
+                        </button>
                     </div>
                 </form>
-
-                {/* Footer Section - Single Premium Button */}
-                <div className="relative z-10 px-8 py-8 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-6">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 whitespace-nowrap"
-                    >
-                        Discard
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="flex-1 py-4 rounded-3xl bg-rose-500 text-white hover:bg-rose-600 transition-all duration-500 shadow-[0_20px_40px_rgba(244,63,94,0.2)] active:scale-95 flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
-                    >
-                        {loading ? (
-                            <span className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Processing...</span>
-                        ) : (
-                            <span className="font-black uppercase tracking-[0.3em] text-[10px] group-hover:tracking-[0.5em] transition-all duration-500">
-                                Authorize Refund
-                            </span>
-                        )}
-                    </button>
-                </div>
             </div>
         </div>
     );

@@ -104,8 +104,12 @@ export default function AddPaymentForm({ onClose, onSuccess }: AddPaymentFormPro
                             <h2 className="text-xl font-black text-white tracking-widest uppercase mb-1 drop-shadow-lg leading-tight">
                                 Record Payment
                             </h2>
+                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                Inbound Revenue Processing
+                            </p>
                         </div>
                         <button
+                            type="button"
                             onClick={onClose}
                             className="p-3 rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/5 active:scale-90"
                         >
@@ -114,131 +118,132 @@ export default function AddPaymentForm({ onClose, onSuccess }: AddPaymentFormPro
                     </div>
                 </div>
 
-                {/* Scrollable Form Body */}
-                <form onSubmit={handleSubmit} className="relative z-10 px-8 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                {/* Form Wrapper */}
+                <form onSubmit={handleSubmit} className="relative z-10 flex flex-col flex-1 overflow-hidden">
+                    {/* Scrollable Form Body */}
+                    <div className="px-8 py-8 overflow-y-auto custom-scrollbar flex-1 space-y-8">
 
-                    {/* Student Selection / Guest Toggle */}
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1">Payer Details</label>
-                            <button
-                                type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, is_guest: !prev.is_guest, student_id: '', guest_name: '' }))}
-                                className={`text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border transition-all duration-500 ${formData.is_guest
-                                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/20'
-                                    : 'bg-white/5 text-white/40 border-white/5 hover:border-white/10 hover:text-white'
-                                    }`}
-                            >
-                                {formData.is_guest ? 'Guest Active' : 'Switch to Guest'}
-                            </button>
-                        </div>
-
-                        {!formData.is_guest ? (
-                            <div className="space-y-2 group/field">
-                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Gymnast Name</label>
-                                <PremiumSelect
-                                    value={formData.student_id}
-                                    onChange={val => setFormData({ ...formData, student_id: val })}
-                                    options={[
-                                        { value: "", label: "Search Student..." },
-                                        ...(students || []).map(s => ({ value: s.id, label: s.full_name }))
-                                    ]}
-                                    placeholder="Gymnast Name"
-                                />
-                            </div>
-                        ) : (
-                            <div className="space-y-2 group/field">
-                                <input
-                                    required
-                                    type="text"
-                                    placeholder=""
-                                    className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-amber-500/40 outline-none transition-all text-white placeholder:text-white/10 text-xs tracking-wide font-bold"
-                                    value={formData.guest_name}
-                                    onChange={e => setFormData({ ...formData, guest_name: e.target.value })}
-                                />
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Amount & Date */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Amount ({currency.code})</label>
-                            <input
-                                required
-                                type="number"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs tracking-wide font-bold"
-                                value={formData.amount}
-                                onChange={e => setFormData({ ...formData, amount: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Date</label>
-                            <input
-                                required
-                                type="date"
-                                className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center"
-                                value={formData.date}
-                                onChange={e => setFormData({ ...formData, date: e.target.value })}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Payment Method */}
-                    <div className="space-y-4">
-                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1">Method</label>
-                        <div className="grid grid-cols-3 gap-2">
-                            {['cash', 'bank_transfer', 'card'].map(method => (
+                        {/* Student Selection / Guest Toggle */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1">Payer Details</label>
                                 <button
-                                    key={method}
                                     type="button"
-                                    onClick={() => setFormData({ ...formData, payment_method: method })}
-                                    className={`py-3 px-2 rounded-xl border text-[8px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${formData.payment_method === method
-                                        ? 'bg-primary/20 border-primary/40 text-primary shadow-lg shadow-primary/5 scale-105'
-                                        : 'bg-white/[0.02] border-white/5 text-white/20 hover:bg-white/[0.05] hover:border-white/10'
+                                    onClick={() => setFormData(prev => ({ ...prev, is_guest: !prev.is_guest, student_id: '', guest_name: '' }))}
+                                    className={`text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border transition-all duration-500 ${formData.is_guest
+                                        ? 'bg-amber-500/20 text-amber-400 border-amber-500/20'
+                                        : 'bg-white/5 text-white/40 border-white/5 hover:border-white/10 hover:text-white'
                                         }`}
                                 >
-                                    {method.replace('_', ' ')}
+                                    {formData.is_guest ? 'Guest Active' : 'Switch to Guest'}
                                 </button>
-                            ))}
+                            </div>
+
+                            {!formData.is_guest ? (
+                                <div className="space-y-2 group/field">
+                                    <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Gymnast Name</label>
+                                    <PremiumSelect
+                                        value={formData.student_id}
+                                        onChange={val => setFormData({ ...formData, student_id: val })}
+                                        options={[
+                                            { value: "", label: "Search Student..." },
+                                            ...(students || []).map(s => ({ value: s.id, label: s.full_name }))
+                                        ]}
+                                        placeholder="Select Gymnast"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="space-y-2 group/field">
+                                    <input
+                                        required
+                                        type="text"
+                                        placeholder="Enter Guest Name..."
+                                        className="w-full px-5 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl focus:border-amber-500/40 outline-none transition-all text-white placeholder:text-white/10 text-xs tracking-wide font-bold shadow-inner"
+                                        value={formData.guest_name}
+                                        onChange={e => setFormData({ ...formData, guest_name: e.target.value })}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Amount & Date */}
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2 group/field">
+                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1 group-focus-within/field:text-primary transition-colors">Amount ({currency.code})</label>
+                                <input
+                                    required
+                                    type="number"
+                                    className="w-full px-5 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-xs tracking-wide font-bold shadow-inner"
+                                    value={formData.amount}
+                                    onChange={e => setFormData({ ...formData, amount: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2 group/field">
+                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1 group-focus-within/field:text-primary transition-colors">Date</label>
+                                <input
+                                    required
+                                    type="date"
+                                    className="w-full px-5 py-3.5 bg-white/[0.03] border border-white/10 rounded-2xl focus:border-primary/40 outline-none transition-all text-white [color-scheme:dark] text-[10px] font-bold tracking-widest text-center shadow-inner"
+                                    value={formData.date}
+                                    onChange={e => setFormData({ ...formData, date: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Payment Method */}
+                        <div className="space-y-4">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1">Payment Method</label>
+                            <div className="grid grid-cols-3 gap-3">
+                                {['cash', 'bank_transfer', 'card'].map(method => (
+                                    <button
+                                        key={method}
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, payment_method: method })}
+                                        className={`py-3.5 px-2 rounded-2xl border text-[8px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${formData.payment_method === method
+                                            ? 'bg-primary/20 border-primary/40 text-primary shadow-lg shadow-primary/5 scale-105'
+                                            : 'bg-white/[0.02] border-white/5 text-white/20 hover:bg-white/[0.05] hover:border-white/10'
+                                            }`}
+                                    >
+                                        {method.replace('_', ' ')}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Notes */}
+                        <div className="space-y-2 group/field pb-8">
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1 group-focus-within/field:text-primary transition-colors">Internal Notes</label>
+                            <textarea
+                                className="w-full px-5 py-4 bg-white/[0.03] border border-white/10 rounded-[2rem] focus:border-primary/40 outline-none transition-all h-28 resize-none text-white placeholder:text-white/10 text-[10px] font-bold tracking-wide shadow-inner"
+                                value={formData.notes}
+                                onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                                placeholder="Add optional details..."
+                            ></textarea>
                         </div>
                     </div>
 
-                    {/* Notes */}
-                    <div className="space-y-2 group/field">
-                        <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Internal Notes</label>
-                        <textarea
-                            className="w-full px-5 py-4 bg-white/[0.02] border border-white/5 rounded-3xl focus:border-primary/40 outline-none transition-all h-24 resize-none text-white placeholder:text-white/10 text-[10px] font-bold tracking-wide"
-                            value={formData.notes}
-                            onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                            placeholder=""
-                        ></textarea>
+                    {/* Footer Section */}
+                    <div className="px-8 py-8 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-6 bg-black/20">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/40 hover:text-white transition-all duration-300 whitespace-nowrap active:scale-95"
+                        >
+                            Discard
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-4 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:shadow-[0_0_40px_rgba(255,255,255,0.15)] transition-all active:scale-[0.98] disabled:opacity-50"
+                        >
+                            {loading ? (
+                                <span className="animate-pulse">Processing...</span>
+                            ) : (
+                                <span>Save Payment</span>
+                            )}
+                        </button>
                     </div>
                 </form>
-
-                {/* Footer Section - Single Premium Button */}
-                <div className="relative z-10 px-8 py-8 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-6">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 whitespace-nowrap"
-                    >
-                        {t('common.cancel', 'Discard')}
-                    </button>
-                    <button
-                        onClick={(e) => handleSubmit(e)}
-                        disabled={loading}
-                        className="flex-1 py-4 rounded-3xl bg-white text-black hover:bg-white/90 transition-all duration-500 shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
-                    >
-                        {loading ? (
-                            <span className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Processing...</span>
-                        ) : (
-                            <span className="font-black uppercase tracking-[0.3em] text-[10px] group-hover:tracking-[0.5em] transition-all duration-500">
-                                Save Payment
-                            </span>
-                        )}
-                    </button>
-                </div>
             </div>
         </div>
     );

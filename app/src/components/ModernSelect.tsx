@@ -6,7 +6,7 @@ interface Option {
     label: string | React.ReactNode;
 }
 
-interface PremiumSelectProps {
+interface ModernSelectProps {
     value: string;
     onChange: (value: string) => void;
     options: Option[];
@@ -15,14 +15,14 @@ interface PremiumSelectProps {
     required?: boolean;
 }
 
-export default function PremiumSelect({
+export default function ModernSelect({
     value,
     onChange,
     options,
     placeholder = "Select an option",
     className = "",
     required = false
-}: PremiumSelectProps) {
+}: ModernSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -30,6 +30,7 @@ export default function PremiumSelect({
     const isUUID = (str: any) => {
         if (!str) return false;
         const s = String(str).trim();
+        // Standard UUIDs are 36 chars and have 4 dashes
         return s.length > 20 && (s.match(/-/g) || []).length >= 4;
     };
 
@@ -57,21 +58,25 @@ export default function PremiumSelect({
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className={`
-                    w-full px-5 py-3 bg-black/40 border rounded-2xl outline-none
+                    w-full px-5 py-3 bg-black/40 border-2 border-rose-500 rounded-2xl outline-none
                     flex items-center justify-start text-left relative transition-all
-                    ${isOpen ? 'border-primary/40 bg-black shadow-[0_0_20px_rgba(255,255,255,0.05)]' : 'border-white/5 hover:border-white/20'}
+                    ${isOpen ? 'bg-black shadow-[0_0_20px_rgba(244,63,94,0.2)]' : 'border-white/5 hover:border-white/20'}
                 `}
             >
                 <div className="flex flex-col items-start min-w-0 flex-1">
-                    <span className={`text-[11px] font-bold truncate ${selectedOption ? 'text-white' : 'text-white/20'}`}>
-                        {selectedOption &&
-                            selectedOption.label &&
-                            !isUUID(selectedOption.label)
-                            ? selectedOption.label
-                            : (selectedOption ? 'Coach' : placeholder)}
-                    </span>
+                    <div className="flex items-center gap-2 w-full">
+                        <span className="bg-rose-500 text-white text-[7px] px-1 rounded font-black shrink-0">V3_FIX</span>
+                        <span className={`text-[11px] sm:text-xs font-bold truncate ${selectedOption ? 'text-white' : 'text-white/20'}`}>
+                            {selectedOption &&
+                                selectedOption.label &&
+                                !isUUID(selectedOption.label) &&
+                                !isUUID(selectedOption.value)
+                                ? selectedOption.label
+                                : (selectedOption ? 'Coach' : placeholder)}
+                        </span>
+                    </div>
                 </div>
-                <ChevronDown className={`w-3.5 h-3.5 absolute right-5 top-1/2 -translate-y-1/2 transition-transform duration-300 ${isOpen ? 'rotate-180 text-primary' : 'text-white/20'}`} />
+                <ChevronDown className={`w-3.5 h-3.5 shrink-0 ml-2 transition-transform duration-300 ${isOpen ? 'rotate-180 text-rose-500' : 'text-white/20'}`} />
             </button>
 
             {/* Hidden Input for Form Validation/Submission */}
@@ -88,6 +93,9 @@ export default function PremiumSelect({
             {/* Dropdown Menu */}
             {isOpen && (
                 <div className="absolute z-[110] top-[calc(100%+8px)] left-0 w-full bg-[#0a0a0f]/95 backdrop-blur-3xl border border-white/10 rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-300 py-2 origin-top">
+                    {/* Inner Shimmer */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-rose-500/[0.05] to-transparent pointer-events-none"></div>
+
                     <div className="max-h-64 overflow-y-auto custom-scrollbar relative z-10">
                         {options.map((option) => {
                             const isSelected = String(value) === String(option.value);
@@ -102,7 +110,7 @@ export default function PremiumSelect({
                                     className={`
                                         w-full px-5 py-3 text-left transition-all duration-300 flex items-center justify-between group/opt
                                         ${isSelected
-                                            ? 'bg-primary/10 text-primary'
+                                            ? 'bg-rose-500/10 text-rose-500'
                                             : 'text-white/40 hover:bg-white/5 hover:text-white'
                                         }
                                     `}
@@ -111,7 +119,7 @@ export default function PremiumSelect({
                                         {option.label && !isUUID(option.label) ? option.label : `Coach (${String(option.value).substring(0, 4)})`}
                                     </span>
                                     {isSelected && (
-                                        <Check className="w-3.5 h-3.5 text-primary animate-in zoom-in duration-300" />
+                                        <Check className="w-3.5 h-3.5 text-rose-500 animate-in zoom-in duration-300" />
                                     )}
                                 </button>
                             );
