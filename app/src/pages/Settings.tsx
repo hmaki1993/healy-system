@@ -2646,7 +2646,8 @@ function LogoEditorModal({ isOpen, onClose, logo, onSave }: any) {
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 
