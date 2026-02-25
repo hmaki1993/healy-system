@@ -4,69 +4,7 @@ import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import SkillsManagerModal from './SkillsManagerModal';
 import { useTheme } from '../context/ThemeContext';
-
-// Foolproof UUID Detection: Long strings with multiple dashes
-const isUUID = (str: any) => {
-    if (!str) return false;
-    const s = String(str).trim();
-    return s.length > 20 && (s.match(/-/g) || []).length >= 4;
-};
-
-// Inlined ModernSelect to bypass any caching/import issues
-function ModernSelect({ value, onChange, options, placeholder = "Select option", className = "" }: any) {
-    const [isOpen, setIsOpen] = useState(false);
-    const containerRef = useRef<HTMLDivElement>(null);
-    const selectedOption = options.find((opt: any) => String(opt.value) === String(value));
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        if (isOpen) document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isOpen]);
-
-    return (
-        <div ref={containerRef} className={`relative ${className}`}>
-            <button
-                type="button"
-                onClick={() => setIsOpen(!isOpen)}
-                className={`w-full px-5 py-3 bg-black/40 border rounded-2xl flex items-center justify-between text-left transition-all ${isOpen ? 'border-primary/40 bg-black shadow-[0_0_20px_rgba(255,255,255,0.05)]' : 'border-white/5'}`}
-            >
-                <div className="flex items-center gap-2 overflow-hidden">
-                    <span className={`text-[11px] truncate ${selectedOption ? 'text-white' : 'text-white/20'}`}>
-                        {selectedOption && selectedOption.label && !isUUID(selectedOption.label)
-                            ? selectedOption.label
-                            : (selectedOption ? 'Coach' : placeholder)}
-                    </span>
-                </div>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isOpen ? 'rotate-180 text-primary' : 'text-white/20'}`} />
-            </button>
-            {isOpen && (
-                <div className="absolute z-[110] top-[calc(100%+8px)] left-0 w-full bg-[#0a0a0f]/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl py-2 animate-in fade-in zoom-in-95 origin-top">
-                    <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                        {options.map((opt: any) => {
-                            const isSel = String(value) === String(opt.value);
-                            return (
-                                <button
-                                    key={opt.value}
-                                    type="button"
-                                    onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                                    className={`w-full px-5 py-3 text-left transition-colors flex items-center justify-between ${isSel ? 'bg-primary/10 text-primary' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
-                                >
-                                    <span className="text-xs font-bold">{opt.label && !isUUID(opt.label) ? opt.label : `Coach (${String(opt.value).substring(0, 4)})`}</span>
-                                    {isSel && <Check className="w-3 h-3 text-primary" />}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
+import ModernSelect from './ModernSelect';
 
 interface BatchAssessmentModalProps {
     isOpen: boolean;

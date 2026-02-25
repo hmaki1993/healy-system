@@ -11,6 +11,7 @@ interface ModernSelectProps {
     onChange: (value: string) => void;
     options: Option[];
     placeholder?: string;
+    fallbackRole?: string;
     className?: string;
     required?: boolean;
 }
@@ -20,18 +21,19 @@ export default function ModernSelect({
     onChange,
     options,
     placeholder = "Select an option",
+    fallbackRole = "Option",
     className = "",
     required = false
 }: ModernSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Foolproof UUID Detection: Long strings with multiple dashes
+    // UUID Detection Helper (Robust)
     const isUUID = (str: any) => {
         if (!str) return false;
         const s = String(str).trim();
-        // Standard UUIDs are 36 chars and have 4 dashes
-        return s.length > 20 && (s.match(/-/g) || []).length >= 4;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(s) || (s.length > 20 && (s.match(/-/g) || []).length >= 4);
     };
 
     const selectedOption = options.find(opt => String(opt.value) === String(value));
@@ -58,25 +60,25 @@ export default function ModernSelect({
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className={`
-                    w-full px-5 py-3 bg-black/40 border-2 border-rose-500 rounded-2xl outline-none
-                    flex items-center justify-start text-left relative transition-all
-                    ${isOpen ? 'bg-black shadow-[0_0_20px_rgba(244,63,94,0.2)]' : 'border-white/5 hover:border-white/20'}
+                    w-full px-5 py-3.5 bg-white/[0.03] border rounded-2xl outline-none
+                    flex items-center justify-start text-left relative transition-all duration-300
+                    ${isOpen
+                        ? 'border-primary/40 bg-white/[0.08] shadow-[0_0_30px_rgba(var(--primary-rgb,255,255,255),0.15)]'
+                        : 'border-white/5 hover:border-white/10 hover:bg-white/[0.05]'}
                 `}
             >
                 <div className="flex flex-col items-start min-w-0 flex-1">
                     <div className="flex items-center gap-2 w-full">
-                        <span className="bg-rose-500 text-white text-[7px] px-1 rounded font-black shrink-0">V3_FIX</span>
                         <span className={`text-[11px] sm:text-xs font-bold truncate ${selectedOption ? 'text-white' : 'text-white/20'}`}>
                             {selectedOption &&
                                 selectedOption.label &&
-                                !isUUID(selectedOption.label) &&
-                                !isUUID(selectedOption.value)
+                                !isUUID(selectedOption.label)
                                 ? selectedOption.label
-                                : (selectedOption ? 'Coach' : placeholder)}
+                                : (selectedOption ? `👤 ${fallbackRole}` : placeholder)}
                         </span>
                     </div>
                 </div>
-                <ChevronDown className={`w-3.5 h-3.5 shrink-0 ml-2 transition-transform duration-300 ${isOpen ? 'rotate-180 text-rose-500' : 'text-white/20'}`} />
+                <ChevronDown className={`w-3.5 h-3.5 shrink-0 ml-2 transition-transform duration-300 ${isOpen ? 'rotate-180 text-primary' : 'text-white/20'}`} />
             </button>
 
             {/* Hidden Input for Form Validation/Submission */}
@@ -94,7 +96,7 @@ export default function ModernSelect({
             {isOpen && (
                 <div className="absolute z-[110] top-[calc(100%+8px)] left-0 w-full bg-[#0a0a0f]/95 backdrop-blur-3xl border border-white/10 rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-300 py-2 origin-top">
                     {/* Inner Shimmer */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-rose-500/[0.05] to-transparent pointer-events-none"></div>
+                    <div className="absolute inset-0 bg-gradient-to-tr from-primary/[0.05] to-transparent pointer-events-none"></div>
 
                     <div className="max-h-64 overflow-y-auto custom-scrollbar relative z-10">
                         {options.map((option) => {
@@ -110,16 +112,16 @@ export default function ModernSelect({
                                     className={`
                                         w-full px-5 py-3 text-left transition-all duration-300 flex items-center justify-between group/opt
                                         ${isSelected
-                                            ? 'bg-rose-500/10 text-rose-500'
+                                            ? 'bg-primary/10 text-primary'
                                             : 'text-white/40 hover:bg-white/5 hover:text-white'
                                         }
                                     `}
                                 >
                                     <span className={`text-xs font-bold tracking-wide transition-all duration-300 ${isSelected ? 'translate-x-1' : 'group-hover/opt:translate-x-1'}`}>
-                                        {option.label && !isUUID(option.label) ? option.label : `Coach (${String(option.value).substring(0, 4)})`}
+                                        {option.label && !isUUID(option.label) ? option.label : `${fallbackRole} (${String(option.value).substring(0, 4)})`}
                                     </span>
                                     {isSelected && (
-                                        <Check className="w-3.5 h-3.5 text-rose-500 animate-in zoom-in duration-300" />
+                                        <Check className="w-3.5 h-3.5 text-primary animate-in zoom-in duration-300" />
                                     )}
                                 </button>
                             );

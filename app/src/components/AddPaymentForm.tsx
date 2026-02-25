@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { X, Save, DollarSign, ChevronDown } from 'lucide-react';
+import { X, Save, DollarSign, ChevronDown, Check } from 'lucide-react';
 import { useCurrency } from '../context/CurrencyContext';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
-import PremiumSelect from './PremiumSelect';
+import ModernSelect from './ModernSelect';
 
 interface Student {
     id: string;
@@ -142,14 +142,15 @@ export default function AddPaymentForm({ onClose, onSuccess }: AddPaymentFormPro
                             {!formData.is_guest ? (
                                 <div className="space-y-2 group/field">
                                     <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Gymnast Name</label>
-                                    <PremiumSelect
+                                    <ModernSelect
                                         value={formData.student_id}
-                                        onChange={val => setFormData({ ...formData, student_id: val })}
+                                        onChange={(val: any) => setFormData({ ...formData, student_id: val })}
                                         options={[
                                             { value: "", label: "Search Student..." },
                                             ...(students || []).map(s => ({ value: s.id, label: s.full_name }))
                                         ]}
                                         placeholder="Select Gymnast"
+                                        fallbackRole="Gymnast"
                                     />
                                 </div>
                             ) : (

@@ -13,6 +13,7 @@ interface PremiumSelectProps {
     placeholder?: string;
     className?: string;
     required?: boolean;
+    fallbackRole?: string;
 }
 
 export default function PremiumSelect({
@@ -21,16 +22,18 @@ export default function PremiumSelect({
     options,
     placeholder = "Select an option",
     className = "",
-    required = false
+    required = false,
+    fallbackRole = "Option"
 }: PremiumSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Foolproof UUID Detection: Long strings with multiple dashes
+    // UUID Detection Helper (Robust)
     const isUUID = (str: any) => {
         if (!str) return false;
         const s = String(str).trim();
-        return s.length > 20 && (s.match(/-/g) || []).length >= 4;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(s) || (s.length > 20 && (s.match(/-/g) || []).length >= 4);
     };
 
     const selectedOption = options.find(opt => String(opt.value) === String(value));
@@ -57,21 +60,21 @@ export default function PremiumSelect({
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className={`
-                    w-full px-5 py-3 bg-black/40 border rounded-2xl outline-none
-                    flex items-center justify-start text-left relative transition-all
-                    ${isOpen ? 'border-primary/40 bg-black shadow-[0_0_20px_rgba(255,255,255,0.05)]' : 'border-white/5 hover:border-white/20'}
+                    w-full px-5 py-3.5 bg-white/[0.03] border rounded-2xl outline-none
+                    flex items-center justify-start text-left relative transition-all duration-300
+                    ${isOpen
+                        ? 'border-primary/40 bg-white/[0.08] shadow-[0_0_30px_rgba(var(--primary-rgb,255,255,255),0.15)]'
+                        : 'border-white/5 hover:border-white/10 hover:bg-white/[0.05]'}
                 `}
             >
                 <div className="flex flex-col items-start min-w-0 flex-1">
-                    <span className={`text-[11px] font-bold truncate ${selectedOption ? 'text-white' : 'text-white/20'}`}>
-                        {selectedOption &&
-                            selectedOption.label &&
-                            !isUUID(selectedOption.label)
+                    <span className={`text-xs font-bold truncate tracking-wide ${selectedOption ? 'text-white' : 'text-white/20'}`}>
+                        {selectedOption && !isUUID(selectedOption.label)
                             ? selectedOption.label
-                            : (selectedOption ? 'Coach' : placeholder)}
+                            : (selectedOption ? fallbackRole : placeholder)}
                     </span>
                 </div>
-                <ChevronDown className={`w-3.5 h-3.5 absolute right-5 top-1/2 -translate-y-1/2 transition-transform duration-300 ${isOpen ? 'rotate-180 text-primary' : 'text-white/20'}`} />
+                <ChevronDown className={`w-3.5 h-3.5 absolute right-5 top-1/2 -translate-y-1/2 transition-transform duration-500 ${isOpen ? 'rotate-180 text-primary' : 'text-white/20'}`} />
             </button>
 
             {/* Hidden Input for Form Validation/Submission */}
@@ -108,7 +111,7 @@ export default function PremiumSelect({
                                     `}
                                 >
                                     <span className={`text-xs font-bold tracking-wide transition-all duration-300 ${isSelected ? 'translate-x-1' : 'group-hover/opt:translate-x-1'}`}>
-                                        {option.label && !isUUID(option.label) ? option.label : `Coach (${String(option.value).substring(0, 4)})`}
+                                        {option.label}
                                     </span>
                                     {isSelected && (
                                         <Check className="w-3.5 h-3.5 text-primary animate-in zoom-in duration-300" />

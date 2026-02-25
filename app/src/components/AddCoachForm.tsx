@@ -314,6 +314,7 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
                                     { value: "Rhythmic Gymnastics", label: "Rhythmic Gymnastics" }
                                 ]}
                                 placeholder="Discipline"
+                                fallbackRole="Program"
                             />
                         </div>
                     )}
@@ -358,6 +359,7 @@ export default function AddCoachForm({ onClose, onSuccess, initialData }: AddCoa
                                     { value: "reception", label: t('roles.reception') },
                                     { value: "cleaner", label: t('roles.cleaner') }
                                 ]}
+                                fallbackRole="Role"
                             />
                         </div>
 

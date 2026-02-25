@@ -492,6 +492,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                                 { value: "Fitness", label: "Fitness" }
                             ]}
                             placeholder="Sport Program"
+                            fallbackRole="Program"
                         />
                     </div>
 
@@ -509,6 +510,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                                 }))
                             ]}
                             placeholder="Training Group"
+                            fallbackRole="Group"
                         />
                         <p className="text-[8px] text-white/20 uppercase tracking-widest ml-1">Selecting a group auto-fills schedule and coach</p>
                     </div>
@@ -704,6 +706,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                                     }))
                                 ]}
                                 placeholder="Subscription Plan"
+                                fallbackRole="Plan"
                             />
                         </div>
 
@@ -740,6 +743,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                                         label: `${coach.full_name} (${t(`roles.${coach.role}`)})`
                                     }))
                                 ]}
+                                fallbackRole="Coach"
                             />
                         </div>
                     </div>

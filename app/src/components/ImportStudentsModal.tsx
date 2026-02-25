@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, Edit2 } from 'lucide-react';
 import Papa from 'papaparse';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
@@ -38,6 +38,8 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
     const [parsedData, setParsedData] = useState<ParsedStudent[]>([]);
     const [importing, setImporting] = useState(false);
     const [preview, setPreview] = useState(false);
+    const [importMode, setImportMode] = useState<'csv' | 'text'>('csv');
+    const [pastedText, setPastedText] = useState('');
 
     if (!isOpen) return null;
 
@@ -79,12 +81,56 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
         });
     };
 
+    const handleTextImport = () => {
+        if (!pastedText.trim()) {
+            toast.error('Please paste some text first');
+            return;
+        }
+
+        const lines = pastedText.split('\n').filter(line => line.trim());
+        if (lines.length === 0) {
+            toast.error('No valid lines found');
+            return;
+        }
+
+        const data: ParsedStudent[] = lines.map((line, index) => {
+            // Support "Name, Phone" or "Name Phone" (if phone is long enough) or just "Name"
+            let name = line.trim();
+            let phone = '';
+
+            // Try common separators
+            const parts = line.split(/[,\t|]/).map(p => p.trim());
+            if (parts.length >= 2) {
+                name = parts[0];
+                phone = parts.slice(1).join(' ').replace(/\D/g, ''); // Take everything after first separator
+            } else {
+                // Try to split by space if the last word looks like a phone number (10+ digits)
+                const words = line.trim().split(/\s+/);
+                if (words.length >= 2) {
+                    const lastWord = words[words.length - 1];
+                    if (/^\d{8,15}$/.test(lastWord)) {
+                        phone = lastWord;
+                        name = words.slice(0, -1).join(' ');
+                    }
+                }
+            }
+
+            return validateRow({
+                Name: name,
+                Phone: phone
+            }, index);
+        });
+
+        setParsedData(data);
+        setPreview(true);
+    };
+
     const validateRow = (row: CSVRow, index: number): ParsedStudent => {
         const errors: string[] = [];
 
         // Required fields
         if (!row.Name?.trim()) errors.push('Name is required');
-        if (!row.Phone?.trim()) errors.push('Phone is required');
+        // Phone is now optional for bulk text import to support manual entry more easily
 
         // Phone validation (Egyptian format)
         const phone = row.Phone?.trim();
@@ -186,13 +232,24 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                         .insert({
                             full_name: student.full_name,
                             contact_number: student.phone,
+                            phone: student.phone,
+                            birth_date: student.date_of_birth || null,
                             date_of_birth: student.date_of_birth || null,
-                            gender: student.gender || null,
+                            gender: student.gender || 'male',
                             coach_id: coachId,
-                            subscription_type: student.subscription_type || null,
-                            subscription_start: student.subscription_start || null,
                             notes: student.notes || null,
-                            created_by: user.id
+                            status: 'active',
+                            is_active: true,
+                            age: student.date_of_birth ? (() => {
+                                const today = new Date();
+                                const birth = new Date(student.date_of_birth);
+                                let age = today.getFullYear() - birth.getFullYear();
+                                const m = today.getMonth() - birth.getMonth();
+                                if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+                                    age--;
+                                }
+                                return age;
+                            })() : null
                         });
 
                     if (error) throw error;
@@ -228,8 +285,10 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
 
     const handleClose = () => {
         setFile(null);
+        setPastedText('');
         setParsedData([]);
         setPreview(false);
+        setImportMode('csv');
         onClose();
     };
 
@@ -273,64 +332,132 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
 
                 <div className="relative z-10 p-10 space-y-10 max-h-[70vh] overflow-y-auto custom-scrollbar">
                     {!preview ? (
-                        /* Upload Section */
+                        /* Mode Selection & Input */
                         <div className="space-y-10">
-                            <div className="relative group">
-                                <input
-                                    type="file"
-                                    accept=".csv"
-                                    onChange={handleFileChange}
-                                    className="hidden"
-                                    id="csv-upload"
-                                />
-                                <label
-                                    htmlFor="csv-upload"
-                                    className="cursor-pointer block border-2 border-dashed border-white/10 rounded-[3rem] p-16 text-center hover:border-primary/40 hover:bg-white/[0.02] transition-all duration-700 relative overflow-hidden group/label"
+                            {/* Tab Switcher */}
+                            <div className="flex p-1.5 bg-white/5 rounded-2xl w-fit mx-auto gap-1">
+                                <button
+                                    onClick={() => setImportMode('csv')}
+                                    className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${importMode === 'csv' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent opacity-0 group-hover/label:opacity-100 transition-opacity"></div>
-                                    <Upload className="w-16 h-16 text-white/10 mx-auto mb-6 group-hover/label:text-primary/60 group-hover/label:scale-110 transition-all duration-700" />
-                                    <p className="text-xl font-black text-white/80 mb-2 uppercase tracking-widest">
-                                        {file ? file.name : 'Upload CSV'}
-                                    </p>
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
-                                        Select CSV File
-                                    </p>
-                                </label>
+                                    CSV Upload
+                                </button>
+                                <button
+                                    onClick={() => setImportMode('text')}
+                                    className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${importMode === 'text' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                                >
+                                    Paste Text
+                                </button>
                             </div>
 
-                            {/* Requirements */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-6">
-                                    <div className="flex items-center gap-3 text-primary/60">
-                                        <AlertCircle className="w-4 h-4" />
-                                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em]">Required Fields</h3>
+                            {importMode === 'csv' ? (
+                                <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="relative group">
+                                        <input
+                                            type="file"
+                                            accept=".csv"
+                                            onChange={handleFileChange}
+                                            className="hidden"
+                                            id="csv-upload"
+                                        />
+                                        <label
+                                            htmlFor="csv-upload"
+                                            className="cursor-pointer block border-2 border-dashed border-white/10 rounded-[3rem] p-16 text-center hover:border-primary/40 hover:bg-white/[0.02] transition-all duration-700 relative overflow-hidden group/label"
+                                        >
+                                            <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent opacity-0 group-hover/label:opacity-100 transition-opacity"></div>
+                                            <Upload className="w-16 h-16 text-white/10 mx-auto mb-6 group-hover/label:text-primary/60 group-hover/label:scale-110 transition-all duration-700" />
+                                            <p className="text-xl font-black text-white/80 mb-2 uppercase tracking-widest">
+                                                {file ? file.name : 'Upload CSV'}
+                                            </p>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
+                                                Select CSV File
+                                            </p>
+                                        </label>
                                     </div>
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">Name</span>
-                                            <span className="text-[9px] font-bold text-white/20 italic">Full Name</span>
+
+                                    {/* Requirements */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-6">
+                                            <div className="flex items-center gap-3 text-primary/60">
+                                                <AlertCircle className="w-4 h-4" />
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em]">Required Fields</h3>
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">Name</span>
+                                                    <span className="text-[9px] font-bold text-white/20 italic">Full Name</span>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">Phone</span>
+                                                    <span className="text-[9px] font-bold text-white/20 italic">Optional</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">Phone</span>
-                                            <span className="text-[9px] font-bold text-white/20 italic">11 Digits</span>
+
+                                        <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-4">
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-2">Optional Fields</h3>
+                                            <div className="flex flex-wrap gap-2">
+                                                {['Birth Date', 'Gender', 'Coach', 'Subscription', 'Notes'].map((tag) => (
+                                                    <span key={tag} className="px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/5 text-[8px] font-black uppercase tracking-widest text-white/40">
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <p className="text-[9px] font-medium text-white/20 leading-relaxed pt-2">
+                                                Optional fields help create a more complete profile.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-4">
-                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-2">Optional Fields</h3>
-                                    <div className="flex flex-wrap gap-2">
-                                        {['Birth Date', 'Gender', 'Coach', 'Subscription', 'Notes'].map((tag) => (
-                                            <span key={tag} className="px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/5 text-[8px] font-black uppercase tracking-widest text-white/40">
-                                                {tag}
-                                            </span>
-                                        ))}
+                            ) : (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="p-8 rounded-[3rem] bg-white/[0.02] border border-white/10">
+                                        <div className="flex items-center justify-between mb-4 px-2">
+                                            <div className="flex items-center gap-3">
+                                                <Edit2 className="w-4 h-4 text-primary/60" />
+                                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Enter Student Details</span>
+                                            </div>
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-white/20 italic">Format: Name, Phone (or just Name)</span>
+                                        </div>
+                                        <textarea
+                                            value={pastedText}
+                                            onChange={(e) => setPastedText(e.target.value)}
+                                            placeholder="Example:&#10;John Doe, 01012345678&#10;Jane Smith, 01122334455&#10;Ahmed Ali"
+                                            className="w-full h-64 bg-black/40 border border-white/5 rounded-2xl p-6 text-sm text-white focus:outline-none focus:border-primary/40 transition-all font-mono custom-scrollbar resize-none"
+                                        />
+                                        <div className="mt-6 flex justify-center">
+                                            <button
+                                                onClick={handleTextImport}
+                                                disabled={!pastedText.trim()}
+                                                className="px-12 py-4 rounded-2xl bg-primary/20 hover:bg-primary/30 text-primary text-[10px] font-black uppercase tracking-[0.3em] border border-primary/20 transition-all active:scale-95 disabled:opacity-30"
+                                            >
+                                                Preview Import
+                                            </button>
+                                        </div>
                                     </div>
-                                    <p className="text-[9px] font-medium text-white/20 leading-relaxed pt-2">
-                                        Optional fields help create a more complete profile.
-                                    </p>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex items-start gap-4">
+                                            <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                                                <span className="text-primary font-black">1</span>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-1">Copy from your notes</h4>
+                                                <p className="text-[9px] font-medium text-white/20 leading-relaxed uppercase tracking-wider">Type each student on a new line</p>
+                                            </div>
+                                        </div>
+                                        <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex items-start gap-4">
+                                            <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                                                <span className="text-primary font-black">2</span>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest text-white/80 mb-1">Format is flexible</h4>
+                                                <p className="text-[9px] font-medium text-white/20 leading-relaxed uppercase tracking-wider">Use a comma to separate name and phone</p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     ) : (
                         /* Preview Section */

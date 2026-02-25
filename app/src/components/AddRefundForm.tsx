@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { X, DollarSign, ChevronDown } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { X, DollarSign, ChevronDown, Check } from 'lucide-react';
 import { useStudents } from '../hooks/useData';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../context/CurrencyContext';
+import ModernSelect from './ModernSelect';
 
 interface AddRefundFormProps {
     onClose: () => void;
@@ -93,14 +94,15 @@ export default function AddRefundForm({ onClose, onSuccess, onAdd }: AddRefundFo
                         {/* Student Selection */}
                         <div className="space-y-2 group/field">
                             <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 ml-1 group-focus-within/field:text-rose-500 transition-colors">Target Recipient *</label>
-                            <PremiumSelect
+                            <ModernSelect
                                 value={formData.student_id}
-                                onChange={val => setFormData({ ...formData, student_id: val })}
+                                onChange={(val: any) => setFormData({ ...formData, student_id: val })}
                                 options={[
                                     { value: "", label: "Assign Recipient..." },
                                     ...(students || []).map((s: any) => ({ value: s.id, label: s.full_name }))
                                 ]}
                                 placeholder="Select Recipient"
+                                fallbackRole="Gymnast"
                             />
                         </div>
 
