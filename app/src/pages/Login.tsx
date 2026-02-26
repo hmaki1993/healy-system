@@ -15,14 +15,17 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const navigate = useNavigate();
     const { t, i18n } = useTranslation();
     const { updateSettings, settings, hasLoaded } = useTheme();
 
 
-    // Remove Resize Listener to avoid jarring layout shifts, rely on CSS.
+    // Detect viewport on mount and resize
     useEffect(() => {
-        // Optional: We could update on resize, but pure CSS is smoother.
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     useEffect(() => {
@@ -49,8 +52,18 @@ export default function Login() {
         };
     }, []);
 
-    const logoPath = settings.login_logo_url || "/logo.png";
-    const bgPath = settings.login_bg_url || "/Tom Roberton Images _ Balance-and-Form _ 2.jpg";
+    // Helper to pick the correct setting based on current viewport
+    const getSetting = <K extends keyof typeof settings>(key: K): typeof settings[K] => {
+        if (isMobile) {
+            const mobileKey = `login_mobile_${(key as string).replace('login_', '')}` as K;
+            // Fallback to desktop setting if mobile one is explicitly null/empty (though initialized by migration)
+            return (settings[mobileKey] ?? settings[key]) as typeof settings[K];
+        }
+        return settings[key];
+    };
+
+    const logoPath = getSetting('login_logo_url') || "/logo.png";
+    const bgPath = getSetting('login_bg_url') || "/Tom Roberton Images _ Balance-and-Form _ 2.jpg";
 
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -107,8 +120,8 @@ export default function Login() {
                     className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-1000 bg-black"
                     style={{
                         backgroundImage: `url('${bgPath}')`,
-                        filter: `blur(${settings.login_bg_blur ?? 0}px) brightness(${settings.login_bg_brightness ?? 1.0})`,
-                        transform: `translate(${settings.login_bg_x_offset ?? 0}%, ${settings.login_bg_y_offset ?? 0}%) scale(${settings.login_bg_zoom ?? 1.0})`,
+                        filter: `blur(${getSetting('login_bg_blur') ?? 0}px) brightness(${getSetting('login_bg_brightness') ?? 1.0})`,
+                        transform: `translate(${getSetting('login_bg_x_offset') ?? 0}%, ${getSetting('login_bg_y_offset') ?? 0}%) scale(${getSetting('login_bg_zoom') ?? 1.0})`,
                         opacity: 0.8
                     }}
                 ></div>
@@ -121,12 +134,12 @@ export default function Login() {
             <div className="w-full max-w-md relative z-10 group/page scale-90 md:scale-100 -mt-8 md:mt-0">
 
                 {/* Prominent Logo - Faded as requested */}
-                {settings.login_show_logo !== false && (
+                {getSetting('login_show_logo') !== false && (
                     <div className="flex justify-center mb-10 relative group">
                         <div
                             className="w-24 h-24 md:w-40 md:h-40 flex items-center justify-center relative z-10 transition-transform duration-500"
                             style={{
-                                transform: `translate(${settings.login_logo_x_offset ?? 0}px, ${settings.login_logo_y_offset ?? 0}px) scale(${settings.login_logo_scale ?? 1.0})`
+                                transform: `translate(${getSetting('login_logo_x_offset') ?? 0}px, ${getSetting('login_logo_y_offset') ?? 0}px) scale(${getSetting('login_logo_scale') ?? 1.0})`
                             }}
                         >
                             <img
@@ -134,7 +147,7 @@ export default function Login() {
                                 alt="Academy Logo"
                                 className="w-full h-full object-contain transition-all duration-700 drop-shadow-2xl"
                                 style={{
-                                    opacity: settings.login_logo_opacity ?? 0.8
+                                    opacity: getSetting('login_logo_opacity') ?? 0.8
                                 }}
                                 onError={(e) => {
                                     e.currentTarget.style.display = 'none';
@@ -153,10 +166,10 @@ export default function Login() {
                 <div
                     className="group/card border-2 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 transition-all duration-700 ease-out glass-effect overflow-hidden"
                     style={{
-                        transform: `scale(${settings.login_card_scale ?? 1.0}) translate(${settings.login_card_x_offset ?? 0}px, ${settings.login_card_y_offset ?? 0}px)`,
-                        '--card-accent': settings.login_accent_color || '#D4AF37',
-                        '--card-bg': settings.login_card_color || '#000000',
-                        '--card-opacity': settings.login_card_opacity ?? 0.6
+                        transform: `scale(${getSetting('login_card_scale') ?? 1.0}) translate(${getSetting('login_card_x_offset') ?? 0}px, ${getSetting('login_card_y_offset') ?? 0}px)`,
+                        '--card-accent': getSetting('login_accent_color') || '#D4AF37',
+                        '--card-bg': getSetting('login_card_color') || '#000000',
+                        '--card-opacity': getSetting('login_card_opacity') ?? 0.6
                     } as React.CSSProperties}
                 >
 
@@ -164,7 +177,7 @@ export default function Login() {
                     <div className="text-center mb-6">
                         <h1
                             className="text-xl font-black tracking-[0.3em] uppercase mb-1"
-                            style={{ color: settings.login_text_color || '#ffffff' }}
+                            style={{ color: getSetting('login_text_color') || '#ffffff' }}
                         >
                             {settings.academy_name || 'Academy System'}
                         </h1>
@@ -210,16 +223,17 @@ export default function Login() {
                                 disabled={loading}
                                 className="w-full relative py-3 md:py-3.5 mt-1 rounded-full font-black text-[11px] uppercase tracking-[0.5em] bg-black border shadow-xl transition-all active:scale-[0.98] group/btn overflow-hidden"
                                 style={{
-                                    color: settings.login_accent_color || '#D4AF37',
-                                    borderColor: `${stripAlpha(settings.login_accent_color || '#D4AF37')}66`
+                                    color: getSetting('login_accent_color') || '#D4AF37',
+                                    borderColor: `${stripAlpha(getSetting('login_accent_color') || '#D4AF37')}66`
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = `${stripAlpha(settings.login_accent_color || '#D4AF37')}1a`;
-                                    e.currentTarget.style.borderColor = settings.login_accent_color || '#D4AF37';
+                                    const accent = getSetting('login_accent_color') || '#D4AF37';
+                                    e.currentTarget.style.backgroundColor = `${stripAlpha(accent)}1a`;
+                                    e.currentTarget.style.borderColor = accent;
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.backgroundColor = 'black';
-                                    e.currentTarget.style.borderColor = `${stripAlpha(settings.login_accent_color || '#D4AF37')}66`;
+                                    e.currentTarget.style.borderColor = `${stripAlpha(getSetting('login_accent_color') || '#D4AF37')}66`;
                                 }}
                             >
                                 <span className="relative z-10 flex items-center justify-center gap-3">
@@ -242,8 +256,9 @@ export default function Login() {
                                 onClick={toggleLanguage}
                                 className="flex items-center gap-3 px-6 py-2 rounded-full bg-white/[0.05] border border-white/20 text-white transition-all text-[9px] font-black uppercase tracking-[0.3em]"
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.color = settings.login_accent_color || '#D4AF37';
-                                    e.currentTarget.style.borderColor = settings.login_accent_color || '#D4AF37';
+                                    const accent = getSetting('login_accent_color') || '#D4AF37';
+                                    e.currentTarget.style.color = accent;
+                                    e.currentTarget.style.borderColor = accent;
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.color = 'white';
@@ -291,7 +306,7 @@ export default function Login() {
                 input {
                     background-color: transparent !important;
                     box-shadow: none !important;
-                    border-color: ${stripAlpha(settings.login_accent_color || '#D4AF37')}26 !important;
+                    border-color: ${stripAlpha(getSetting('login_accent_color') || '#D4AF37')}26 !important;
                     font-size: 16px !important;
                     line-height: 1.5 !important;
                     height: auto !important;
@@ -301,12 +316,12 @@ export default function Login() {
                     font-size: 16px !important;
                 }
                 input:focus {
-                    border-color: ${settings.login_accent_color || '#D4AF37'} !important;
+                    border-color: ${getSetting('login_accent_color') || '#D4AF37'} !important;
                     box-shadow: none !important;
                 }
                 input:invalid, input:focus:invalid, input:hover:invalid {
                     box-shadow: none !important;
-                    border-color: ${settings.login_accent_color || '#D4AF37'} !important;
+                    border-color: ${getSetting('login_accent_color') || '#D4AF37'} !important;
                     outline: none !important;
                 }
             `}</style>

@@ -20,10 +20,6 @@ export default function AddManualStudentModal({ coachName, excludeIds, onClose, 
     const [processingId, setProcessingId] = useState<string | null>(null);
 
     const searchStudents = async (query: string) => {
-        if (!query.trim()) {
-            setStudents([]);
-            return;
-        }
         setLoading(true);
         try {
             let queryBuilder = supabase
@@ -39,12 +35,16 @@ export default function AddManualStudentModal({ coachName, excludeIds, onClose, 
                         schedule_key
                     )
                 `)
-                .ilike('full_name', `%${query}%`)
                 .eq('is_active', true)
-                .limit(5);
+                .order('full_name', { ascending: true })
+                .limit(20);
+
+            if (query.trim()) {
+                queryBuilder = queryBuilder.ilike('full_name', `%${query}%`);
+            }
 
             if (excludeIds.length > 0) {
-                // Filter only valid UUIDs to avoid Supabase errors (Postgres expects UUIDs for ID column)
+                // Filter only valid UUIDs to avoid Supabase errors
                 const validUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
                 const filteredIds = excludeIds.filter(id => validUuidRegex.test(id));
 
@@ -65,6 +65,10 @@ export default function AddManualStudentModal({ coachName, excludeIds, onClose, 
     };
 
     useEffect(() => {
+        if (!searchQuery.trim()) {
+            searchStudents('');
+            return;
+        }
         const timer = setTimeout(() => {
             searchStudents(searchQuery);
         }, 300);
@@ -199,10 +203,10 @@ export default function AddManualStudentModal({ coachName, excludeIds, onClose, 
                                     </div>
                                 );
                             })
-                        ) : searchQuery.length > 2 ? (
-                            <div className="text-center py-4 text-white/20 font-black uppercase text-[10px] tracking-widest italic">No matching athletes found</div>
                         ) : (
-                            <div className="text-center py-4 text-white/10 font-bold text-xs">Type at least 3 characters to search</div>
+                            <div className="text-center py-4 text-white/20 font-black uppercase text-[10px] tracking-widest italic">
+                                {searchQuery ? 'No matching athletes found' : 'No active athletes available'}
+                            </div>
                         )}
                     </div>
                 </div>

@@ -51,6 +51,27 @@ export interface GymSettings {
     login_text_color?: string;
     login_accent_color?: string;
     login_logo_opacity?: number;
+    // Mobile-specific login themes
+    login_mobile_bg_url?: string;
+    login_mobile_logo_url?: string;
+    login_mobile_card_opacity?: number;
+    login_mobile_card_color?: string;
+    login_mobile_logo_scale?: number;
+    login_mobile_logo_x_offset?: number;
+    login_mobile_logo_y_offset?: number;
+    login_mobile_bg_blur?: number;
+    login_mobile_bg_brightness?: number;
+    login_mobile_bg_zoom?: number;
+    login_mobile_bg_x_offset?: number;
+    login_mobile_bg_y_offset?: number;
+    login_mobile_card_x_offset?: number;
+    login_mobile_card_y_offset?: number;
+    login_mobile_card_border_color?: string;
+    login_mobile_card_scale?: number;
+    login_mobile_show_logo?: boolean;
+    login_mobile_text_color?: string;
+    login_mobile_accent_color?: string;
+    login_mobile_logo_opacity?: number;
 }
 
 export const applySettingsToRoot = (settings: GymSettings) => {
@@ -203,7 +224,28 @@ export const defaultSettings: GymSettings = {
     login_card_x_offset: 0,
     login_card_y_offset: 0,
     login_card_scale: 1,
-    login_logo_opacity: 1
+    login_logo_opacity: 1,
+    // Mobile Defaults (Matches Desktop initially)
+    login_mobile_bg_url: '/Tom Roberton Images _ Balance-and-Form _ 2.jpg',
+    login_mobile_logo_url: '/logo.png',
+    login_mobile_card_opacity: 0.6,
+    login_mobile_card_color: '#000000',
+    login_mobile_card_border_color: '#D4AF3733',
+    login_mobile_accent_color: '#D4AF37',
+    login_mobile_text_color: '#ffffff',
+    login_mobile_show_logo: true,
+    login_mobile_logo_scale: 1,
+    login_mobile_logo_x_offset: 0,
+    login_mobile_logo_y_offset: 0,
+    login_mobile_bg_blur: 0,
+    login_mobile_bg_brightness: 1,
+    login_mobile_bg_zoom: 1,
+    login_mobile_bg_x_offset: 0,
+    login_mobile_bg_y_offset: 0,
+    login_mobile_card_x_offset: 0,
+    login_mobile_card_y_offset: 0,
+    login_mobile_card_scale: 1,
+    login_mobile_logo_opacity: 1
 };
 
 export const GYM_WIDE_KEYS: (keyof GymSettings)[] = [
@@ -215,6 +257,13 @@ export const GYM_WIDE_KEYS: (keyof GymSettings)[] = [
     'login_bg_blur', 'login_bg_brightness', 'login_bg_zoom',
     'login_bg_x_offset', 'login_bg_y_offset',
     'login_card_x_offset', 'login_card_y_offset',
+    'login_mobile_bg_url', 'login_mobile_logo_url', 'login_mobile_card_opacity', 'login_mobile_card_color',
+    'login_mobile_card_border_color', 'login_mobile_card_scale', 'login_mobile_show_logo',
+    'login_mobile_text_color', 'login_mobile_accent_color', 'login_mobile_logo_opacity',
+    'login_mobile_logo_scale', 'login_mobile_logo_x_offset', 'login_mobile_logo_y_offset',
+    'login_mobile_bg_blur', 'login_mobile_bg_brightness', 'login_mobile_bg_zoom',
+    'login_mobile_bg_x_offset', 'login_mobile_bg_y_offset',
+    'login_mobile_card_x_offset', 'login_mobile_card_y_offset',
     'text_color_base', 'text_color_muted'
 ];
 

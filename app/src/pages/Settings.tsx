@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
     User,
@@ -51,7 +51,9 @@ import {
     Droplets,
     MousePointer2,
     Target,
-    Pipette
+    Pipette,
+    Monitor,
+    Smartphone
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSubscriptionPlans, useAddPlan, useDeletePlan, useUpdatePlan } from '../hooks/useData';
@@ -81,6 +83,7 @@ const lum = (hex: string) => {
     } catch { return 0; }
 };
 
+
 export default function Settings() {
     const { currency, setCurrency } = useCurrency();
     const { settings, updateSettings, resetToDefaults, hasLoaded } = useTheme();
@@ -104,6 +107,7 @@ export default function Settings() {
     // Secret Section Visibility (Easter Egg)
     const [secretClicks, setSecretClicks] = useState(0);
     const [isSecretRevealed, setIsSecretRevealed] = useState(false);
+    const [designMode, setDesignMode] = useState<'desktop' | 'mobile'>('desktop');
 
     useEffect(() => {
         if (secretClicks > 0) {
@@ -148,7 +152,8 @@ export default function Settings() {
                 'primary_color', 'secondary_color', 'accent_color', 'surface_color',
                 'hover_color', 'hover_border_color', 'input_bg_color',
                 'text_color_base', 'text_color_muted',
-                'login_card_color', 'login_card_border_color', 'login_accent_color', 'login_text_color'
+                'login_card_color', 'login_card_border_color', 'login_accent_color', 'login_text_color',
+                'login_mobile_card_color', 'login_mobile_card_border_color', 'login_mobile_accent_color', 'login_mobile_text_color'
             ];
 
             colorKeys.forEach(key => {
@@ -161,6 +166,43 @@ export default function Settings() {
             setHasSynced(true);
         }
     }, [hasLoaded, settings, hasSynced]);
+
+    // Helper to get the correct setting key based on design mode (Desktop vs Mobile)
+    const getLoginKey = (key: string): keyof GymSettings => {
+        if (designMode === 'mobile') {
+            const mobileKey = `login_mobile_${key.replace('login_', '')}` as keyof GymSettings;
+            return mobileKey;
+        }
+        return key as keyof GymSettings;
+    };
+
+    const previewSettings = useMemo(() => {
+        if (designMode === 'desktop') return draftSettings;
+        return {
+            ...draftSettings,
+            login_bg_url: draftSettings.login_mobile_bg_url || draftSettings.login_bg_url,
+            login_logo_url: draftSettings.login_mobile_logo_url || draftSettings.login_logo_url,
+            login_card_opacity: draftSettings.login_mobile_card_opacity ?? draftSettings.login_card_opacity,
+            login_card_color: draftSettings.login_mobile_card_color || draftSettings.login_card_color,
+            login_card_border_color: draftSettings.login_mobile_card_border_color || draftSettings.login_card_border_color,
+            login_card_scale: draftSettings.login_mobile_card_scale ?? draftSettings.login_card_scale,
+            login_show_logo: draftSettings.login_mobile_show_logo ?? draftSettings.login_show_logo,
+            login_text_color: draftSettings.login_mobile_text_color || draftSettings.login_text_color,
+            login_accent_color: draftSettings.login_mobile_accent_color || draftSettings.login_accent_color,
+            login_logo_opacity: draftSettings.login_mobile_logo_opacity ?? draftSettings.login_logo_opacity,
+            login_logo_scale: draftSettings.login_mobile_logo_scale ?? draftSettings.login_logo_scale,
+            login_logo_x_offset: draftSettings.login_mobile_logo_x_offset ?? draftSettings.login_logo_x_offset,
+            login_logo_y_offset: draftSettings.login_mobile_logo_y_offset ?? draftSettings.login_logo_y_offset,
+            login_bg_blur: draftSettings.login_mobile_bg_blur ?? draftSettings.login_bg_blur,
+            login_bg_brightness: draftSettings.login_mobile_bg_brightness ?? draftSettings.login_bg_brightness,
+            login_bg_zoom: draftSettings.login_mobile_bg_zoom ?? draftSettings.login_bg_zoom,
+            login_bg_x_offset: draftSettings.login_mobile_bg_x_offset ?? draftSettings.login_bg_x_offset,
+            login_bg_y_offset: draftSettings.login_mobile_bg_y_offset ?? draftSettings.login_bg_y_offset,
+            login_card_x_offset: draftSettings.login_mobile_card_x_offset ?? draftSettings.login_card_x_offset,
+            login_card_y_offset: draftSettings.login_mobile_card_y_offset ?? draftSettings.login_card_y_offset,
+        };
+    }, [draftSettings, designMode]);
+
 
     // Live Preview Effect: Apply draft settings to root in real-time
     useEffect(() => {
@@ -1128,12 +1170,30 @@ export default function Settings() {
                 {activeTab === 'login' && (role === 'admin' || isSecretRevealed) && (
                     <div className="space-y-8 pb-20">
                         <div className="glass-card p-6 md:p-8 rounded-[2rem] border border-white/10 shadow-premium h-fit">
-                            <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3 mb-6">
-                                <div className="p-2.5 bg-amber-500/20 rounded-xl text-amber-500">
-                                    <Layout className="w-5 h-5" />
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                                <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                                    <div className="p-2.5 bg-amber-500/20 rounded-xl text-amber-500">
+                                        <Layout className="w-5 h-5" />
+                                    </div>
+                                    Login Page Customization
+                                </h2>
+                                <div className="flex items-center gap-1 p-1 bg-white/5 rounded-xl border border-white/10 w-fit">
+                                    <button
+                                        onClick={() => setDesignMode('desktop')}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${designMode === 'desktop' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                                    >
+                                        <Monitor className="w-3 h-3" />
+                                        Desktop
+                                    </button>
+                                    <button
+                                        onClick={() => setDesignMode('mobile')}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${designMode === 'mobile' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                                    >
+                                        <Smartphone className="w-3 h-3" />
+                                        Mobile
+                                    </button>
                                 </div>
-                                Login Page Customization
-                            </h2>
+                            </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                                 {/* Live Preview Column (Now First in DOM for mobile sticky logic) */}
@@ -1155,9 +1215,9 @@ export default function Settings() {
                                                 <div
                                                     className="absolute inset-0 bg-contain bg-center bg-no-repeat bg-black transition-all duration-700"
                                                     style={{
-                                                        backgroundImage: `url('${draftSettings.login_bg_url || "/Tom Roberton Images _ Balance-and-Form _ 2.jpg"}')`,
-                                                        filter: `blur(${draftSettings.login_bg_blur ?? 0}px) brightness(${draftSettings.login_bg_brightness ?? 1.0})`,
-                                                        transform: `translate(${draftSettings.login_bg_x_offset ?? 0}%, ${draftSettings.login_bg_y_offset ?? 0}%) scale(${draftSettings.login_bg_zoom ?? 1.0})`,
+                                                        backgroundImage: `url('${previewSettings.login_bg_url || "/Tom Roberton Images _ Balance-and-Form _ 2.jpg"}')`,
+                                                        filter: `blur(${previewSettings.login_bg_blur ?? 0}px) brightness(${previewSettings.login_bg_brightness ?? 1.0})`,
+                                                        transform: `translate(${previewSettings.login_bg_x_offset ?? 0}%, ${previewSettings.login_bg_y_offset ?? 0}%) scale(${previewSettings.login_bg_zoom ?? 1.0})`,
                                                         opacity: 0.8
                                                     }}
                                                 ></div>
@@ -1167,18 +1227,18 @@ export default function Settings() {
 
                                                 <div
                                                     className="absolute inset-0 flex flex-col items-center justify-center"
-                                                    style={{ transform: `translate(${draftSettings.login_card_x_offset || 0}px, ${draftSettings.login_card_y_offset || 0}px)` }}
+                                                    style={{ transform: `translate(${previewSettings.login_card_x_offset || 0}px, ${previewSettings.login_card_y_offset || 0}px)` }}
                                                 >
-                                                    {draftSettings.login_show_logo !== false && (
+                                                    {previewSettings.login_show_logo !== false && (
                                                         <div className="flex justify-center mb-8">
                                                             <div
                                                                 className="w-36 h-36 flex items-center justify-center"
-                                                                style={{ transform: `scale(${draftSettings.login_logo_scale || 1.0}) translate(${draftSettings.login_logo_x_offset || 0}px, ${draftSettings.login_logo_y_offset || 0}px)` }}
+                                                                style={{ transform: `scale(${previewSettings.login_logo_scale || 1.0}) translate(${previewSettings.login_logo_x_offset || 0}px, ${previewSettings.login_logo_y_offset || 0}px)` }}
                                                             >
                                                                 <img
-                                                                    src={draftSettings.login_logo_url || "/logo.png"}
+                                                                    src={previewSettings.login_logo_url || "/logo.png"}
                                                                     className="w-full h-full object-contain"
-                                                                    style={{ opacity: draftSettings.login_logo_opacity ?? 0.8 }}
+                                                                    style={{ opacity: previewSettings.login_logo_opacity ?? 0.8 }}
                                                                 />
                                                             </div>
                                                         </div>
@@ -1187,39 +1247,43 @@ export default function Settings() {
                                                     <div
                                                         className="w-[448px] rounded-[3rem] p-10 border-2 shadow-2xl transition-all duration-500 bg-black/60 backdrop-blur-[40px]"
                                                         style={{
-                                                            backgroundColor: draftSettings.login_card_color ? `${stripAlpha(draftSettings.login_card_color)}${Math.round((draftSettings.login_card_opacity || 0.6) * 255).toString(16).padStart(2, '0')}` : undefined,
-                                                            borderColor: draftSettings.login_card_border_color || '#D4AF374d',
-                                                            transform: `scale(${draftSettings.login_card_scale || 1.0})`
+                                                            backgroundColor: previewSettings.login_card_color ? `${stripAlpha(previewSettings.login_card_color)}${Math.round((previewSettings.login_card_opacity || 0.6) * 255).toString(16).padStart(2, '0')}` : undefined,
+                                                            borderColor: previewSettings.login_card_border_color || '#D4AF374d',
+                                                            transform: `scale(${previewSettings.login_card_scale || 1.0})`
                                                         }}
                                                     >
                                                         <div
                                                             className="text-[20px] font-black uppercase tracking-[0.3em] mb-1 text-center truncate"
-                                                            style={{ color: draftSettings.login_text_color || '#ffffff' }}
+                                                            style={{ color: previewSettings.login_text_color || '#ffffff' }}
                                                         >
-                                                            {draftSettings.academy_name || 'Academy System'}
+                                                            {previewSettings.academy_name || 'Academy System'}
                                                         </div>
                                                         <div className="flex items-center justify-center gap-4 mb-6">
-                                                            <div className="h-[1px] w-8 opacity-30" style={{ backgroundColor: draftSettings.login_accent_color || '#D4AF37' }}></div>
-                                                            <span className="text-[9px] font-black uppercase tracking-[0.7em]" style={{ color: draftSettings.login_accent_color || '#D4AF37' }}>Academy</span>
-                                                            <div className="h-[1px] w-8 opacity-30" style={{ backgroundColor: draftSettings.login_accent_color || '#D4AF37' }}></div>
+                                                            <div className="h-[1px] w-8 opacity-30" style={{ backgroundColor: previewSettings.login_accent_color || '#D4AF37' }}></div>
+                                                            <span className="text-[9px] font-black uppercase tracking-[0.7em]" style={{ color: previewSettings.login_accent_color || '#D4AF37' }}>Academy</span>
+                                                            <div className="h-[1px] w-8 opacity-30" style={{ backgroundColor: previewSettings.login_accent_color || '#D4AF37' }}></div>
                                                         </div>
 
                                                         <div className="space-y-4 mb-8">
-                                                            <div className="h-12 w-full bg-black/40 rounded-2xl border opacity-30" style={{ borderColor: draftSettings.login_accent_color || '#D4AF37' }}></div>
-                                                            <div className="h-12 w-full bg-black/40 rounded-2xl border opacity-30" style={{ borderColor: draftSettings.login_accent_color || '#D4AF37' }}></div>
+                                                            <div className="h-12 w-full bg-black/40 rounded-2xl border opacity-30" style={{ borderColor: previewSettings.login_accent_color || '#D4AF37' }}></div>
+                                                            <div className="h-12 w-full bg-black/40 rounded-2xl border opacity-30" style={{ borderColor: previewSettings.login_accent_color || '#D4AF37' }}></div>
                                                         </div>
 
                                                         <div
                                                             className="h-12 w-full bg-black border rounded-full flex items-center justify-center"
-                                                            style={{ borderColor: `${draftSettings.login_accent_color || '#D4AF37'}66` }}
+                                                            style={{ borderColor: `${previewSettings.login_accent_color || '#D4AF37'}66` }}
                                                         >
-                                                            <span className="text-[11px] font-black uppercase tracking-[0.5em]" style={{ color: draftSettings.login_accent_color || '#D4AF37' }}>Login</span>
+                                                            <span className="text-[11px] font-black uppercase tracking-[0.5em]" style={{ color: previewSettings.login_accent_color || '#D4AF37' }}>Login</span>
                                                         </div>
                                                     </div>
 
                                                     <div className="mt-8 flex flex-col items-center gap-3 opacity-40">
-                                                        <div className="px-6 py-2 rounded-full border border-white/20 text-[9px] text-white font-black uppercase tracking-[0.3em]">Language Switcher</div>
-                                                        <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">© 2026 {draftSettings.academy_name || 'Academy System'}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="h-[1px] w-4 bg-white/20"></div>
+                                                            <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Secure Connection</span>
+                                                            <div className="h-[1px] w-4 bg-white/20"></div>
+                                                        </div>
+                                                        <div className="text-[7px] font-black uppercase tracking-[0.3em] text-white/20">V.2.4.0 • PRODUCTION</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1272,11 +1336,11 @@ export default function Settings() {
                                                             const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(fileName);
                                                             setDraftSettings(prev => ({
                                                                 ...prev,
-                                                                login_bg_url: publicUrl,
-                                                                login_bg_x_offset: 0,
-                                                                login_bg_y_offset: 0,
-                                                                login_bg_zoom: 1,
-                                                                login_bg_blur: 0
+                                                                [getLoginKey('login_bg_url')]: publicUrl,
+                                                                [getLoginKey('login_bg_x_offset')]: 0,
+                                                                [getLoginKey('login_bg_y_offset')]: 0,
+                                                                [getLoginKey('login_bg_zoom')]: 1,
+                                                                [getLoginKey('login_bg_blur')]: 0
                                                             }));
                                                             toast.success('Background uploaded and centered');
                                                         } catch (err: any) {
@@ -1386,48 +1450,48 @@ export default function Settings() {
                                                 <div className="space-y-1.5">
                                                     <div className="flex justify-between">
                                                         <span className="text-[8px] text-white/40 uppercase font-bold">Zoom</span>
-                                                        <span className="text-[8px] text-amber-500 font-bold">{Math.round((draftSettings.login_bg_zoom || 1.0) * 100)}%</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Math.round((Number(draftSettings[getLoginKey('login_bg_zoom')]) || 1.0) * 100)}%</span>
                                                     </div>
                                                     <input
                                                         type="range" min="0.5" max="2.0" step="0.05"
-                                                        value={draftSettings.login_bg_zoom ?? 1.0}
-                                                        onChange={(e) => setDraftSettings({ ...draftSettings, login_bg_zoom: parseFloat(e.target.value) })}
+                                                        value={Number(draftSettings[getLoginKey('login_bg_zoom')]) ?? 1.0}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_bg_zoom')]: parseFloat(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <div className="flex justify-between">
                                                         <span className="text-[8px] text-white/40 uppercase font-bold">Brightness</span>
-                                                        <span className="text-[8px] text-amber-500 font-bold">{Math.round((draftSettings.login_bg_brightness || 1.0) * 100)}%</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Math.round((Number(draftSettings[getLoginKey('login_bg_brightness')]) || 1.0) * 100)}%</span>
                                                     </div>
                                                     <input
                                                         type="range" min="0.2" max="1.5" step="0.05"
-                                                        value={draftSettings.login_bg_brightness ?? 1.0}
-                                                        onChange={(e) => setDraftSettings({ ...draftSettings, login_bg_brightness: parseFloat(e.target.value) })}
+                                                        value={Number(draftSettings[getLoginKey('login_bg_brightness')]) ?? 1.0}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_bg_brightness')]: parseFloat(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <div className="flex justify-between">
                                                         <span className="text-[8px] text-white/40 uppercase font-bold">BG X Offset</span>
-                                                        <span className="text-[8px] text-amber-500 font-bold">{draftSettings.login_bg_x_offset || 0}%</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_bg_x_offset')]) || 0}%</span>
                                                     </div>
                                                     <input
                                                         type="range" min="-50" max="50" step="1"
-                                                        value={draftSettings.login_bg_x_offset ?? 0}
-                                                        onChange={(e) => setDraftSettings({ ...draftSettings, login_bg_x_offset: parseInt(e.target.value) })}
+                                                        value={Number(draftSettings[getLoginKey('login_bg_x_offset')]) ?? 0}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_bg_x_offset')]: parseInt(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <div className="flex justify-between">
                                                         <span className="text-[8px] text-white/40 uppercase font-bold">BG Y Offset</span>
-                                                        <span className="text-[8px] text-amber-500 font-bold">{draftSettings.login_bg_y_offset || 0}%</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_bg_y_offset')]) || 0}%</span>
                                                     </div>
                                                     <input
                                                         type="range" min="-50" max="50" step="1"
-                                                        value={draftSettings.login_bg_y_offset ?? 0}
-                                                        onChange={(e) => setDraftSettings({ ...draftSettings, login_bg_y_offset: parseInt(e.target.value) })}
+                                                        value={Number(draftSettings[getLoginKey('login_bg_y_offset')]) ?? 0}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_bg_y_offset')]: parseInt(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
@@ -1439,68 +1503,72 @@ export default function Settings() {
                                                 <label className="text-[9px] text-white/60 font-black uppercase tracking-widest block">Logo Appearance</label>
                                                 <div className="flex items-center gap-3">
                                                     <button
-                                                        onClick={() => setDraftSettings({ ...draftSettings, login_logo_x_offset: 0, login_logo_y_offset: 0 })}
+                                                        onClick={() => setDraftSettings({
+                                                            ...draftSettings,
+                                                            [getLoginKey('login_logo_x_offset')]: 0,
+                                                            [getLoginKey('login_logo_y_offset')]: 0
+                                                        })}
                                                         className="p-1 px-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-1.5 text-[7px] font-black text-white/40 hover:text-white"
                                                         title="Center Logo"
                                                     >
                                                         <Target className="w-3 h-3" />
                                                         CENTER
                                                     </button>
-                                                    <span className="text-[8px] font-black uppercase tracking-widest text-white/20">{draftSettings.login_show_logo !== false ? 'Visible' : 'Hidden'}</span>
+                                                    <span className="text-[8px] font-black uppercase tracking-widest text-white/20">{draftSettings[getLoginKey('login_show_logo')] !== false ? 'Visible' : 'Hidden'}</span>
                                                     <PremiumSwitch
-                                                        checked={draftSettings.login_show_logo !== false}
-                                                        onChange={(val) => setDraftSettings({ ...draftSettings, login_show_logo: val })}
+                                                        checked={draftSettings[getLoginKey('login_show_logo')] !== false}
+                                                        onChange={(val) => setDraftSettings({ ...draftSettings, [getLoginKey('login_show_logo')]: val })}
                                                         label=""
                                                     />
                                                 </div>
                                             </div>
 
-                                            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 transition-all duration-500 ${draftSettings.login_show_logo === false ? 'opacity-20 pointer-events-none grayscale' : 'opacity-100'}`}>
+                                            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 transition-all duration-500 ${draftSettings[getLoginKey('login_show_logo')] === false ? 'opacity-20 pointer-events-none grayscale' : 'opacity-100'}`}>
                                                 <div className="space-y-1.5">
                                                     <div className="flex justify-between">
                                                         <span className="text-[8px] text-white/40 uppercase font-bold">Scale</span>
-                                                        <span className="text-[8px] text-amber-500 font-bold">{Math.round((draftSettings.login_logo_scale ?? 1.0) * 100)}%</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Math.round((Number(draftSettings[getLoginKey('login_logo_scale')]) ?? 1.0) * 100)}%</span>
                                                     </div>
                                                     <input
                                                         type="range" min="0.5" max="2.0" step="0.1"
-                                                        value={draftSettings.login_logo_scale ?? 1.0}
-                                                        onChange={(e) => setDraftSettings({ ...draftSettings, login_logo_scale: parseFloat(e.target.value) })}
+                                                        value={Number(draftSettings[getLoginKey('login_logo_scale')]) ?? 1.0}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_logo_scale')]: parseFloat(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <div className="flex justify-between">
                                                         <span className="text-[8px] text-white/40 uppercase font-bold">Logo Opacity</span>
-                                                        <span className="text-[8px] text-amber-500 font-bold">{Math.round((draftSettings.login_logo_opacity ?? 1.0) * 100)}%</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Math.round((Number(draftSettings[getLoginKey('login_logo_opacity')]) ?? 1.0) * 100)}%</span>
                                                     </div>
                                                     <input
                                                         type="range" min="0" max="1" step="0.05"
-                                                        value={draftSettings.login_logo_opacity ?? 1.0}
-                                                        onChange={(e) => setDraftSettings({ ...draftSettings, login_logo_opacity: parseFloat(e.target.value) })}
+                                                        value={Number(draftSettings[getLoginKey('login_logo_opacity')]) ?? 1.0}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_logo_opacity')]: parseFloat(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <div className="flex justify-between">
                                                         <span className="text-[8px] text-white/40 uppercase font-bold">X Offset</span>
-                                                        <span className="text-[8px] text-amber-500 font-bold">{draftSettings.login_logo_x_offset ?? 0}px</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_logo_x_offset')]) ?? 0}px</span>
                                                     </div>
                                                     <input
                                                         type="range" min="-100" max="100" step="1"
-                                                        value={draftSettings.login_logo_x_offset ?? 0}
-                                                        onChange={(e) => setDraftSettings({ ...draftSettings, login_logo_x_offset: parseInt(e.target.value) })}
+                                                        value={Number(draftSettings[getLoginKey('login_logo_x_offset')]) ?? 0}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_logo_x_offset')]: parseInt(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <div className="flex justify-between">
                                                         <span className="text-[8px] text-white/40 uppercase font-bold">Y Offset (Vertical)</span>
-                                                        <span className="text-[8px] text-amber-500 font-bold">{draftSettings.login_logo_y_offset ?? 0}px</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_logo_y_offset')]) ?? 0}px</span>
                                                     </div>
                                                     <input
                                                         type="range" min="-150" max="150" step="1"
-                                                        value={draftSettings.login_logo_y_offset ?? 0}
-                                                        onChange={(e) => setDraftSettings({ ...draftSettings, login_logo_y_offset: parseInt(e.target.value) })}
+                                                        value={Number(draftSettings[getLoginKey('login_logo_y_offset')]) ?? 0}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_logo_y_offset')]: parseInt(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
@@ -1511,7 +1579,11 @@ export default function Settings() {
                                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
                                                 <label className="text-[9px] text-white/60 font-black uppercase tracking-widest block">Card Position & Layout</label>
                                                 <button
-                                                    onClick={() => setDraftSettings({ ...draftSettings, login_card_x_offset: 0, login_card_y_offset: 0 })}
+                                                    onClick={() => setDraftSettings({
+                                                        ...draftSettings,
+                                                        [getLoginKey('login_card_x_offset')]: 0,
+                                                        [getLoginKey('login_card_y_offset')]: 0
+                                                    })}
                                                     className="p-1 px-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-1.5 text-[7px] font-black text-white/40 hover:text-white"
                                                     title="Center Card"
                                                 >
@@ -1523,36 +1595,36 @@ export default function Settings() {
                                                 <div className="space-y-1.5">
                                                     <div className="flex justify-between">
                                                         <span className="text-[8px] text-white/40 uppercase font-bold">V-Offset (Y)</span>
-                                                        <span className="text-[8px] text-amber-500 font-bold">{draftSettings.login_card_y_offset || 0}px</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_card_y_offset')]) || 0}px</span>
                                                     </div>
                                                     <input
                                                         type="range" min="-300" max="300" step="1"
-                                                        value={draftSettings.login_card_y_offset ?? 0}
-                                                        onChange={(e) => setDraftSettings({ ...draftSettings, login_card_y_offset: parseInt(e.target.value) })}
+                                                        value={Number(draftSettings[getLoginKey('login_card_y_offset')]) ?? 0}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_card_y_offset')]: parseInt(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <div className="flex justify-between">
                                                         <span className="text-[8px] text-white/40 uppercase font-bold">H-Offset (X)</span>
-                                                        <span className="text-[8px] text-amber-500 font-bold">{draftSettings.login_card_x_offset || 0}px</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Number(draftSettings[getLoginKey('login_card_x_offset')]) || 0}px</span>
                                                     </div>
                                                     <input
                                                         type="range" min="-300" max="300" step="1"
-                                                        value={draftSettings.login_card_x_offset ?? 0}
-                                                        onChange={(e) => setDraftSettings({ ...draftSettings, login_card_x_offset: parseInt(e.target.value) })}
+                                                        value={Number(draftSettings[getLoginKey('login_card_x_offset')]) ?? 0}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_card_x_offset')]: parseInt(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5 col-span-1 sm:col-span-2">
                                                     <div className="flex justify-between">
                                                         <span className="text-[8px] text-white/40 uppercase font-bold">Card Scale</span>
-                                                        <span className="text-[8px] text-amber-500 font-bold">{Math.round((draftSettings.login_card_scale || 1.0) * 100)}%</span>
+                                                        <span className="text-[8px] text-amber-500 font-bold">{Math.round((Number(draftSettings[getLoginKey('login_card_scale')]) || 1.0) * 100)}%</span>
                                                     </div>
                                                     <input
                                                         type="range" min="0.5" max="1.5" step="0.05"
-                                                        value={draftSettings.login_card_scale ?? 1.0}
-                                                        onChange={(e) => setDraftSettings({ ...draftSettings, login_card_scale: parseFloat(e.target.value) })}
+                                                        value={Number(draftSettings[getLoginKey('login_card_scale')]) ?? 1.0}
+                                                        onChange={(e) => setDraftSettings({ ...draftSettings, [getLoginKey('login_card_scale')]: parseFloat(e.target.value) })}
                                                         className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
                                                     />
                                                 </div>
@@ -1571,18 +1643,22 @@ export default function Settings() {
                                             <div className="w-full">
                                                 <PremiumColorPicker
                                                     label="Card Color"
-                                                    value={draftSettings.login_card_color || '#000000'}
+                                                    value={String(draftSettings[getLoginKey('login_card_color')]) || '#000000'}
                                                     onChange={(val) => {
                                                         const rgba = hexToRgba(val);
-                                                        setDraftSettings({ ...draftSettings, login_card_color: val, login_card_opacity: rgba.a });
+                                                        setDraftSettings({
+                                                            ...draftSettings,
+                                                            [getLoginKey('login_card_color')]: val,
+                                                            [getLoginKey('login_card_opacity')]: rgba.a
+                                                        });
                                                     }}
                                                 />
                                             </div>
                                             <div className="w-full">
                                                 <PremiumColorPicker
                                                     label="Border Color"
-                                                    value={draftSettings.login_card_border_color || '#ffffff33'}
-                                                    onChange={(val) => setDraftSettings({ ...draftSettings, login_card_border_color: val })}
+                                                    value={String(draftSettings[getLoginKey('login_card_border_color')]) || '#ffffff33'}
+                                                    onChange={(val) => setDraftSettings({ ...draftSettings, [getLoginKey('login_card_border_color')]: val })}
                                                 />
                                             </div>
                                         </div>
@@ -1591,16 +1667,16 @@ export default function Settings() {
                                             <div className="w-full">
                                                 <PremiumColorPicker
                                                     label="Text Color"
-                                                    value={draftSettings.login_text_color || '#ffffff'}
-                                                    onChange={(val) => setDraftSettings({ ...draftSettings, login_text_color: val })}
+                                                    value={String(draftSettings[getLoginKey('login_text_color')]) || '#ffffff'}
+                                                    onChange={(val) => setDraftSettings({ ...draftSettings, [getLoginKey('login_text_color')]: val })}
                                                     description="Headings & Labels"
                                                 />
                                             </div>
                                             <div className="w-full">
                                                 <PremiumColorPicker
                                                     label="Accent Color"
-                                                    value={draftSettings.login_accent_color || draftSettings.primary_color || '#D4AF37'}
-                                                    onChange={(val) => setDraftSettings({ ...draftSettings, login_accent_color: val })}
+                                                    value={String(draftSettings[getLoginKey('login_accent_color')]) || draftSettings.primary_color || '#D4AF37'}
+                                                    onChange={(val) => setDraftSettings({ ...draftSettings, [getLoginKey('login_accent_color')]: val })}
                                                     description="Buttons & Links"
                                                 />
                                             </div>
