@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, Edit2, Plus, Trash2, UserPlus } from 'lucide-react';
+import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, Edit2, Plus, Trash2, UserPlus, ChevronDown, ArrowLeft, Camera, ScanLine } from 'lucide-react';
 import Papa from 'papaparse';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { addMonths, format } from 'date-fns';
+import { formatDynamicPhone } from './AddStudentForm';
+import { processImageWithGemini } from '../services/aiService';
 
 interface ImportStudentsModalProps {
     isOpen: boolean;
@@ -28,6 +30,7 @@ interface ParsedStudent {
     phone: string;
     date_of_birth?: string;
     gender?: string;
+    coach_id?: string;
     coach_name?: string;
     subscription_plan_id?: string;
     subscription_type?: string;
@@ -41,15 +44,18 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
     const [parsedData, setParsedData] = useState<ParsedStudent[]>([]);
     const [importing, setImporting] = useState(false);
     const [preview, setPreview] = useState(false);
-    const [importMode, setImportMode] = useState<'csv' | 'grid'>('csv');
+    const [importMode, setImportMode] = useState<'csv' | 'grid' | 'scan'>('csv');
+    const [isScanning, setIsScanning] = useState(false);
     const [plans, setPlans] = useState<any[]>([]);
+    const [coaches, setCoaches] = useState<any[]>([]);
     const [gridRows, setGridRows] = useState<ParsedStudent[]>([
-        { full_name: '', phone: '', date_of_birth: '', subscription_plan_id: '', errors: [] }
+        { full_name: '', phone: '', date_of_birth: '', subscription_plan_id: '', coach_id: '', errors: [] }
     ]);
 
     useEffect(() => {
         if (isOpen) {
             fetchPlans();
+            fetchCoaches();
         }
     }, [isOpen]);
 
@@ -60,6 +66,17 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
             .order('name');
         if (!error && data) {
             setPlans(data);
+        }
+    };
+
+    const fetchCoaches = async () => {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('role', ['coach', 'head_coach'])
+            .order('full_name');
+        if (!error && data) {
+            setCoaches(data);
         }
     };
 
@@ -104,7 +121,7 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
     };
 
     const addGridRow = () => {
-        setGridRows([...gridRows, { full_name: '', phone: '', date_of_birth: '', subscription_plan_id: '', errors: [] }]);
+        setGridRows([...gridRows, { full_name: '', phone: '', date_of_birth: '', subscription_plan_id: '', coach_id: '', errors: [] }]);
     };
 
     const removeGridRow = (index: number) => {
@@ -113,9 +130,141 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
         }
     };
 
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Ensure it's an image
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please upload a valid image file (JPEG, PNG).');
+            return;
+        }
+
+        setIsScanning(true);
+        const reader = new FileReader();
+
+        reader.onload = async (event) => {
+            try {
+                const base64Image = event.target?.result as string;
+                const extractedStudents = await processImageWithGemini(base64Image);
+
+                if (extractedStudents && extractedStudents.length > 0) {
+                    const newRows = extractedStudents.map(student => {
+                        return {
+                            full_name: student.full_name || '',
+                            phone: student.phone || '',
+                            date_of_birth: '',
+                            subscription_plan_id: '',
+                            coach_id: '',
+                            errors: []
+                        };
+                    });
+
+                    const formattedRows = newRows.map(row => {
+                        if (row.phone.trim() !== '') {
+                            const { code, number } = formatDynamicPhone(row.phone, '');
+                            if (number !== '') {
+                                row.phone = `${code} ${number}`.trim();
+                            } else {
+                                row.phone = '';
+                            }
+                        }
+                        return row;
+                    });
+
+                    setGridRows(formattedRows);
+                    setImportMode('grid');
+                    toast.success(`Successfully scanned ${formattedRows.length} students! Review them before importing.`);
+                } else {
+                    toast.error('No student data found in the image.');
+                }
+            } catch (error: any) {
+                toast.error(error.message || 'Failed to analyze image. Please check API Key or try again.');
+            } finally {
+                setIsScanning(false);
+            }
+        };
+
+        reader.readAsDataURL(file);
+    };
+
+    const PremiumSelect = ({
+        value,
+        options,
+        onChange,
+        placeholder,
+        label
+    }: {
+        value: string;
+        options: { id: string; name: string }[];
+        onChange: (id: string) => void;
+        placeholder: string;
+        label: string;
+    }) => {
+        const [isSelectOpen, setIsSelectOpen] = useState(false);
+        const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+        useEffect(() => {
+            const handleClickOutside = (event: MouseEvent) => {
+                if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                    setIsSelectOpen(false);
+                }
+            };
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }, []);
+
+        const selectedOption = options.find(opt => opt.id === value);
+
+        return (
+            <div className="relative w-full" ref={dropdownRef}>
+                <label className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1.5 block md:hidden">
+                    {label}
+                </label>
+                <button
+                    type="button"
+                    onClick={() => setIsSelectOpen(!isSelectOpen)}
+                    className={`w-full !bg-transparent border border-white/10 rounded-2xl px-4 py-3 text-sm flex items-center justify-between transition-all hover:bg-white/5 active:scale-95 ${!value ? 'text-white/30' : 'text-white'}`}
+                >
+                    <span className="truncate">{selectedOption ? selectedOption.name : placeholder}</span>
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isSelectOpen ? 'rotate-180 text-primary' : 'text-white/20'}`} />
+                </button>
+
+                {isSelectOpen && (
+                    <div className="absolute z-[100] top-full mt-2 w-full bg-[#0A1619]/95 backdrop-blur-3xl border border-white/10 rounded-2xl p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-200 origin-top overflow-hidden max-h-[150px] overflow-y-auto custom-scrollbar">
+                        {options.map(option => (
+                            <div
+                                key={option.id}
+                                onClick={() => {
+                                    onChange(option.id);
+                                    setIsSelectOpen(false);
+                                }}
+                                className={`px-4 py-2.5 rounded-xl text-sm transition-all cursor-pointer mb-1 last:mb-0 flex items-center justify-between group ${value === option.id ? 'bg-primary text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+                            >
+                                <span className="font-medium truncate">{option.name}</span>
+                                {value === option.id && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     const updateGridRow = (index: number, field: keyof ParsedStudent, value: string) => {
         const newRows = [...gridRows];
-        newRows[index] = { ...newRows[index], [field]: value };
+
+        if (field === 'phone') {
+            const { code, number } = formatDynamicPhone(value, '');
+            if (number === '') {
+                newRows[index] = { ...newRows[index], [field]: '' };
+            } else {
+                newRows[index] = { ...newRows[index], [field]: `${code} ${number}`.trim() };
+            }
+        } else {
+            newRows[index] = { ...newRows[index], [field]: value };
+        }
+
         setGridRows(newRows);
     };
 
@@ -134,12 +283,17 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
         }
 
         const data: ParsedStudent[] = filledRows.map((row, index) => {
-            return validateRow({
-                Name: row.full_name,
-                Phone: row.phone,
-                'Date of Birth': row.date_of_birth,
-                'Subscription Plan': row.subscription_plan_id
-            }, index);
+            return {
+                ...validateRow({
+                    Name: row.full_name,
+                    Phone: row.phone,
+                    'Date of Birth': row.date_of_birth,
+                    'Subscription Plan': row.subscription_plan_id
+                }, index),
+                coach_id: row.coach_id,
+                // If ID is selected, we can find the name as well for preview
+                coach_name: coaches.find(c => c.id === row.coach_id)?.full_name
+            };
         });
 
         setParsedData(data);
@@ -236,9 +390,9 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                         continue; // Skip this student
                     }
 
-                    // Match coach by name if provided
-                    let coachId = null;
-                    if (student.coach_name && coaches) {
+                    // Match coach (prioritize ID from Grid, then match by name for CSV)
+                    let coachId = student.coach_id || null;
+                    if (!coachId && student.coach_name && coaches) {
                         const coach = coaches.find(c =>
                             c.full_name?.toLowerCase() === student.coach_name?.toLowerCase()
                         );
@@ -258,6 +412,7 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                         .insert({
                             full_name: student.full_name,
                             contact_number: student.phone || '',
+                            parent_contact: student.phone || '',
                             birth_date: student.date_of_birth || null,
                             gender: student.gender || 'male',
                             coach_id: coachId,
@@ -336,7 +491,7 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
 
     const handleClose = () => {
         setFile(null);
-        setGridRows([{ full_name: '', phone: '', date_of_birth: '', subscription_plan_id: '', errors: [] }]);
+        setGridRows([{ full_name: '', phone: '', date_of_birth: '', subscription_plan_id: '', coach_id: '', errors: [] }]);
         setParsedData([]);
         setPreview(false);
         setImportMode('csv');
@@ -354,55 +509,66 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                 onClick={handleClose}
             />
 
-            <div className="relative w-full max-w-5xl bg-black/60 backdrop-blur-3xl border border-white/5 rounded-[3.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-700">
-                {/* Dynamic Glass Shimmer */}
-                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent pointer-events-none"></div>
+            <div className="relative w-full max-w-4xl bg-[#0A1619]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-700">
+                {/* Dynamic Premium Background */}
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-50" />
+                    <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-primary/10 blur-[120px] rounded-full animate-pulse duration-[10s]" />
+                    <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-primary/5 blur-[100px] rounded-full animate-pulse duration-[8s] delay-1000" />
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
+                </div>
 
                 {/* Header Section */}
-                <div className="relative z-10 px-10 pt-10 pb-6 flex items-center justify-between border-b border-white/5 bg-[#0E1D21]/50">
-                    <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-lg">
-                            <FileSpreadsheet className="w-7 h-7" />
+                <div className="relative z-10 px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-5 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
+                    <div className="flex items-center gap-5">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-lg group">
+                            <FileSpreadsheet className="w-5 h-5 group-hover:scale-110 transition-transform" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-white uppercase tracking-[0.2em] mb-1">
+                            <h2 className="text-lg font-black text-white uppercase tracking-[0.2em]">
                                 Import Students
                             </h2>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-white/30">
-                                Select CSV file to upload
+                            <p className="text-[9px] font-black uppercase tracking-widest text-white/30 mt-0.5">
+                                Select CSV or Quick Entry
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={handleClose}
-                        className="p-3 rounded-2xl bg-white/5 hover:bg-rose-500 text-white/40 hover:text-white transition-all border border-white/10 active:scale-90"
+                        className="p-2.5 rounded-xl bg-white/5 hover:bg-rose-500/20 text-white/40 hover:text-rose-500 transition-all border border-white/10 active:scale-90"
                     >
-                        <X className="w-5 h-5" />
+                        <X className="w-4 h-4" />
                     </button>
                 </div>
 
-                <div className="relative z-10 p-10 space-y-10 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                <div className="relative z-10 p-4 sm:p-8 space-y-6 sm:space-y-8 max-h-[65vh] overflow-y-auto overflow-x-hidden custom-scrollbar">
                     {!preview ? (
                         /* Mode Selection & Input */
-                        <div className="space-y-10">
+                        <div className="space-y-8">
                             {/* Tab Switcher */}
-                            <div className="flex p-1.5 bg-white/5 rounded-2xl w-fit mx-auto gap-1">
+                            <div className="flex flex-wrap sm:flex-nowrap justify-center p-1 bg-white/5 rounded-2xl w-full sm:w-fit mx-auto gap-1 border border-white/5">
                                 <button
                                     onClick={() => setImportMode('csv')}
-                                    className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${importMode === 'csv' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                                    className={`flex-1 sm:flex-none px-2 sm:px-8 py-2 rounded-xl text-[8px] sm:text-[9px] font-black uppercase tracking-widest transition-all ${importMode === 'csv' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                                 >
                                     CSV Upload
                                 </button>
                                 <button
                                     onClick={() => setImportMode('grid')}
-                                    className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${importMode === 'grid' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                                    className={`flex-1 sm:flex-none px-2 sm:px-8 py-2 rounded-xl text-[8px] sm:text-[9px] font-black uppercase tracking-widest transition-all ${importMode === 'grid' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                                 >
                                     Quick Entry
+                                </button>
+                                <button
+                                    onClick={() => setImportMode('scan')}
+                                    className={`flex-1 sm:flex-none px-2 sm:px-8 py-2 rounded-xl text-[8px] sm:text-[9px] font-black uppercase tracking-widest transition-all ${importMode === 'scan' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                                >
+                                    Scan AI
                                 </button>
                             </div>
 
                             {importMode === 'csv' ? (
-                                <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     <div className="relative group">
                                         <input
                                             type="file"
@@ -413,25 +579,25 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                                         />
                                         <label
                                             htmlFor="csv-upload"
-                                            className="cursor-pointer block border-2 border-dashed border-white/10 rounded-[3rem] p-16 text-center hover:border-primary/40 hover:bg-white/[0.02] transition-all duration-700 relative overflow-hidden group/label"
+                                            className="cursor-pointer block border-2 border-dashed border-white/10 rounded-[2rem] p-6 sm:p-10 text-center hover:border-primary/40 hover:bg-primary/[0.02] transition-all duration-700 relative overflow-hidden group/label w-full"
                                         >
-                                            <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent opacity-0 group-hover/label:opacity-100 transition-opacity"></div>
-                                            <Upload className="w-16 h-16 text-white/10 mx-auto mb-6 group-hover/label:text-primary/60 group-hover/label:scale-110 transition-all duration-700" />
-                                            <p className="text-xl font-black text-white/80 mb-2 uppercase tracking-widest">
+                                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(var(--primary-rgb),0.1),transparent)] opacity-0 group-hover/label:opacity-100 transition-opacity"></div>
+                                            <Upload className="w-12 h-12 text-white/10 mx-auto mb-4 group-hover/label:text-primary group-hover/label:scale-110 transition-all duration-700" />
+                                            <p className="text-sm sm:text-lg font-black text-white/80 mb-1 uppercase tracking-widest break-words px-2">
                                                 {file ? file.name : 'Upload CSV'}
                                             </p>
-                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
-                                                Select CSV File
+                                            <p className="text-[7px] sm:text-[9px] font-black uppercase tracking-widest sm:tracking-[0.3em] text-white/20 px-2">
+                                                Drag and drop or click to browse
                                             </p>
                                         </label>
                                     </div>
 
                                     {/* Requirements */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 space-y-4">
                                             <div className="flex items-center gap-3 text-primary/60">
-                                                <AlertCircle className="w-4 h-4" />
-                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em]">Required Fields</h3>
+                                                <AlertCircle className="w-3.5 h-3.5" />
+                                                <h3 className="text-[9px] font-black uppercase tracking-[0.3em]">Required Fields</h3>
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="flex items-center justify-between">
@@ -445,11 +611,11 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                                             </div>
                                         </div>
 
-                                        <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-4">
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-2">Optional Fields</h3>
-                                            <div className="flex flex-wrap gap-2">
+                                        <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 space-y-4">
+                                            <h3 className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-1">Optional Fields</h3>
+                                            <div className="flex flex-wrap gap-1.5">
                                                 {['Birth Date', 'Gender', 'Coach', 'Subscription', 'Notes'].map((tag) => (
-                                                    <span key={tag} className="px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/5 text-[8px] font-black uppercase tracking-widest text-white/40">
+                                                    <span key={tag} className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-[7px] font-black uppercase tracking-widest text-white/40">
                                                         {tag}
                                                     </span>
                                                 ))}
@@ -460,85 +626,142 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                                         </div>
                                     </div>
                                 </div>
+                            ) : importMode === 'scan' ? (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="relative group">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            onChange={handleImageUpload}
+                                            className="hidden"
+                                            id="image-upload"
+                                            disabled={isScanning}
+                                        />
+                                        <label
+                                            htmlFor="image-upload"
+                                            className={`cursor-pointer block border-2 border-dashed rounded-[2rem] p-6 sm:p-10 text-center transition-all duration-700 relative overflow-hidden group/label w-full ${isScanning ? 'border-primary/50 bg-primary/[0.05] cursor-wait' : 'border-white/10 hover:border-primary/40 hover:bg-primary/[0.02]'}`}
+                                        >
+                                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(var(--primary-rgb),0.1),transparent)] opacity-0 group-hover/label:opacity-100 transition-opacity"></div>
+
+                                            {isScanning ? (
+                                                <div className="flex flex-col items-center justify-center space-y-4">
+                                                    <div className="relative">
+                                                        <ScanLine className="w-12 h-12 text-primary animate-pulse" />
+                                                        <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full"></div>
+                                                    </div>
+                                                    <p className="text-lg font-black text-white/80 uppercase tracking-widest animate-pulse">
+                                                        Analyzing Image... 🧠
+                                                    </p>
+                                                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/60">
+                                                        Our AI is reading the student list
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <Camera className="w-12 h-12 text-white/10 mx-auto mb-4 group-hover/label:text-primary group-hover/label:scale-110 transition-all duration-700" />
+                                                    <p className="text-sm sm:text-lg font-black text-white/80 mb-1 uppercase tracking-widest md:tracking-[0.2em] break-words">
+                                                        Take Photo / Upload Image
+                                                    </p>
+                                                    <p className="text-[7px] sm:text-[9px] font-black uppercase tracking-widest sm:tracking-[0.3em] text-white/20 px-2">
+                                                        Tap here to open your camera or gallery
+                                                    </p>
+                                                </>
+                                            )}
+                                        </label>
+                                    </div>
+
+                                    {/* Scan Info */}
+                                    <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 space-y-4">
+                                        <div className="flex items-center gap-3 text-primary/60">
+                                            <AlertCircle className="w-3.5 h-3.5" />
+                                            <h3 className="text-[9px] font-black uppercase tracking-[0.3em]">AI Scanner Beta</h3>
+                                        </div>
+                                        <p className="text-[10px] font-medium text-white/40 leading-relaxed max-w-xl">
+                                            Take a clear photo of a handwritten or printed list containing student names and their phone numbers.
+                                            Our AI will automatically extract this information and pre-fill the Quick Entry Grid for you to review and import.
+                                        </p>
+                                    </div>
+                                </div>
                             ) : (
-                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="p-8 rounded-[3rem] bg-white/[0.02] border border-white/10">
-                                        <div className="flex items-center justify-between mb-8 px-2 border-b border-white/5 pb-4">
+                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 relative overflow-hidden">
+                                        <div className="flex items-center justify-between mb-6 px-1 border-b border-white/5 pb-4">
                                             <div className="flex items-center gap-3">
-                                                <Edit2 className="w-5 h-5 text-primary" />
+                                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                                                    <Edit2 className="w-4 h-4" />
+                                                </div>
                                                 <div>
-                                                    <h3 className="text-sm font-black text-white uppercase tracking-wider">Quick Entry Grid</h3>
-                                                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Add students individually</p>
+                                                    <h3 className="text-xs font-black text-white uppercase tracking-wider">Quick Entry Grid</h3>
+                                                    <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Add students manually</p>
                                                 </div>
                                             </div>
                                             <button
                                                 onClick={addGridRow}
-                                                className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary hover:text-primary rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-primary/20"
+                                                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg active:scale-95"
                                             >
-                                                <Plus className="w-4 h-4" />
+                                                <Plus className="w-3.5 h-3.5" />
                                                 Add Row
                                             </button>
                                         </div>
 
                                         <div className="space-y-3">
-                                            {/* Header Row */}
-                                            <div className="grid grid-cols-[2fr_1.5fr_1fr_1.5fr_auto] gap-4 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white/30 hidden md:grid">
-                                                <div>Full Name <span className="text-rose-500">*</span></div>
-                                                <div>WhatsApp Number</div>
-                                                <div>Birth Date</div>
-                                                <div>Plan</div>
+                                            {/* Header Row - Aligned precisely with text inside inputs */}
+                                            <div className="hidden md:grid grid-cols-[1.5fr_1fr_0.8fr_1fr_1fr_auto] gap-4 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
+                                                <div className="pl-4">Full Name <span className="text-rose-500">*</span></div>
+                                                <div className="pl-6">Phone</div>
+                                                <div className="pl-4">Birth Date</div>
+                                                <div className="pl-4">Plan</div>
+                                                <div className="pl-4">Coach</div>
                                                 <div className="w-10"></div>
                                             </div>
 
                                             {/* Data Rows */}
                                             {gridRows.map((row, index) => (
-                                                <div key={index} className="grid grid-cols-1 md:grid-cols-[2fr_1.5fr_1fr_1.5fr_auto] gap-4 bg-white/[0.02] hover:bg-white/[0.04] p-4 rounded-3xl border border-white/5 transition-colors items-start">
+                                                <div key={index} className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr_0.8fr_1fr_1fr_auto] gap-4 bg-white/[0.01] hover:bg-white/[0.03] p-4 rounded-3xl border border-white/5 transition-all items-start mb-2 last:mb-0">
                                                     <div>
                                                         <label className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1.5 block md:hidden">Full Name <span className="text-rose-500">*</span></label>
                                                         <input
                                                             type="text"
                                                             value={row.full_name}
                                                             onChange={(e) => updateGridRow(index, 'full_name', e.target.value)}
-                                                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 transition-colors"
+                                                            className="w-full !bg-transparent border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 transition-all shadow-inner"
                                                             placeholder=""
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1.5 block md:hidden">WhatsApp Number</label>
+                                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1.5 block md:hidden">Phone</label>
                                                         <input
                                                             type="text"
                                                             value={row.phone}
                                                             onChange={(e) => updateGridRow(index, 'phone', e.target.value)}
-                                                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 transition-colors font-mono tracking-wider"
+                                                            className="w-full !bg-transparent border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary/50 transition-all font-mono tracking-wider shadow-inner placeholder:text-white/20"
                                                             placeholder=""
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1.5 block md:hidden">Birth Date</label>
+                                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1.5 block md:hidden">Birth</label>
                                                         <input
                                                             type="date"
                                                             value={row.date_of_birth || ''}
                                                             onChange={(e) => updateGridRow(index, 'date_of_birth', e.target.value)}
-                                                            className={`w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 transition-colors [color-scheme:dark] ${!row.date_of_birth ? 'text-transparent' : 'text-white'}`}
+                                                            className={`w-full !bg-transparent border border-white/10 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 transition-all [color-scheme:dark] shadow-inner ${!row.date_of_birth ? 'text-white/0' : 'text-white'}`}
                                                         />
                                                     </div>
-                                                    <div>
-                                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1.5 block md:hidden">Plan</label>
-                                                        <div className="relative">
-                                                            <select
-                                                                value={row.subscription_plan_id || ''}
-                                                                onChange={(e) => updateGridRow(index, 'subscription_plan_id', e.target.value)}
-                                                                className={`w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 transition-colors appearance-none pr-10 ${!row.subscription_plan_id ? 'text-transparent' : 'text-white'}`}
-                                                            >
-                                                                <option value="" className="bg-[#0E1D21] text-white/50" disabled></option>
-                                                                {plans.map(plan => (
-                                                                    <option key={plan.id} value={plan.id} className="bg-[#0E1D21] text-white">
-                                                                        {plan.name} - {plan.price} LE
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
-                                                    </div>
+                                                    <PremiumSelect
+                                                        label="Plan"
+                                                        value={row.subscription_plan_id || ''}
+                                                        placeholder=""
+                                                        options={plans.map(p => ({ id: p.id, name: p.name }))}
+                                                        onChange={(id) => updateGridRow(index, 'subscription_plan_id', id)}
+                                                    />
+                                                    <PremiumSelect
+                                                        label="Coach"
+                                                        value={row.coach_id || ''}
+                                                        placeholder=""
+                                                        options={coaches.map(c => ({ id: c.id, name: c.full_name }))}
+                                                        onChange={(id) => updateGridRow(index, 'coach_id', id)}
+                                                    />
                                                     <div className="flex md:items-end h-full">
                                                         <button
                                                             onClick={() => removeGridRow(index)}
@@ -570,91 +793,104 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                         /* Preview Section */
                         <div className="space-y-10 animate-in fade-in duration-700">
                             {/* Summary */}
-                            <div className="grid grid-cols-2 gap-8">
-                                <div className="p-8 rounded-[2.5rem] bg-emerald-500/[0.02] border border-emerald-500/10 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/[0.05] blur-3xl rounded-full"></div>
-                                    <div className="flex items-center gap-3 mb-4 text-emerald-500/60">
-                                        <CheckCircle className="w-5 h-5" />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">Valid Entries</span>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="p-6 rounded-3xl bg-emerald-500/[0.03] border border-emerald-500/10 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/[0.05] blur-3xl rounded-full group-hover:bg-emerald-500/[0.1] transition-colors"></div>
+                                    <div className="flex items-center gap-3 mb-3 text-emerald-500/60">
+                                        <CheckCircle className="w-4 h-4" />
+                                        <span className="text-[9px] font-black uppercase tracking-[0.3em]">Valid Entries</span>
                                     </div>
-                                    <p className="text-4xl font-black text-white leading-none">{validCount}</p>
+                                    <p className="text-3xl font-black text-white leading-none">{validCount}</p>
                                 </div>
-                                <div className="p-8 rounded-[2.5rem] bg-rose-500/[0.02] border border-rose-500/10 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/[0.05] blur-3xl rounded-full"></div>
-                                    <div className="flex items-center gap-3 mb-4 text-rose-500/60">
-                                        <AlertCircle className="w-5 h-5" />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">Invalid Entries</span>
+                                <div className="p-6 rounded-3xl bg-rose-500/[0.03] border border-rose-500/10 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/[0.05] blur-3xl rounded-full group-hover:bg-rose-500/[0.1] transition-colors"></div>
+                                    <div className="flex items-center gap-3 mb-3 text-rose-500/60">
+                                        <AlertCircle className="w-4 h-4" />
+                                        <span className="text-[9px] font-black uppercase tracking-[0.3em]">Invalid Entries</span>
                                     </div>
-                                    <p className="text-4xl font-black text-white leading-none">{errorCount}</p>
+                                    <p className="text-3xl font-black text-white leading-none">{errorCount}</p>
                                 </div>
                             </div>
 
                             {/* Data Table */}
-                            <div className="rounded-[2.5rem] bg-white/[0.01] border border-white/5 overflow-hidden">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                        <tr className="bg-white/[0.03]">
-                                            <th className="px-8 py-5 text-left text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">ID</th>
-                                            <th className="px-8 py-5 text-left text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">Gymnast Name</th>
-                                            <th className="px-8 py-5 text-left text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">Phone Number</th>
-                                            <th className="px-8 py-5 text-left text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-white/5">
-                                        {parsedData.map((row, index) => (
-                                            <tr key={index} className="hover:bg-white/[0.02] transition-colors group">
-                                                <td className="px-8 py-5 text-[11px] font-black text-white/30">{index + 1}</td>
-                                                <td className="px-8 py-5">
-                                                    <div className="text-[13px] font-black text-white/80 group-hover:text-white transition-colors uppercase tracking-wider">{row.full_name}</div>
-                                                    <div className="text-[8px] font-bold text-white/20 uppercase tracking-widest">{row.coach_name || 'Unassigned'}</div>
-                                                </td>
-                                                <td className="px-8 py-5 text-[11px] font-black text-white/60 font-mono tracking-tighter">{row.phone}</td>
-                                                <td className="px-8 py-5">
-                                                    {row.errors.length === 0 ? (
-                                                        <span className="inline-flex items-center gap-2 text-emerald-500 text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 px-4 py-2 rounded-full border border-emerald-500/20">
-                                                            Ready
-                                                        </span>
-                                                    ) : (
-                                                        <div className="space-y-1">
-                                                            <span className="inline-flex items-center gap-2 text-rose-500 text-[9px] font-black uppercase tracking-widest bg-rose-500/10 px-4 py-2 rounded-full border border-rose-500/20">
-                                                                Invalid Data
-                                                            </span>
-                                                            <div className="pl-4 text-[8px] font-bold text-rose-500/60 uppercase tracking-widest">
-                                                                {row.errors[0]}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </td>
+                            <div className="rounded-3xl bg-white/[0.02] border border-white/5 overflow-hidden">
+                                <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                                    <table className="w-full border-collapse">
+                                        <thead className="sticky top-0 z-20">
+                                            <tr className="bg-[#0E1D21] border-b border-white/5">
+                                                <th className="px-6 py-4 text-left text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">ID</th>
+                                                <th className="px-6 py-4 text-left text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">Gymnast Name</th>
+                                                <th className="px-6 py-4 text-left text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">Phone Number</th>
+                                                <th className="px-6 py-4 text-right text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">Status</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-white/5">
+                                            {parsedData.map((row, index) => (
+                                                <tr key={index} className="hover:bg-white/[0.02] transition-colors group">
+                                                    <td className="px-6 py-4 text-[10px] font-black text-white/20 font-mono">{index + 1}</td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-xs font-black text-white/80 group-hover:text-primary transition-colors tracking-tight uppercase">{row.full_name}</div>
+                                                        <div className="text-[7px] font-bold text-white/10 uppercase tracking-widest mt-0.5">{row.coach_name || 'Unassigned'}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-[10px] font-black text-white/40 font-mono tracking-tighter">{row.phone}</td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        {row.errors.length === 0 ? (
+                                                            <span className="inline-flex items-center gap-1.5 text-emerald-500 text-[8px] font-black uppercase tracking-widest bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 shadow-lg shadow-emerald-500/5">
+                                                                Ready
+                                                            </span>
+                                                        ) : (
+                                                            <div className="flex flex-col items-end gap-1">
+                                                                <span className="inline-flex items-center gap-1.5 text-rose-500 text-[8px] font-black uppercase tracking-widest bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20 shadow-lg shadow-rose-500/5">
+                                                                    Invalid
+                                                                </span>
+                                                                <div className="text-[7px] font-bold text-rose-500/40 uppercase tracking-widest">
+                                                                    {row.errors[0]}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     )}
                 </div>
 
                 {/* Footer Section */}
-                <div className="relative z-10 px-10 py-10 border-t border-white/5 bg-[#0E1D21]/50 flex items-center justify-between gap-8">
-                    <button
-                        onClick={handleClose}
-                        className="px-8 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 active:scale-95"
-                    >
-                        Cancel
-                    </button>
+                <div className="relative z-10 px-8 py-6 border-t border-white/5 bg-white/[0.02] flex items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={handleClose}
+                            className="px-6 py-3 text-[8px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-300 active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        {preview && (
+                            <button
+                                onClick={() => setPreview(false)}
+                                className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-[8px] font-black uppercase tracking-[0.3em] text-white/50 hover:text-white hover:bg-white/10 transition-all duration-300 active:scale-95 flex items-center gap-2"
+                            >
+                                <ArrowLeft className="w-3.5 h-3.5" />
+                                Back
+                            </button>
+                        )}
+                    </div>
 
                     {preview && (
                         <button
                             onClick={handleImport}
                             disabled={importing || validCount === 0}
-                            className="flex-1 py-5 rounded-3xl bg-primary text-white hover:bg-primary/90 transition-all duration-500 shadow-[0_20px_40px_rgba(var(--primary-rgb),0.3)] active:scale-95 flex items-center justify-center gap-4 group/btn disabled:opacity-30 disabled:pointer-events-none"
+                            className="flex-1 py-4 rounded-2xl bg-primary text-white hover:bg-primary/90 transition-all duration-500 shadow-[0_15px_30px_rgba(var(--primary-rgb),0.3)] active:scale-95 flex items-center justify-center gap-3 group/btn disabled:opacity-30 disabled:pointer-events-none"
                         >
                             {importing ? (
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             ) : (
-                                <Upload className="w-4 h-4 group-hover:-translate-y-1 transition-transform" />
+                                <Upload className="w-3.5 h-3.5 group-hover:-translate-y-1 transition-transform" />
                             )}
-                            <span className="font-black uppercase tracking-[0.4em] text-[10px]">
+                            <span className="font-black uppercase tracking-[0.4em] text-[9px]">
                                 {importing ? 'Processing...' : `Import ${validCount} Students`}
                             </span>
                         </button>

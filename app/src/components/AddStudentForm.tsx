@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import { sendToN8n } from '../services/n8nService';
 import PremiumSelect from './PremiumSelect';
 
-const COUNTRIES = [
+export const COUNTRIES = [
     { code: 'KW', dial_code: '+965', flag: '🇰🇼', name: 'Kuwait' },
     { code: 'SA', dial_code: '+966', flag: '🇸🇦', name: 'Saudi Arabia' },
     { code: 'AE', dial_code: '+971', flag: '🇦🇪', name: 'UAE' },
@@ -19,6 +19,51 @@ const COUNTRIES = [
     { code: 'US', dial_code: '+1', flag: '🇺🇸', name: 'USA' },
     { code: 'UK', dial_code: '+44', flag: '🇬🇧', name: 'UK' },
 ];
+
+export const formatDynamicPhone = (value: string, currentDialCode: string) => {
+    let raw = value.replace(/[^\d+]/g, ''); // keep digits and +
+    let newNumber = raw;
+    let newCode = currentDialCode;
+
+    if (raw.startsWith('+')) {
+        const sortedCountries = [...COUNTRIES].sort((a, b) => b.dial_code.length - a.dial_code.length);
+        const match = sortedCountries.find(c => raw.startsWith(c.dial_code));
+        if (match) {
+            newCode = match.dial_code;
+            newNumber = raw.substring(match.dial_code.length);
+        }
+    } else if (raw.startsWith('00')) {
+        const sortedCountries = [...COUNTRIES].sort((a, b) => b.dial_code.length - a.dial_code.length);
+        const match = sortedCountries.find(c => raw.substring(2).startsWith(c.dial_code.substring(1)));
+        if (match) {
+            newCode = match.dial_code;
+            newNumber = raw.substring(2 + match.dial_code.length - 1);
+        }
+    } else {
+        const digits = raw;
+        if (digits.startsWith('01') && digits.length >= 2) {
+            newCode = '+20';
+            newNumber = digits.substring(1);
+        } else if (digits.startsWith('201') && currentDialCode !== '+20') {
+            newCode = '+20';
+            newNumber = digits.substring(2);
+        } else {
+            const sortedCountries = [...COUNTRIES].sort((a, b) => b.dial_code.length - a.dial_code.length);
+            for (const country of sortedCountries) {
+                const codeDigits = country.dial_code.replace('+', '');
+                if (codeDigits.length > 1 && digits.startsWith(codeDigits)) {
+                    newCode = country.dial_code;
+                    newNumber = digits.substring(codeDigits.length);
+                    break;
+                }
+            }
+        }
+    }
+
+    // Limit length loosely
+    if (newNumber.length > 15) newNumber = newNumber.substring(0, 15);
+    return { code: newCode, number: newNumber };
+};
 
 import { useSubscriptionPlans, useCoaches, useGroups } from '../hooks/useData';
 import { useCurrency } from '../context/CurrencyContext';
@@ -594,7 +639,11 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                                     type="tel"
                                     className="w-full px-5 py-3 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white placeholder:text-white/10 text-[10px] font-bold tracking-wide"
                                     value={formData.contact_number}
-                                    onChange={e => setFormData({ ...formData, contact_number: e.target.value })}
+                                    onChange={e => {
+                                        const { code, number } = formatDynamicPhone(e.target.value, formData.country_code_student);
+                                        setFormData({ ...formData, contact_number: number, country_code_student: code });
+                                    }}
+                                    placeholder=""
                                 />
                             </div>
                         </div>
@@ -633,7 +682,11 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                                     type="tel"
                                     className="w-full px-8 py-3.5 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-emerald-500/40 outline-none transition-all text-white placeholder:text-white/10 text-sm font-bold tracking-wide"
                                     value={formData.parent_contact}
-                                    onChange={e => setFormData({ ...formData, parent_contact: e.target.value })}
+                                    onChange={e => {
+                                        const { code, number } = formatDynamicPhone(e.target.value, formData.country_code_parent);
+                                        setFormData({ ...formData, parent_contact: number, country_code_parent: code });
+                                    }}
+                                    placeholder=""
                                 />
                             </div>
                         </div>

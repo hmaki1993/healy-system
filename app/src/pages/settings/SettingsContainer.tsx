@@ -819,7 +819,7 @@ export default function Settings() {
                     <Palette className="w-3.5 h-3.5" />
                     {t('settings.appearance')}
                 </button>
-                {role === 'admin' && isSecretRevealed && (
+                {role === 'admin' && (
                     <button
                         onClick={() => setActiveTab('login')}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'login' ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-105 ring-1 ring-white/10' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
