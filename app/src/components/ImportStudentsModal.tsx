@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, Edit2, Plus, Trash2, UserPlus, ChevronDown, ArrowLeft, Camera, ScanLine } from 'lucide-react';
+import { X, Upload, FileSpreadsheet, AlertCircle, CheckCircle, Edit2, Plus, Trash2, UserPlus, ChevronDown, ArrowLeft, Camera, ScanLine, Users } from 'lucide-react';
 import Papa from 'papaparse';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
@@ -46,6 +46,11 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
     const [preview, setPreview] = useState(false);
     const [importMode, setImportMode] = useState<'csv' | 'grid' | 'scan'>('csv');
     const [isScanning, setIsScanning] = useState(false);
+
+    // Bulk Input State
+    const [bulkText, setBulkText] = useState('');
+    const [bulkCoachId, setBulkCoachId] = useState('');
+    const [bulkPlanId, setBulkPlanId] = useState('');
     const [plans, setPlans] = useState<any[]>([]);
     const [coaches, setCoaches] = useState<any[]>([]);
     const [gridRows, setGridRows] = useState<ParsedStudent[]>([
@@ -130,6 +135,36 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
         }
     };
 
+    const handleBulkAdd = () => {
+        if (!bulkText.trim()) return;
+
+        // Split by actual newlines or escaped newlines (e.g. from pasted raw text)
+        const names = bulkText.split(/\r?\n|\\n/).map(r => r.trim()).filter(r => r.length > 0);
+
+        if (names.length === 0) return;
+
+        const newRows: ParsedStudent[] = names.map(name => ({
+            full_name: name,
+            phone: '',
+            date_of_birth: '',
+            gender: 'male',
+            subscription_plan_id: bulkPlanId,
+            coach_id: bulkCoachId,
+            coach_name: '',
+            errors: []
+        }));
+
+        // If the grid only has one empty row, replace it. Otherwise append.
+        if (gridRows.length === 1 && !gridRows[0].full_name && !gridRows[0].phone) {
+            setGridRows(newRows);
+        } else {
+            setGridRows([...gridRows, ...newRows]);
+        }
+
+        setBulkText('');
+        toast.success(`Added ${newRows.length} students!`);
+    };
+
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -149,17 +184,82 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                 const extractedStudents = await processImageWithGemini(base64Image);
 
                 if (extractedStudents && extractedStudents.length > 0) {
+                    console.log("Raw AI Extracted Data:", extractedStudents);
+
                     const formattedRows: ParsedStudent[] = extractedStudents.map(student => {
                         const { code, number } = formatDynamicPhone(student.phone || '', '+965');
+
+                        // Try to find coach_id by matching coach_name
+                        let coachId = '';
+                        if (student.coach_name) {
+                            const rawName = student.coach_name;
+                            const cleanExtractedName = rawName.replace(/^(coach|couch|كابتن|مدرب|ك|c\.\?)\s+/i, '').trim().toLowerCase();
+                            console.log(`Processing coach => Raw: "${rawName}", Cleaned: "${cleanExtractedName}"`);
+
+                            const matchedCoach = coaches.find(c => {
+                                const dbName = c.full_name?.toLowerCase().trim() || '';
+                                return dbName.includes(cleanExtractedName) || cleanExtractedName.includes(dbName) || dbName === cleanExtractedName;
+                            });
+
+                            if (matchedCoach) {
+                                console.log(`  Matched System Coach => "${matchedCoach.full_name}" (ID: ${matchedCoach.id})`);
+                                coachId = matchedCoach.id;
+                            } else {
+                                console.warn(`  Failed to match coach in system => Cleaned name: "${cleanExtractedName}"`);
+                            }
+                        }
+
+                        // Try to find subscription plan by matching plan_name
+                        let planId = '';
+                        if (student.plan_name) {
+                            const rawPlan = student.plan_name;
+                            const cleanExtractPlan = rawPlan.replace(/\\s+/g, ' ').trim().toLowerCase();
+                            console.log(`Processing plan => Raw: "${rawPlan}", Cleaned: "${cleanExtractPlan}"`);
+
+                            // Try to extract numbers (English or Arabic formats)
+                            // convert Arabic numerals to English for easier matching
+                            let normalizedPlanName = cleanExtractPlan.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
+                            const extractNumber = normalizedPlanName.match(/\\d+/)?.[0];
+
+                            const matchedPlan = plans.find(p => {
+                                const dbName = p.name?.toLowerCase().trim() || '';
+
+                                // Exact or includes match
+                                if (dbName.includes(normalizedPlanName) || normalizedPlanName.includes(dbName) || dbName === normalizedPlanName) {
+                                    return true;
+                                }
+
+                                // Number match (e.g., if DB has "8 classes" and AI extracted "8" or "8 حصه")
+                                if (extractNumber) {
+                                    // Look for this number standing alone or with a space in the dbName to prevent "8" matching "18"
+                                    const regex = new RegExp(`(^|\\D)${extractNumber}(\\D|$)`);
+                                    if (regex.test(dbName)) {
+                                        return true;
+                                    }
+                                }
+
+                                return false;
+                            });
+
+                            if (matchedPlan) {
+                                console.log(`  Matched System Plan => "${matchedPlan.name}" (ID: ${matchedPlan.id})`);
+                                planId = matchedPlan.id;
+                            } else {
+                                console.warn(`  Failed to match plan in system => Cleaned name: "${cleanExtractPlan}"`);
+                            }
+                        }
+
                         return {
                             full_name: student.full_name || '',
                             phone: number ? `${code} ${number}`.trim() : '',
                             date_of_birth: student.date_of_birth || '',
                             gender: student.gender || 'male',
-                            subscription_plan_id: '',
-                            coach_id: '',
+                            subscription_plan_id: planId,
+                            coach_id: coachId,
+                            coach_name: student.coach_name || '',
                             errors: []
                         };
+
                     });
 
                     setGridRows(formattedRows);
@@ -676,14 +776,67 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                             ) : (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 relative overflow-hidden">
-                                        <div className="flex items-center justify-between mb-6 px-1 border-b border-white/5 pb-4">
+
+                                        {/* Mass Quick Add Header */}
+                                        <div className="mb-8 pt-2">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                                                    <Users className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-xs font-black text-white uppercase tracking-wider">Mass Quick Add</h3>
+                                                    <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Paste a list of names and assign them instantly</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                                <div className="md:col-span-6">
+                                                    <textarea
+                                                        value={bulkText}
+                                                        onChange={(e) => setBulkText(e.target.value)}
+                                                        placeholder="Paste list of names here...&#10;Ahmed Magdy&#10;Mohamed Ali&#10;Omar Khaled..."
+                                                        className="w-full h-[120px] bg-white/[0.01] border border-white/10 rounded-2xl p-4 text-xs text-white focus:outline-none focus:border-primary/50 transition-all custom-scrollbar resize-none placeholder:text-white/20"
+                                                    />
+                                                </div>
+
+                                                <div className="md:col-span-6 flex flex-col justify-between gap-4">
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <PremiumSelect
+                                                            value={bulkPlanId}
+                                                            options={plans.map(p => ({ id: p.id, name: p.name }))}
+                                                            onChange={setBulkPlanId}
+                                                            placeholder="Assign Plan (Optional)"
+                                                            label="Default Plan"
+                                                        />
+                                                        <PremiumSelect
+                                                            value={bulkCoachId}
+                                                            options={coaches.map(c => ({ id: c.id, name: c.full_name || 'Unnamed' }))}
+                                                            onChange={setBulkCoachId}
+                                                            placeholder="Assign Coach (Optional)"
+                                                            label="Default Coach"
+                                                        />
+                                                    </div>
+
+                                                    <button
+                                                        onClick={handleBulkAdd}
+                                                        disabled={!bulkText.trim()}
+                                                        className="w-full py-3.5 bg-white/5 hover:bg-primary/20 hover:text-primary hover:border-primary/50 text-white/40 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all disabled:opacity-50 disabled:cursor-not-allowed group flex items-center justify-center gap-2"
+                                                    >
+                                                        <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                                        Add to Grid
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between mb-6 px-1 border-t border-b border-white/5 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
                                                     <Edit2 className="w-4 h-4" />
                                                 </div>
                                                 <div>
                                                     <h3 className="text-xs font-black text-white uppercase tracking-wider">Quick Entry Grid</h3>
-                                                    <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Add students manually</p>
+                                                    <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Review and edit students</p>
                                                 </div>
                                             </div>
                                             <button
@@ -699,10 +852,10 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                                             {/* Header Row - Aligned precisely with text inside inputs */}
                                             <div className="hidden md:grid grid-cols-[1.5fr_1fr_0.8fr_1fr_1fr_auto] gap-4 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
                                                 <div className="pl-4">Full Name <span className="text-rose-500">*</span></div>
-                                                <div className="pl-6">Phone</div>
+                                                <div className="text-left">Phone</div>
                                                 <div className="pl-4">Birth Date</div>
-                                                <div className="pl-4">Plan</div>
-                                                <div className="pl-4">Coach</div>
+                                                <div className="text-center pl-6">Plan</div>
+                                                <div className="text-center">Coach</div>
                                                 <div className="w-10"></div>
                                             </div>
 
@@ -752,7 +905,14 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                                                         options={coaches.map(c => ({ id: c.id, name: c.full_name }))}
                                                         onChange={(id) => updateGridRow(index, 'coach_id', id)}
                                                     />
-                                                    <div className="flex md:items-end h-full">
+                                                    <div className="flex flex-col md:flex-row gap-2 justify-end items-end h-[46px]">
+                                                        <button
+                                                            onClick={addGridRow}
+                                                            className="flex-1 md:flex-none p-3 block md:hidden rounded-xl border border-white/10 hover:border-primary/50 text-white/40 hover:text-primary transition-all active:scale-95 flex items-center justify-center bg-white/5"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                            <span className="md:hidden ml-2 text-[10px] font-black uppercase tracking-widest">Add Below</span>
+                                                        </button>
                                                         <button
                                                             onClick={() => removeGridRow(index)}
                                                             className={`p-3 rounded-xl border transition-all h-[46px] w-full md:w-[46px] flex items-center justify-center ${gridRows.length > 1 ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 hover:text-rose-400 border-rose-500/20 hover:border-rose-500/40' : 'bg-white/5 text-white/20 border-white/10 cursor-not-allowed opacity-50'}`}
@@ -886,7 +1046,7 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                         </button>
                     )}
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

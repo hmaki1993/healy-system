@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { User, Calendar, Phone, CheckCircle, TrendingUp, Sparkles, ChevronRight, ChevronDown, Mail, MapPin, Clock, ArrowLeft } from 'lucide-react';
+import { User, Phone, MapPin, TrendingUp, ChevronDown, CheckCircle, Clock, ChevronRight, Globe, AlertCircle, Trash2, UserPlus, Users, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useTheme } from '../context/ThemeContext';
 import toast from 'react-hot-toast';
 import { format, parseISO, addMonths } from 'date-fns';
 import { sendToN8n } from '../services/n8nService';
@@ -11,10 +12,19 @@ import { formatDynamicPhone } from '../utils/phoneUtils';
 
 export default function PublicRegistration() {
     const { t } = useTranslation();
+    const { settings } = useTheme();
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
-    const [coaches, setCoaches] = useState<{ id: string, full_name: string, specialty: string }[]>([]);
+    const [coaches, setCoaches] = useState<{ id: string, full_name: string }[]>([]);
     const [plans, setPlans] = useState<{ id: string, name: string, price: number, duration_months: number }[]>([]);
+
+    // Theme Helpers for dynamic UI
+    const primaryColor = settings.primary_color;
+    const secondaryColor = settings.secondary_color;
+    const accentColor = settings.accent_color || settings.primary_color;
+    const surfaceColor = settings.surface_color || 'rgba(255, 255, 255, 0.05)';
+    const textColor = settings.text_color_base || '#ffffff';
+    const textColorMuted = settings.text_color_muted || 'rgba(255, 255, 255, 0.6)';
     const [logoUrl, setLogoUrl] = useState<string>('/logo_recovered.png');
 
     // Form State
@@ -249,26 +259,26 @@ export default function PublicRegistration() {
 
     if (success) {
         return (
-            <div className="min-h-screen bg-[#0E1D21] flex flex-col items-center justify-center p-4 relative overflow-hidden">
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden" style={{ backgroundColor: secondaryColor }}>
                 <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                    <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#622347]/20 rounded-full blur-[150px] animate-pulse"></div>
-                    <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#122E34]/40 rounded-full blur-[150px] animate-pulse delay-1000"></div>
+                    <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[150px] animate-pulse" style={{ backgroundColor: `${primaryColor}33` }}></div>
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[150px] animate-pulse delay-1000" style={{ backgroundColor: `${accentColor}33` }}></div>
                 </div>
                 <div className="z-10 text-center animate-in zoom-in-95 duration-700">
-                    <div className="w-32 h-32 bg-gradient-to-br from-[#622347] to-[#122E34] rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-[#622347]/30 animate-bounce">
-                        <CheckCircle className="w-16 h-16 text-[#ABAFB5]" />
+                    <div className="w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl animate-bounce" style={{ background: `linear-gradient(to br, ${primaryColor}, ${accentColor})`, boxShadow: `0 20px 50px ${primaryColor}4d` }}>
+                        <CheckCircle className="w-16 h-16 text-white" />
                     </div>
-                    <h1 className="text-5xl font-black text-[#ABAFB5] uppercase tracking-tighter mb-4 premium-gradient-text-mind">
+                    <h1 className="text-5xl font-black uppercase tracking-tighter mb-4 premium-gradient-text-mind" style={{ color: textColor }}>
                         Welcome to the Family!
                     </h1>
-                    <p className="text-xl text-[#677E8A] font-medium tracking-widest uppercase">
+                    <p className="text-xl font-medium tracking-widest uppercase" style={{ color: `${textColor}99` }}>
                         Registration Complete
                     </p>
                 </div>
 
                 <style>{`
                     .premium-gradient-text-mind {
-                        background: linear-gradient(135deg, #ABAFB5 0%, #677E8A 100%);
+                        background: linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%);
                         -webkit-background-clip: text;
                         -webkit-text-fill-color: transparent;
                     }
@@ -278,16 +288,16 @@ export default function PublicRegistration() {
     }
 
     return (
-        <div className="min-h-screen bg-[#0E1D21] flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden font-cairo">
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden font-cairo" style={{ backgroundColor: secondaryColor }}>
 
             {/* Background Effects - Premium Atmosphere */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[120%] bg-[#0B1518]"></div>
-                <div className="absolute top-[10%] right-[10%] w-[60%] h-[60%] bg-[#D4AF37]/10 rounded-full blur-[180px] animate-pulse"></div>
-                <div className="absolute bottom-[20%] left-[5%] w-[50%] h-[50%] bg-[#D4AF37]/5 rounded-full blur-[150px] transition-all duration-1000"></div>
+                <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[120%]" style={{ backgroundColor: secondaryColor }}></div>
+                <div className="absolute top-[10%] right-[10%] w-[60%] h-[60%] rounded-full blur-[180px] animate-pulse" style={{ backgroundColor: `${primaryColor}1a` }}></div>
+                <div className="absolute bottom-[20%] left-[5%] w-[50%] h-[50%] rounded-full blur-[150px] transition-all duration-1000" style={{ backgroundColor: `${accentColor}1a` }}></div>
 
                 {/* Subtle Moving Particles Overlay */}
-                <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+                <div className="absolute inset-0 opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
             </div>
 
             {/* Back to App Button */}
@@ -306,28 +316,28 @@ export default function PublicRegistration() {
             {/* Header / Logo */}
             <div className="relative z-10 mb-12 text-center scale-90 md:scale-100">
                 <div className="flex justify-center mb-8 relative">
-                    <div className="absolute -inset-10 bg-primary/20 rounded-full blur-[60px] animate-pulse"></div>
+                    <div className="absolute -inset-10 rounded-full blur-[60px] animate-pulse" style={{ backgroundColor: `${primaryColor}33` }}></div>
                     <img src={logoUrl} alt="Logo" className="relative h-32 w-auto object-contain drop-shadow-2xl brightness-110" />
                 </div>
-                <h2 className="text-5xl font-black text-white uppercase tracking-tight premium-gradient-text-mind leading-tight">
+                <h2 className="text-5xl font-black uppercase tracking-tight premium-gradient-text-mind leading-tight" style={{ color: textColor }}>
                     Join The Legacy
                 </h2>
-                <div className="h-1 w-24 bg-gradient-to-r from-transparent via-[#D4AF37]/40 to-transparent mx-auto mt-4 opacity-50"></div>
+                <div className="h-1 w-24 mx-auto mt-4 opacity-50" style={{ background: `linear-gradient(to r, transparent, ${primaryColor}66, transparent)` }}></div>
             </div>
 
             {/* Form Card */}
             <div className="w-full max-w-4xl relative z-10 mb-20">
                 <div className="relative p-[1px] rounded-[3.5rem] bg-gradient-to-br from-white/10 via-transparent to-white/5 shadow-2xl">
-                    <div className="bg-[#122E34]/30 backdrop-blur-3xl rounded-[3.4rem] p-8 md:p-14 overflow-hidden border border-white/5 shadow-inner">
+                    <div className="backdrop-blur-3xl rounded-[3.4rem] p-8 md:p-14 overflow-hidden border border-white/5 shadow-inner" style={{ backgroundColor: `${secondaryColor}b3` }}>
                         {/* Internal Decorative Glows */}
-                        <div className="absolute -top-24 -left-24 w-64 h-64 bg-[#D4AF37]/5 rounded-full blur-3xl"></div>
+                        <div className="absolute -top-24 -left-24 w-64 h-64 rounded-full blur-3xl opacity-20" style={{ backgroundColor: primaryColor }}></div>
 
                         <form onSubmit={handleSubmit} className="space-y-12 relative z-10">
 
                             {/* Section: Personal Info */}
                             <div className="space-y-8">
-                                <h3 className="text-xs font-black text-[#677E8A] uppercase tracking-[0.4em] flex items-center gap-3 ml-2">
-                                    <div className="p-2 bg-[#D4AF37]/10 rounded-lg text-[#D4AF37]"><User className="w-4 h-4" /></div>
+                                <h3 className="text-xs font-black uppercase tracking-[0.4em] flex items-center gap-3 ml-2" style={{ color: `${textColor}80` }}>
+                                    <div className="p-2 rounded-lg" style={{ backgroundColor: `${primaryColor}1a`, color: primaryColor }}><User className="w-4 h-4" /></div>
                                     Personal Identity
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -337,9 +347,9 @@ export default function PublicRegistration() {
                                     </div>
                                     <div className="group">
                                         <div className="flex justify-between items-center mb-3 ml-6 mr-6">
-                                            <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] block">Born On</label>
+                                            <label className="text-[10px] font-black uppercase tracking-[0.2em] block" style={{ color: `${textColor}40` }}>Born On</label>
                                             {formData.birth_date && (
-                                                <span className="text-[10px] font-black text-[#D4AF37] uppercase tracking-[0.2em] animate-in fade-in slide-in-from-right-4">
+                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] animate-in fade-in slide-in-from-right-4" style={{ color: primaryColor }}>
                                                     {(() => {
                                                         const birth = new Date(formData.birth_date);
                                                         const now = new Date();
@@ -362,11 +372,12 @@ export default function PublicRegistration() {
                                         <input type="text" value={formData.mother_name} onChange={e => setFormData({ ...formData, mother_name: e.target.value })} className="input-mind" required placeholder="" />
                                     </div>
                                     <div className="group md:col-span-2">
-                                        <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">Gender Identity</label>
-                                        <div className="flex bg-[#0E1D21]/50 rounded-[2rem] p-2 border border-white/5">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] mb-3 ml-6 block" style={{ color: `${textColor}40` }}>Gender Identity</label>
+                                        <div className="flex rounded-[2rem] p-2 border border-white/5" style={{ backgroundColor: `${secondaryColor}80` }}>
                                             {['male', 'female'].map(g => (
                                                 <button key={g} type="button" onClick={() => setFormData({ ...formData, gender: g })}
-                                                    className={`flex-1 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 ${formData.gender === g ? 'bg-[#D4AF37]/20 border border-[#D4AF37]/30 text-white shadow-2xl scale-[1.02]' : 'text-[#677E8A]/50 hover:text-white hover:bg-white/5'}`}>
+                                                    className={`flex-1 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 ${formData.gender === g ? 'text-white shadow-2xl scale-[1.02]' : 'text-[#677E8A]/50 hover:text-white hover:bg-white/5'}`}
+                                                    style={formData.gender === g ? { backgroundColor: `${primaryColor}33`, borderColor: `${primaryColor}4d` } : {}}>
                                                     {g}
                                                 </button>
                                             ))}
@@ -377,21 +388,21 @@ export default function PublicRegistration() {
 
                             {/* Section: Contact Info */}
                             <div className="space-y-8 pt-4">
-                                <h3 className="text-xs font-black text-[#677E8A] uppercase tracking-[0.4em] flex items-center gap-3 ml-2">
-                                    <div className="p-2 bg-[#D4AF37]/10 rounded-lg text-[#D4AF37]"><Phone className="w-4 h-4" /></div>
+                                <h3 className="text-xs font-black uppercase tracking-[0.4em] flex items-center gap-3 ml-2" style={{ color: `${textColor}80` }}>
+                                    <div className="p-2 rounded-lg" style={{ backgroundColor: `${accentColor}1a`, color: accentColor }}><Phone className="w-4 h-4" /></div>
                                     Connectivity
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div className="group z-30">
-                                        <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">{t('common.phone')}</label>
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] mb-3 ml-6 block" style={{ color: `${textColor}40` }}>{t('common.phone')}</label>
                                         <div className="flex gap-3 relative">
                                             <div className="relative group/dropdown">
-                                                <button type="button" className="h-full pl-4 pr-3 bg-[#0E1D21] border border-[#677E8A]/15 rounded-[2rem] flex items-center gap-2 hover:border-[#D4AF37] transition-all min-w-[110px]">
+                                                <button type="button" className="h-full pl-4 pr-3 border border-[#677E8A]/15 rounded-[2rem] flex items-center gap-2 transition-all min-w-[110px]" style={{ backgroundColor: secondaryColor }}>
                                                     <span className="text-xl filter drop-shadow-lg">{COUNTRIES.find(c => c.dial_code === formData.country_code_student)?.flag}</span>
                                                     <span className="text-xs font-black text-white tracking-widest">{COUNTRIES.find(c => c.dial_code === formData.country_code_student)?.dial_code}</span>
-                                                    <ChevronDown className="w-3 h-3 text-[#677E8A]/50 group-hover/dropdown:text-[#D4AF37] transition-colors" />
+                                                    <ChevronDown className="w-3 h-3 transition-colors" style={{ color: `${textColorMuted}` }} />
                                                 </button>
-                                                <div className="absolute top-[110%] left-0 w-64 bg-[#0B1518]/95 backdrop-blur-xl border border-[#677E8A]/20 rounded-2xl overflow-hidden hidden group-hover/dropdown:block shadow-2xl max-h-64 overflow-y-auto no-scrollbar z-50">
+                                                <div className="absolute top-[110%] left-0 w-64 backdrop-blur-xl border border-[#677E8A]/20 rounded-2xl overflow-hidden hidden group-hover/dropdown:block shadow-2xl max-h-64 overflow-y-auto no-scrollbar z-50" style={{ backgroundColor: `${secondaryColor}f2` }}>
                                                     {COUNTRIES.map(c => (
                                                         <button key={c.code} type="button" onClick={() => setFormData({ ...formData, country_code_student: c.dial_code })} className="flex items-center gap-3 w-full px-5 py-4 hover:bg-[#D4AF37]/10 transition-all text-left border-b border-white/5 last:border-0 group/item">
                                                             <span className="text-xl">{c.flag}</span>
@@ -409,23 +420,23 @@ export default function PublicRegistration() {
                                     </div>
 
                                     <div className="group z-20">
-                                        <label className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-3 ml-6 block flex items-center gap-2">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] mb-3 ml-6 block flex items-center gap-2" style={{ color: accentColor }}>
                                             {t('common.reportsPhone')}
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: accentColor }}></span>
                                         </label>
                                         <div className="flex gap-3 relative">
                                             <div className="relative group/dropdown">
-                                                <button type="button" className="h-full pl-4 pr-3 bg-[#0E1D21] border border-[#677E8A]/15 rounded-[2rem] flex items-center gap-2 hover:border-emerald-500/50 transition-all min-w-[110px]">
+                                                <button type="button" className="h-full pl-4 pr-3 border border-[#677E8A]/15 rounded-[2rem] flex items-center gap-2 hover:border-emerald-500/50 transition-all min-w-[110px]" style={{ backgroundColor: secondaryColor }}>
                                                     <span className="text-xl filter drop-shadow-lg">{COUNTRIES.find(c => c.dial_code === formData.country_code_parent)?.flag}</span>
                                                     <span className="text-xs font-black text-white tracking-widest">{COUNTRIES.find(c => c.dial_code === formData.country_code_parent)?.dial_code}</span>
-                                                    <ChevronDown className="w-3 h-3 text-[#677E8A]/50 group-hover/dropdown:text-emerald-500 transition-colors" />
+                                                    <ChevronDown className="w-3 h-3 transition-colors" style={{ color: `${textColorMuted}` }} />
                                                 </button>
-                                                <div className="absolute top-[110%] left-0 w-64 bg-[#0B1518]/95 backdrop-blur-xl border border-[#677E8A]/20 rounded-2xl overflow-hidden hidden group-hover/dropdown:block shadow-2xl max-h-64 overflow-y-auto no-scrollbar z-50">
+                                                <div className="absolute top-[110%] left-0 w-64 backdrop-blur-xl border border-[#677E8A]/20 rounded-2xl overflow-hidden hidden group-hover/dropdown:block shadow-2xl max-h-64 overflow-y-auto no-scrollbar z-50" style={{ backgroundColor: `${secondaryColor}f2` }}>
                                                     {COUNTRIES.map(c => (
                                                         <button key={c.code} type="button" onClick={() => setFormData({ ...formData, country_code_parent: c.dial_code })} className="flex items-center gap-3 w-full px-5 py-4 hover:bg-emerald-500/10 transition-all text-left border-b border-white/5 last:border-0 group/item">
                                                             <span className="text-xl">{c.flag}</span>
                                                             <span className="text-xs font-bold text-[#ABAFB5] group-hover/item:text-white flex-1 uppercase tracking-wider">{c.name}</span>
-                                                            <span className="text-[10px] font-black text-emerald-500">{c.dial_code}</span>
+                                                            <span className="text-[10px] font-black" style={{ color: accentColor }}>{c.dial_code}</span>
                                                         </button>
                                                     ))}
                                                 </div>
@@ -433,14 +444,14 @@ export default function PublicRegistration() {
                                             <input type="tel" value={formData.parent_contact} onChange={e => {
                                                 const { code, number } = formatDynamicPhone(e.target.value, formData.country_code_parent);
                                                 setFormData({ ...formData, parent_contact: number, country_code_parent: code });
-                                            }} className="input-mind flex-1 focus:!border-emerald-500/50 focus:!shadow-[0_0_40px_rgba(16,185,129,0.1)]" placeholder="" required />
+                                            }} className="input-mind flex-1" style={{ '--focus-border': accentColor, '--focus-shadow': `${accentColor}1a` } as any} placeholder="" required />
                                         </div>
                                     </div>
 
                                     <div className="group md:col-span-2 z-10">
-                                        <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">Physical Address</label>
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] mb-3 ml-6 block" style={{ color: `${textColor}40` }}>Physical Address</label>
                                         <div className="relative">
-                                            <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[#D4AF37]" />
+                                            <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: primaryColor }} />
                                             <input type="text" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="input-mind pl-16" placeholder="" />
                                         </div>
                                     </div>
@@ -450,8 +461,8 @@ export default function PublicRegistration() {
 
                             {/* Section: Training & Subscription */}
                             <div className="space-y-8 pt-4">
-                                <h3 className="text-xs font-black text-[#677E8A] uppercase tracking-[0.4em] flex items-center gap-3 ml-2">
-                                    <div className="p-2 bg-[#D4AF37]/10 rounded-lg text-[#D4AF37]"><TrendingUp className="w-4 h-4" /></div>
+                                <h3 className="text-xs font-black uppercase tracking-[0.4em] flex items-center gap-3 ml-2" style={{ color: `${textColor}80` }}>
+                                    <div className="p-2 rounded-lg" style={{ backgroundColor: `${primaryColor}1a`, color: primaryColor }}><TrendingUp className="w-4 h-4" /></div>
                                     Elite Program
                                 </h3>
 
@@ -461,8 +472,9 @@ export default function PublicRegistration() {
                                         {daysOfWeek.map(day => (
                                             <button key={day} type="button" onClick={() => toggleDay(day)}
                                                 className={`flex-1 min-w-[4rem] py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] border transition-all duration-500 ${formData.training_days.includes(day)
-                                                    ? 'bg-[#D4AF37]/20 border-[#D4AF37]/40 text-white shadow-xl scale-[1.05]'
-                                                    : 'bg-[#0E1D21]/30 border-white/5 text-[#677E8A]/40 hover:bg-white/5 hover:border-white/10'}`}>
+                                                    ? 'text-white shadow-xl scale-[1.05]'
+                                                    : 'border-white/5 text-[#677E8A]/40 hover:bg-white/5 hover:border-white/10'}`}
+                                                style={formData.training_days.includes(day) ? { backgroundColor: `${primaryColor}33`, borderColor: `${primaryColor}66` } : { backgroundColor: `${secondaryColor}4d` }}>
                                                 {day}
                                             </button>
                                         ))}
@@ -472,11 +484,11 @@ export default function PublicRegistration() {
                                     {formData.training_schedule.length > 0 && (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 animate-in fade-in zoom-in-95 duration-700">
                                             {formData.training_schedule.map(schedule => (
-                                                <div key={schedule.day} className="p-6 bg-[#0E1D21]/40 border border-[#677E8A]/10 rounded-[2rem] flex items-center gap-6 group/item">
-                                                    <span className="text-[10px] font-black uppercase text-[#D4AF37] w-14 group-focus-within/item:text-white transition-colors">{schedule.day}</span>
+                                                <div key={schedule.day} className="p-6 border border-[#677E8A]/10 rounded-[2rem] flex items-center gap-6 group/item" style={{ backgroundColor: `${secondaryColor}66` }}>
+                                                    <span className="text-[10px] font-black uppercase w-14 group-focus-within/item:text-white transition-colors" style={{ color: primaryColor }}>{schedule.day}</span>
                                                     <div className="flex-1 grid grid-cols-2 gap-3">
-                                                        <input type="time" value={schedule.start} onChange={e => updateTime(schedule.day, 'start', e.target.value)} className="w-full bg-[#122E34]/20 border border-white/5 rounded-xl py-2 px-3 text-[10px] font-black text-white outline-none focus:border-[#D4AF37] transition-all" />
-                                                        <input type="time" value={schedule.end} onChange={e => updateTime(schedule.day, 'end', e.target.value)} className="w-full bg-[#122E34]/20 border border-white/5 rounded-xl py-2 px-3 text-[10px] font-black text-white outline-none focus:border-[#D4AF37] transition-all" />
+                                                        <input type="time" value={schedule.start} onChange={e => updateTime(schedule.day, 'start', e.target.value)} className="w-full border border-white/5 rounded-xl py-2 px-3 text-[10px] font-black text-white outline-none transition-all" style={{ backgroundColor: `${secondaryColor}33`, '--focus-border': primaryColor } as any} />
+                                                        <input type="time" value={schedule.end} onChange={e => updateTime(schedule.day, 'end', e.target.value)} className="w-full border border-white/5 rounded-xl py-2 px-3 text-[10px] font-black text-white outline-none transition-all" style={{ backgroundColor: `${secondaryColor}33`, '--focus-border': primaryColor } as any} />
                                                     </div>
                                                 </div>
                                             ))}
@@ -489,37 +501,37 @@ export default function PublicRegistration() {
                                         <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">Discipline</label>
                                         <div className="relative">
                                             <select value={formData.training_type} onChange={e => setFormData({ ...formData, training_type: e.target.value })} className="input-mind appearance-none" required>
-                                                <option value="" className="bg-[#0E1D21]"></option>
-                                                <option value="Artistic Gymnastics" className="bg-[#0E1D21]">Artistic Gymnastics</option>
-                                                <option value="Rhythmic Gymnastics" className="bg-[#0E1D21]">Rhythmic Gymnastics</option>
-                                                <option value="Parkour" className="bg-[#0E1D21]">Parkour</option>
-                                                <option value="Fitness" className="bg-[#0E1D21]">Fitness</option>
+                                                <option value="" style={{ backgroundColor: secondaryColor }}></option>
+                                                <option value="Artistic Gymnastics" style={{ backgroundColor: secondaryColor }}>Artistic Gymnastics</option>
+                                                <option value="Rhythmic Gymnastics" style={{ backgroundColor: secondaryColor }}>Rhythmic Gymnastics</option>
+                                                <option value="Parkour" style={{ backgroundColor: secondaryColor }}>Parkour</option>
+                                                <option value="Fitness" style={{ backgroundColor: secondaryColor }}>Fitness</option>
                                             </select>
-                                            <ChevronRight className="absolute right-8 top-1/2 -translate-y-1/2 w-5 h-5 text-[#D4AF37] pointer-events-none rotate-90" />
+                                            <ChevronRight className="absolute right-8 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none rotate-90" style={{ color: primaryColor }} />
                                         </div>
                                     </div>
                                     <div className="group">
                                         <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">Membership Tier</label>
                                         <div className="relative">
                                             <select value={formData.subscription_type} onChange={e => setFormData({ ...formData, subscription_type: e.target.value })} className="input-mind appearance-none" required>
-                                                <option value="" className="bg-[#0E1D21]"></option>
+                                                <option value="" style={{ backgroundColor: secondaryColor }}></option>
                                                 {plans.map(plan => (
-                                                    <option key={plan.id} value={plan.id} className="bg-[#0E1D21] font-bold">{plan.name}</option>
+                                                    <option key={plan.id} value={plan.id} style={{ backgroundColor: secondaryColor }} className="font-bold">{plan.name}</option>
                                                 ))}
                                             </select>
-                                            <ChevronRight className="absolute right-8 top-1/2 -translate-y-1/2 w-5 h-5 text-[#D4AF37] pointer-events-none rotate-90" />
+                                            <ChevronRight className="absolute right-8 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none rotate-90" style={{ color: primaryColor }} />
                                         </div>
                                     </div>
                                     <div className="group md:col-span-2">
                                         <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">Guided By (Coach Picker)</label>
                                         <div className="relative">
                                             <select value={formData.coach_id} onChange={e => setFormData({ ...formData, coach_id: e.target.value })} className="input-mind appearance-none">
-                                                <option value="" className="bg-[#0E1D21]"></option>
+                                                <option value="" style={{ backgroundColor: secondaryColor }}></option>
                                                 {coaches.map(coach => (
-                                                    <option key={coach.id} value={coach.id} className="bg-[#0E1D21] font-bold">Coach / {coach.full_name}</option>
+                                                    <option key={coach.id} value={coach.id} style={{ backgroundColor: secondaryColor }} className="font-bold">Coach / {coach.full_name}</option>
                                                 ))}
                                             </select>
-                                            <ChevronRight className="absolute right-8 top-1/2 -translate-y-1/2 w-5 h-5 text-[#D4AF37] pointer-events-none rotate-90" />
+                                            <ChevronRight className="absolute right-8 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none rotate-90" style={{ color: primaryColor }} />
                                         </div>
                                     </div>
                                 </div>
@@ -529,7 +541,8 @@ export default function PublicRegistration() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full max-w-sm mx-auto block group relative overflow-hidden bg-black text-[#D4AF37] py-4 rounded-2xl font-black text-[12px] uppercase tracking-[0.4em] shadow-[0_15px_40px_rgba(0,0,0,0.6)] border border-[#D4AF37]/40 transition-all hover:scale-[1.02] hover:bg-[#D4AF37]/5 active:scale-[0.98] mt-12 disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                                className="w-full max-w-sm mx-auto block group relative overflow-hidden text-white py-4 rounded-2xl font-black text-[12px] uppercase tracking-[0.4em] border border-white/10 transition-all hover:scale-[1.05] active:scale-[0.98] mt-12 disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                                style={{ background: `linear-gradient(to br, ${primaryColor}, ${accentColor})`, boxShadow: `0 15px 40px ${primaryColor}4d` }}
                             >
                                 <span className="relative z-10 flex items-center justify-center gap-4">
                                     {loading ? (
@@ -538,6 +551,7 @@ export default function PublicRegistration() {
                                         'Initiate Membership'
                                     )}
                                 </span>
+                                <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000"></div>
                             </button>
 
                         </form>
@@ -551,31 +565,31 @@ export default function PublicRegistration() {
 
             <style>{`
                 .premium-gradient-text-mind {
-                    background: linear-gradient(135deg, #ABAFB5 0%, #677E8A 100%);
+                    background: linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%);
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
                 }
                 .input-mind {
                     width: 100%;
                     padding: 0.875rem 1.75rem;
-                    background: #0E1D21;
-                    border: 1px solid rgba(103, 126, 138, 0.15);
+                    background: ${secondaryColor}cc;
+                    border: 1px solid rgba(255, 255, 255, 0.05);
                     border-radius: 2rem;
-                    color: white;
+                    color: ${textColor};
                     font-size: 1rem;
                     font-weight: 800;
                     outline: none;
                     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-                    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+                    box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
                 }
                 .input-mind:focus {
-                    background: #122E34;
-                    border-color: #D4AF37;
-                    box-shadow: 0 0 40px rgba(212, 175, 55, 0.2), inset 0 2px 4px rgba(0,0,0,0.1);
+                    background: ${secondaryColor};
+                    border-color: var(--focus-border, ${primaryColor});
+                    box-shadow: 0 0 40px var(--focus-shadow, ${primaryColor}33), inset 0 2px 4px rgba(0,0,0,0.3);
                     transform: translateY(-2px);
                 }
                 .input-mind::placeholder {
-                    color: rgba(103, 126, 138, 0.3);
+                    color: ${textColorMuted};
                     text-transform: uppercase;
                     letter-spacing: 0.1em;
                     font-size: 0.8rem;
