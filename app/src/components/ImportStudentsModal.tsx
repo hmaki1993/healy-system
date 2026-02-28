@@ -4,7 +4,7 @@ import Papa from 'papaparse';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { addMonths, format } from 'date-fns';
-import { formatDynamicPhone } from './AddStudentForm';
+import { formatDynamicPhone } from '../utils/phoneUtils';
 import { processImageWithGemini } from '../services/aiService';
 
 interface ImportStudentsModalProps {
@@ -149,27 +149,17 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                 const extractedStudents = await processImageWithGemini(base64Image);
 
                 if (extractedStudents && extractedStudents.length > 0) {
-                    const newRows = extractedStudents.map(student => {
+                    const formattedRows: ParsedStudent[] = extractedStudents.map(student => {
+                        const { code, number } = formatDynamicPhone(student.phone || '', '+965');
                         return {
                             full_name: student.full_name || '',
-                            phone: student.phone || '',
-                            date_of_birth: '',
+                            phone: number ? `${code} ${number}`.trim() : '',
+                            date_of_birth: student.date_of_birth || '',
+                            gender: student.gender || 'male',
                             subscription_plan_id: '',
                             coach_id: '',
                             errors: []
                         };
-                    });
-
-                    const formattedRows = newRows.map(row => {
-                        if (row.phone.trim() !== '') {
-                            const { code, number } = formatDynamicPhone(row.phone, '');
-                            if (number !== '') {
-                                row.phone = `${code} ${number}`.trim();
-                            } else {
-                                row.phone = '';
-                            }
-                        }
-                        return row;
                     });
 
                     setGridRows(formattedRows);
@@ -602,10 +592,10 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                                             <div className="space-y-4">
                                                 <div className="flex items-center justify-between">
                                                     <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">Name</span>
-                                                    <span className="text-[9px] font-bold text-white/20 italic">Full Name</span>
+                                                    <span className="text-[9px] font-bold text-white/20 italic">Full Name (Required)</span>
                                                 </div>
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">Phone</span>
+                                                    <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">Phone / Birth / Gender</span>
                                                     <span className="text-[9px] font-bold text-white/20 italic">Optional</span>
                                                 </div>
                                             </div>
@@ -678,7 +668,7 @@ export default function ImportStudentsModal({ isOpen, onClose, onSuccess }: Impo
                                             <h3 className="text-[9px] font-black uppercase tracking-[0.3em]">AI Scanner Beta</h3>
                                         </div>
                                         <p className="text-[10px] font-medium text-white/40 leading-relaxed max-w-xl">
-                                            Take a clear photo of a handwritten or printed list containing student names and their phone numbers.
+                                            Take a clear photo of a handwritten or printed list containing student names, phone numbers, and even birth dates or gender.
                                             Our AI will automatically extract this information and pre-fill the Quick Entry Grid for you to review and import.
                                         </p>
                                     </div>

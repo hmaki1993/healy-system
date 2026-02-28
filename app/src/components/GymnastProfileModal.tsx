@@ -345,7 +345,7 @@ export default function GymnastProfileModal({ student, onClose }: GymnastProfile
                                             <div className="flex items-center justify-between gap-4 border-t border-white/[0.03] pt-6">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-xl bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-center text-emerald-500"><Send size={16} /></div>
-                                                    <div><p className="text-[7px] font-black text-emerald-500/40 uppercase mb-0.5">WhatsApp</p><p className="text-xs font-black text-white uppercase truncate max-w-[120px]">{student.mother_name || '---'}</p></div>
+                                                    <div><p className="text-[7px] font-black text-emerald-500/40 uppercase mb-0.5">{t('common.reportsPhone')}</p><p className="text-xs font-black text-white uppercase truncate max-w-[120px]">{student.mother_name || '---'}</p></div>
                                                 </div>
                                                 <a href={`https://wa.me/${student.parent_contact?.replace(/\s/g, '')}`} target="_blank" className="px-3 py-1.5 bg-emerald-500/10 rounded-lg text-[8px] font-black uppercase text-emerald-500 border border-emerald-500/20">Chat</a>
                                             </div>

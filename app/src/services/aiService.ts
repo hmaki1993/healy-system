@@ -1,6 +1,8 @@
 export interface AIExtractedStudent {
     full_name: string;
     phone: string;
+    date_of_birth?: string; // YYYY-MM-DD
+    gender?: 'male' | 'female';
 }
 
 export const processImageWithGemini = async (base64Image: string): Promise<AIExtractedStudent[]> => {
@@ -15,14 +17,19 @@ export const processImageWithGemini = async (base64Image: string): Promise<AIExt
 
     const prompt = `
     You are an AI assistant designed to extract student data from images of printed or handwritten lists.
-    Extract the names and phone numbers from the provided image.
+    Extract the names, phone numbers, birth dates, and gender from the provided image.
     Return ONLY a raw JSON array of objects. Do NOT use markdown code blocks (like \`\`\`json). Just the raw array.
-    Each object must have exactly two keys:
+    Each object must have these keys:
     1. "full_name" (string)
     2. "phone" (string)
+    3. "date_of_birth" (string in YYYY-MM-DD format if found, otherwise empty string "")
+    4. "gender" (string "male" or "female" if found, otherwise empty string "")
 
-    If a phone number is missing or illegible, leave it as an empty string "".
-    Please make your best effort to read Arabic and English names and numbers accurately.
+    Notes:
+    - Many lists have "Birth Date" (تاريخ الميلاد) or "Age" (السن). If only age is listed, calculate the year (Current year is 2026).
+    - If gender is implied (e.g., from name or a column), set it to "male" or "female".
+    - If a field is missing or illegible, leave it as an empty string "".
+    - Please make your best effort to read Arabic and English names and numbers accurately.
     `;
 
     const requestBody = {

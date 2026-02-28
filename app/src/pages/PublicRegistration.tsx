@@ -1,23 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { User, Calendar, Phone, CheckCircle, TrendingUp, Sparkles, ChevronRight, ChevronDown, Mail, MapPin, Clock, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { format, parseISO, addMonths } from 'date-fns';
 import { sendToN8n } from '../services/n8nService';
 
-const COUNTRIES = [
-    { code: 'KW', dial_code: '+965', flag: '🇰🇼', name: 'Kuwait' },
-    { code: 'SA', dial_code: '+966', flag: '🇸🇦', name: 'Saudi Arabia' },
-    { code: 'AE', dial_code: '+971', flag: '🇦🇪', name: 'UAE' },
-    { code: 'QA', dial_code: '+974', flag: '🇶🇦', name: 'Qatar' },
-    { code: 'BH', dial_code: '+973', flag: '🇧🇭', name: 'Bahrain' },
-    { code: 'OM', dial_code: '+968', flag: '🇴🇲', name: 'Oman' },
-    { code: 'EG', dial_code: '+20', flag: '🇪🇬', name: 'Egypt' },
-    { code: 'US', dial_code: '+1', flag: '🇺🇸', name: 'USA' },
-    { code: 'UK', dial_code: '+44', flag: '🇬🇧', name: 'UK' },
-];
+import { COUNTRIES } from '../constants/countries';
+import { formatDynamicPhone } from '../utils/phoneUtils';
 
 export default function PublicRegistration() {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [coaches, setCoaches] = useState<{ id: string, full_name: string, specialty: string }[]>([]);
@@ -389,9 +382,8 @@ export default function PublicRegistration() {
                                     Connectivity
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {/* Mobile Number */}
                                     <div className="group z-30">
-                                        <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">Mobile Number</label>
+                                        <label className="text-[10px] font-black text-[#ABAFB5]/40 uppercase tracking-[0.2em] mb-3 ml-6 block">{t('common.phone')}</label>
                                         <div className="flex gap-3 relative">
                                             <div className="relative group/dropdown">
                                                 <button type="button" className="h-full pl-4 pr-3 bg-[#0E1D21] border border-[#677E8A]/15 rounded-[2rem] flex items-center gap-2 hover:border-[#D4AF37] transition-all min-w-[110px]">
@@ -409,14 +401,16 @@ export default function PublicRegistration() {
                                                     ))}
                                                 </div>
                                             </div>
-                                            <input type="tel" value={formData.contact_number} onChange={e => setFormData({ ...formData, contact_number: e.target.value })} className="input-mind flex-1" placeholder="" required />
+                                            <input type="tel" value={formData.contact_number} onChange={e => {
+                                                const { code, number } = formatDynamicPhone(e.target.value, formData.country_code_student);
+                                                setFormData({ ...formData, contact_number: number, country_code_student: code });
+                                            }} className="input-mind flex-1" placeholder="" required />
                                         </div>
                                     </div>
 
-                                    {/* WhatsApp */}
                                     <div className="group z-20">
                                         <label className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-3 ml-6 block flex items-center gap-2">
-                                            WhatsApp for Reports
+                                            {t('common.reportsPhone')}
                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                                         </label>
                                         <div className="flex gap-3 relative">
@@ -436,7 +430,10 @@ export default function PublicRegistration() {
                                                     ))}
                                                 </div>
                                             </div>
-                                            <input type="tel" value={formData.parent_contact} onChange={e => setFormData({ ...formData, parent_contact: e.target.value })} className="input-mind flex-1 focus:!border-emerald-500/50 focus:!shadow-[0_0_40px_rgba(16,185,129,0.1)]" placeholder="" required />
+                                            <input type="tel" value={formData.parent_contact} onChange={e => {
+                                                const { code, number } = formatDynamicPhone(e.target.value, formData.country_code_parent);
+                                                setFormData({ ...formData, parent_contact: number, country_code_parent: code });
+                                            }} className="input-mind flex-1 focus:!border-emerald-500/50 focus:!shadow-[0_0_40px_rgba(16,185,129,0.1)]" placeholder="" required />
                                         </div>
                                     </div>
 

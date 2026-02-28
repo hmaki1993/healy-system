@@ -8,62 +8,8 @@ import toast from 'react-hot-toast';
 import { sendToN8n } from '../services/n8nService';
 import PremiumSelect from './PremiumSelect';
 
-export const COUNTRIES = [
-    { code: 'KW', dial_code: '+965', flag: '🇰🇼', name: 'Kuwait' },
-    { code: 'SA', dial_code: '+966', flag: '🇸🇦', name: 'Saudi Arabia' },
-    { code: 'AE', dial_code: '+971', flag: '🇦🇪', name: 'UAE' },
-    { code: 'QA', dial_code: '+974', flag: '🇶🇦', name: 'Qatar' },
-    { code: 'BH', dial_code: '+973', flag: '🇧🇭', name: 'Bahrain' },
-    { code: 'OM', dial_code: '+968', flag: '🇴🇲', name: 'Oman' },
-    { code: 'EG', dial_code: '+20', flag: '🇪🇬', name: 'Egypt' },
-    { code: 'US', dial_code: '+1', flag: '🇺🇸', name: 'USA' },
-    { code: 'UK', dial_code: '+44', flag: '🇬🇧', name: 'UK' },
-];
-
-export const formatDynamicPhone = (value: string, currentDialCode: string) => {
-    let raw = value.replace(/[^\d+]/g, ''); // keep digits and +
-    let newNumber = raw;
-    let newCode = currentDialCode;
-
-    if (raw.startsWith('+')) {
-        const sortedCountries = [...COUNTRIES].sort((a, b) => b.dial_code.length - a.dial_code.length);
-        const match = sortedCountries.find(c => raw.startsWith(c.dial_code));
-        if (match) {
-            newCode = match.dial_code;
-            newNumber = raw.substring(match.dial_code.length);
-        }
-    } else if (raw.startsWith('00')) {
-        const sortedCountries = [...COUNTRIES].sort((a, b) => b.dial_code.length - a.dial_code.length);
-        const match = sortedCountries.find(c => raw.substring(2).startsWith(c.dial_code.substring(1)));
-        if (match) {
-            newCode = match.dial_code;
-            newNumber = raw.substring(2 + match.dial_code.length - 1);
-        }
-    } else {
-        const digits = raw;
-        if (digits.startsWith('01') && digits.length >= 2) {
-            newCode = '+20';
-            newNumber = digits.substring(1);
-        } else if (digits.startsWith('201') && currentDialCode !== '+20') {
-            newCode = '+20';
-            newNumber = digits.substring(2);
-        } else {
-            const sortedCountries = [...COUNTRIES].sort((a, b) => b.dial_code.length - a.dial_code.length);
-            for (const country of sortedCountries) {
-                const codeDigits = country.dial_code.replace('+', '');
-                if (codeDigits.length > 1 && digits.startsWith(codeDigits)) {
-                    newCode = country.dial_code;
-                    newNumber = digits.substring(codeDigits.length);
-                    break;
-                }
-            }
-        }
-    }
-
-    // Limit length loosely
-    if (newNumber.length > 15) newNumber = newNumber.substring(0, 15);
-    return { code: newCode, number: newNumber };
-};
+import { COUNTRIES } from '../constants/countries';
+import { formatDynamicPhone } from '../utils/phoneUtils';
 
 import { useSubscriptionPlans, useCoaches, useGroups } from '../hooks/useData';
 import { useCurrency } from '../context/CurrencyContext';
@@ -617,7 +563,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                             />
                         </div>
                         <div className="space-y-2 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">{t('common.phoneNumber', "Phone Number")}</label>
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">{t('common.phone', "Phone")}</label>
                             <div className="flex gap-3 relative">
                                 <div className="relative group/dropdown">
                                     <button type="button" className="h-full pl-4 pr-3 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-2 hover:border-primary/40 transition-all min-w-[90px]">
@@ -661,7 +607,7 @@ export default function AddStudentForm({ onClose, onSuccess, initialData }: AddS
                             />
                         </div>
                         <div className="space-y-2 group/field">
-                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400 ml-1 group-focus-within/field:text-emerald-300 transition-colors">WhatsApp for Reports</label>
+                            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400 ml-1 group-focus-within/field:text-emerald-300 transition-colors">{t('common.reportsPhone', "Reports Phone")}</label>
                             <div className="flex gap-3 relative">
                                 <div className="relative group/dropdown">
                                     <button type="button" className="h-full pl-4 pr-3 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-2 hover:border-emerald-500/40 transition-all min-w-[90px]">
