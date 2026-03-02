@@ -282,6 +282,7 @@ export default function DashboardLayout() {
         { to: '/app/finance', icon: Wallet, label: t('common.finance'), roles: ['admin'] },
         { to: '/app/evaluations', icon: ClipboardCheck, label: t('common.evaluations', 'Evaluations'), roles: ['admin', 'head_coach'] },
         { to: '/app/my-work', icon: UserCircle, label: t('dashboard.myWork', 'My Work'), roles: ['head_coach'] },
+        { to: '/app/communications', icon: MessageSquare, label: t('common.communications', 'Communications'), roles: ['admin', 'head_coach', 'coach', 'reception', 'cleaner'] },
         { to: '/app/settings', icon: Settings, label: t('common.settings'), roles: ['admin', 'head_coach', 'coach', 'reception', 'cleaner'] },
         { to: '/app/admin/cameras', icon: Video, label: t('common.cameras'), roles: ['admin'] },
     ];

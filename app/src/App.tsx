@@ -26,6 +26,7 @@ const StaffAttendance = lazy(() => import('./pages/StaffAttendance'));
 const PTAttendance = lazy(() => import('./pages/PTAttendance'));
 const Evaluations = lazy(() => import('./pages/Evaluations'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const Communications = lazy(() => import('./pages/Communications'));
 
 import { initializeTheme } from './utils/theme';
 import { CurrencyProvider } from './context/CurrencyContext';
@@ -149,6 +150,7 @@ function AppContent() {
               <Route path="attendance/staff" element={<StaffAttendance />} />
               <Route path="attendance/pt" element={<PTAttendance />} />
               <Route path="evaluations" element={<Evaluations />} />
+              <Route path="communications" element={<Communications />} />
             </Route>
           </Route>
 

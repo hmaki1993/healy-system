@@ -158,7 +158,7 @@ export function MediaLibraryModal({ isOpen, onClose, history, isLoading, onSelec
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 px-1 md:px-0 pb-10">
                                 {history.map((item: any) => {
                                     const isSelected = selectedItems.includes(item.name);
                                     const isMenuOpen = menuOpen === item.name;
@@ -185,7 +185,7 @@ export function MediaLibraryModal({ isOpen, onClose, history, isLoading, onSelec
                                                     e.stopPropagation();
                                                     setMenuOpen(isMenuOpen ? null : item.name);
                                                 }}
-                                                className={`absolute top-3 right-3 z-40 p-2 rounded-xl transition-all duration-300 backdrop-blur-md border shadow-xl ${isMenuOpen ? 'bg-primary border-primary text-white scale-110' : 'bg-black/40 border-white/10 text-white/50 hover:text-white hover:border-white/30 opacity-0 group-hover/item:opacity-100 scale-90 group-hover/item:scale-100'}`}
+                                                className={`absolute top-3 right-3 z-40 p-2 rounded-xl transition-all duration-300 backdrop-blur-md border shadow-xl ${isMenuOpen ? 'bg-primary border-primary text-white scale-110' : 'bg-black/40 border-white/10 text-white/50 hover:text-white hover:border-white/30 opacity-100 scale-100 lg:opacity-0 lg:group-hover/item:opacity-100 lg:scale-90 lg:group-hover/item:scale-100'}`}
                                             >
                                                 <MoreVertical className="w-4 h-4" />
                                             </button>
@@ -205,7 +205,7 @@ export function MediaLibraryModal({ isOpen, onClose, history, isLoading, onSelec
                                             {/* Premium Glass Dropdown */}
                                             {isMenuOpen && (
                                                 <div
-                                                    className="absolute top-14 right-3 z-[100] w-48 bg-[#0a0a0a]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-1.5 animate-in zoom-in-95 fade-in slide-in-from-top-2 duration-200"
+                                                    className="absolute top-14 right-3 z-[1000] w-48 bg-[#0a0a0a]/95 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-[0_20px_100px_rgba(0,0,0,0.8)] p-1.5 animate-in zoom-in-95 fade-in slide-in-from-top-2 duration-200"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <button
@@ -276,8 +276,8 @@ export function MediaLibraryModal({ isOpen, onClose, history, isLoading, onSelec
                     )}
                 </div>
 
-                <div className="p-4 bg-white/[0.01] border-t border-white/5 flex items-center justify-center">
-                    <p className="text-[8px] text-white/20 font-bold uppercase tracking-widest">Assign any asset as Logo or Background instantly</p>
+                <div className="p-4 bg-white/[0.01] border-t border-white/5 flex items-center justify-center text-center">
+                    <p className="text-[8px] text-white/20 font-black uppercase tracking-widest leading-relaxed">Assign any asset as Logo or Background instantly</p>
                 </div>
             </div>
             <PremiumConfirmModal
