@@ -189,7 +189,15 @@ interface ThemeContextType {
     isLoading: boolean;
     hasLoaded: boolean;
     resetToDefaults: () => Promise<void>;
-    userProfile: { id: string; email: string; full_name: string | null; role: string | null; avatar_url: string | null } | null;
+    userProfile: {
+        id: string;
+        email: string;
+        full_name: string | null;
+        role: string | null;
+        avatar_url: string | null;
+        last_seen?: string;
+        is_in_chat?: boolean;
+    } | null;
 }
 
 export const defaultSettings: GymSettings = {
@@ -379,6 +387,34 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
+    // ─── Presence Heartbeat ────────────────────────────────────────────────────────
+    useEffect(() => {
+        if (!userProfile?.id) return;
+
+        const updatePresence = async () => {
+            await supabase
+                .from('profiles')
+                .update({ last_seen: new Date().toISOString() })
+                .eq('id', userProfile.id);
+        };
+
+        // Initial update
+        updatePresence();
+
+        const interval = setInterval(updatePresence, 2000); // 2 seconds
+
+        // Update immediately when tab becomes visible
+        const handleGlobalVisibility = () => {
+            if (document.visibilityState === 'visible') updatePresence();
+        };
+        document.addEventListener('visibilitychange', handleGlobalVisibility);
+
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', handleGlobalVisibility);
+        };
+    }, [userProfile?.id]);
+
     const fetchSettings = async () => {
         try {
             // 1. Get Global Defaults (ALWAYS DO THIS FIRST - Works for unauthenticated users)
@@ -467,7 +503,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                         .maybeSingle(),
                     supabase
                         .from('profiles')
-                        .select('full_name, role, avatar_url')
+                        .select('full_name, role, avatar_url, last_seen, is_in_chat')
                         .eq('id', user.id)
                         .maybeSingle(),
                     supabase
