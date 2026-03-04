@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
-import { Pose, PoseConfig, Results } from '@mediapipe/pose';
 import * as tf from '@tensorflow/tfjs';
 import '../styles/JumpRope.css';
+
+const MEDIAPIPE_POSE_VERSION = '0.5.1675469404';
 
 const JumpRopeCounter: React.FC = () => {
     const webcamRef = useRef<Webcam>(null);
@@ -30,12 +31,20 @@ const JumpRopeCounter: React.FC = () => {
 
     useEffect(() => {
         let active = true;
-        let pose: Pose | null = null;
+        let pose: any = null;
 
         const setupPose = async () => {
             try {
-                pose = new Pose({
-                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+                // Handle Vite/MediaPipe import quirks
+                const mpPose = await import('@mediapipe/pose');
+                const PoseConstructor = mpPose.Pose || (mpPose as any).default?.Pose || (window as any).Pose;
+
+                if (!PoseConstructor) {
+                    throw new Error("Pose constructor not found. Library might not be loaded correctly.");
+                }
+
+                pose = new PoseConstructor({
+                    locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@${MEDIAPIPE_POSE_VERSION}/${file}`,
                 });
 
                 pose.setOptions({
@@ -43,7 +52,7 @@ const JumpRopeCounter: React.FC = () => {
                     smoothLandmarks: true,
                     minDetectionConfidence: 0.5,
                     minTrackingConfidence: 0.5,
-                } as any);
+                });
 
                 pose.onResults(onResults);
 
@@ -62,9 +71,10 @@ const JumpRopeCounter: React.FC = () => {
                 };
 
                 startDetection();
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Pose Setup Error:", err);
-                setError("AI Engine failed to load. Please refresh.");
+                setError(`AI Engine failed: ${err.message || "Unknown error"}`);
+                setIsLoading(false);
             }
         };
 
@@ -72,11 +82,11 @@ const JumpRopeCounter: React.FC = () => {
 
         return () => {
             active = false;
-            if (pose) pose.close();
+            if (pose && typeof pose.close === 'function') pose.close();
         };
     }, []);
 
-    const onResults = (results: Results) => {
+    const onResults = (results: any) => {
         if (!canvasRef.current || !results.poseLandmarks) return;
 
         const canvasCtx = canvasRef.current.getContext('2d');
@@ -113,7 +123,7 @@ const JumpRopeCounter: React.FC = () => {
                 setJumpStatus('jumping');
             } else if (diff < (jumpThreshold / 2) && jumpStatus === 'jumping') {
                 setJumpStatus('standing');
-                setJumpCount(prev => prev + 1);
+                setJumpCount((prev: number) => prev + 1);
 
                 if ('vibrate' in navigator) {
                     navigator.vibrate(50);
