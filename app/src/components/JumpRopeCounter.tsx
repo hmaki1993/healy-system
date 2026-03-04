@@ -30,6 +30,7 @@ const JumpRopeCounter: React.FC = () => {
     const emaSmoothY = useRef<number | null>(null);
     const isStableRef = useRef<boolean>(false);
     const stabilityStartRef = useRef<number | null>(null);
+    const trackingLossStartRef = useRef<number | null>(null);
     const [setupStatus, setSetupStatus] = useState<'MOVING' | 'STEP_BACK' | 'READY'>('MOVING');
     const velocityRef = useRef<number>(0);
     const lastFrameTime = useRef<number>(Date.now());
@@ -74,27 +75,39 @@ const JumpRopeCounter: React.FC = () => {
 
         // --- STABILITY & FULL BODY GUARD ---
         const isFullBody = !!(lAnkle && rAnkle);
+        const hasAura = !!(lShoulder || rShoulder || lHip || rHip); // Minimum detection to keep lock
         const noseY = nose.y * H;
         const noseX = nose.x * W;
         const frameVelocityY = Math.abs(lastNoseY.current - noseY) / deltaTime;
         const frameVelocityX = Math.abs(lastNoseX.current - noseX) / deltaTime;
 
-        // Stability Guard: Mistake threshold (200px/s vertical, 80px/s horizontal)
-        const isCurrentlyMoving = frameVelocityY > 200 || frameVelocityX > 80;
+        // Setup Mistake thresholds (Higher velocity = phone moving)
+        const isCurrentlyMoving = frameVelocityY > 300 || frameVelocityX > 150;
         lastNoseY.current = noseY;
         lastNoseX.current = noseX;
 
-        // --- STABILITY LOCK LOGIC ---
+        // --- STABLE PERSISTENCE LOGIC ---
         if (isStableRef.current) {
-            // Once stable, only RESET if we lose full body or there is massive SIDEWAYS movement
-            if (!isFullBody || frameVelocityX > 150) {
-                isStableRef.current = false;
-                stabilityStartRef.current = null;
-                setSetupStatus(!isFullBody ? 'STEP_BACK' : 'MOVING');
-                baselineY.current = noseY;
+            // Once stable, we are VERY FORGIVING. 
+            // Turning sideways (losing 1 ankle) or fast jumps MUST NOT reset setup.
+            const essentialTrackingLost = !hasAura || (!lAnkle && !rAnkle);
+            const massiveLateralMovement = frameVelocityX > 400; // Only reset if phone actually picked up
+
+            if (essentialTrackingLost || massiveLateralMovement) {
+                if (trackingLossStartRef.current === null) {
+                    trackingLossStartRef.current = now;
+                } else if (now - trackingLossStartRef.current > 1500) {
+                    // RESET only after 1.5s of persistent tracking loss
+                    isStableRef.current = false;
+                    stabilityStartRef.current = null;
+                    setSetupStatus(!isFullBody ? 'STEP_BACK' : 'MOVING');
+                }
+            } else {
+                trackingLossStartRef.current = null;
+                setSetupStatus('READY');
             }
         } else {
-            // Setup Mode
+            // Setup Mode: Need FULL body and absolute stillness
             if (isCurrentlyMoving || !isFullBody) {
                 stabilityStartRef.current = null;
                 setSetupStatus(!isFullBody ? 'STEP_BACK' : 'MOVING');
