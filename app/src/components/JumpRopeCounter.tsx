@@ -85,9 +85,9 @@ const JumpRopeCounter: React.FC = () => {
         const frameVelocityX = Math.abs(lastNoseX.current - noseX) / deltaTime;
         const scaleVelocity = (shoulderW - lastShoulderWidth.current) / deltaTime;
 
-        // Detection: Too close (shoulders take up >40% of screen) or moving forward fast
-        const isTooClose = shoulderW > (W * 0.40);
-        const isApproaching = scaleVelocity > 150; // Rapidly getting larger in frame
+        // Final Precision thresholds: 30% screen coverage or 80px/s forward speed
+        const isTooClose = shoulderW > (W * 0.30);
+        const isApproaching = scaleVelocity > 80;
         const isCurrentlyMoving = frameVelocityY > 300 || frameVelocityX > 150 || isApproaching;
 
         lastNoseY.current = noseY;
@@ -96,17 +96,25 @@ const JumpRopeCounter: React.FC = () => {
 
         // --- STABLE PERSISTENCE LOGIC ---
         if (isStableRef.current) {
-            // Stability Lock Protection
+            // Immediate Stability RESET for proximity or approach to kill false counts
+            if (isTooClose || isApproaching) {
+                isStableRef.current = false;
+                stabilityStartRef.current = null;
+                peakY.current = 0; // Hard-stop: Kill any pending jump peak
+                setSetupStatus('STEP_BACK');
+                return;
+            }
+
             const essentialTrackingLost = !hasAura || (!lAnkle && !rAnkle);
             const massiveLateralMovement = frameVelocityX > 400;
 
-            if (essentialTrackingLost || massiveLateralMovement || isTooClose || isApproaching) {
+            if (essentialTrackingLost || massiveLateralMovement) {
                 if (trackingLossStartRef.current === null) {
                     trackingLossStartRef.current = now;
                 } else if (now - trackingLossStartRef.current > 1000) {
                     isStableRef.current = false;
                     stabilityStartRef.current = null;
-                    setSetupStatus(isTooClose || !isFullBody ? 'STEP_BACK' : 'MOVING');
+                    setSetupStatus(!isFullBody ? 'STEP_BACK' : 'MOVING');
                     return;
                 }
             } else {
@@ -188,7 +196,8 @@ const JumpRopeCounter: React.FC = () => {
             if (displacement > peakY.current) peakY.current = displacement;
 
             if ((velocityRef.current < -30 || displacement < jumpMinThreshold * 0.5) && !cooldownRef.current) {
-                if (peakY.current > jumpMinThreshold) {
+                // Success! Block if user is already pushing forward even slightly
+                if (peakY.current > jumpMinThreshold && scaleVelocity < 40) {
                     jumpCountRef.current += 1;
                     setJumpCount(jumpCountRef.current);
                     if ('vibrate' in navigator) navigator.vibrate(50);
