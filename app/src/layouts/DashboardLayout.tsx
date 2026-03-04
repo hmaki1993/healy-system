@@ -418,7 +418,7 @@ export default function DashboardLayout() {
     };
 
     return (
-        <div className="min-h-screen flex bg-background font-cairo">
+        <div className="h-[100dvh] flex bg-[#0E1D21] font-cairo overflow-hidden">
             {/* Mobile Sidebar Overlay */}
             {sidebarOpen && (
                 <div
@@ -546,7 +546,7 @@ export default function DashboardLayout() {
             </aside>
 
             {/* Main Content Area */}
-            <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-500 ${isRtl ? 'lg:mr-72' : 'lg:ml-72'}`}>
+            <div className={`flex-1 flex flex-col min-w-0 h-[100dvh] transition-all duration-500 ${isRtl ? 'lg:mr-72' : 'lg:ml-72'}`}>
                 {/* Header - Branding */}
                 {!location.pathname.includes('/communications') && (
                     <header className="relative h-16 flex items-center justify-between px-6 bg-background/50 backdrop-blur-3xl sticky top-0 z-30 w-full border-b border-surface-border">
@@ -649,7 +649,7 @@ export default function DashboardLayout() {
                 )}
 
                 {/* Page Content */}
-                <main className={`flex-1 ${location.pathname.includes('/communications') ? 'p-0 overflow-hidden' : 'p-4 sm:p-6'}`}>
+                <main className={`flex-1 min-h-0 ${location.pathname.includes('/communications') ? 'p-0 overflow-hidden' : 'p-4 sm:p-6 overflow-y-auto'}`}>
                     <Outlet context={{ role, fullName, userId }} />
 
                 </main>

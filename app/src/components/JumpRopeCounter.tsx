@@ -100,10 +100,10 @@ const JumpRopeCounter: React.FC = () => {
         const displacement = baselineY.current - smoothY; // positive = up
         const bodyH = bodyHeightRef.current;
 
-        // Jump threshold: 7% of body height
-        const jumpThreshold = bodyH * 0.07;
-        // Landing threshold: come back within 3% of baseline
-        const landThreshold = bodyH * 0.03;
+        // Jump threshold: 4% of body height (rope jumps are smaller and faster)
+        const jumpThreshold = bodyH * 0.04;
+        // Landing threshold: come back within 2% of baseline
+        const landThreshold = bodyH * 0.02;
 
         // Movement bar — show as 0-100% relative to 20% body height = "full jump"
         const pct = Math.max(0, Math.min(100, (displacement / (bodyH * 0.20)) * 100));
@@ -140,9 +140,9 @@ const JumpRopeCounter: React.FC = () => {
                 // Vibrate on landing
                 if ('vibrate' in navigator) navigator.vibrate(60);
 
-                // Cooldown 400ms to prevent double-count
+                // Cooldown 300ms to prevent double-count (faster for rope)
                 cooldownRef.current = true;
-                setTimeout(() => { cooldownRef.current = false; }, 400);
+                setTimeout(() => { cooldownRef.current = false; }, 300);
 
                 // Reset baseline to current landing position
                 baselineY.current = smoothY;
@@ -242,8 +242,9 @@ const JumpRopeCounter: React.FC = () => {
                             onUserMediaError={handleCameraError}
                             videoConstraints={{
                                 facingMode: "user",
-                                width: { ideal: 640 },
-                                height: { ideal: 480 }
+                                width: { min: 480, ideal: 640 },
+                                height: { min: 360, ideal: 480 },
+                                frameRate: { min: 15, ideal: 30 }
                             }}
                         />
                         <canvas

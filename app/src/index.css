@@ -277,13 +277,27 @@ input[type=number] {
   PREMIUM ANIMATIONS & TRANSITIONS 
 */
 @keyframes premium-fade-in {
-  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes premium-slide-up {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-premium-in {
@@ -376,6 +390,32 @@ input[type=number] {
   .animate-pulse-indigo {
     animation-duration: 4s !important;
     /* Slow down pulses to save CPU */
+  }
+}
+
+/* 
+  SAFE AREA UTILITIES 
+  Ensures content is visible below device notches/status bars on mobile
+  while remaining compact on desktop.
+*/
+.safe-area-pt-large {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 3.5rem) !important;
+}
+
+.safe-area-h-header {
+  min-height: calc(env(safe-area-inset-top, 0px) + 5.5rem) !important;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem) !important;
+}
+
+@media (min-width: 1024px) {
+  .safe-area-pt-large {
+    padding-top: 1.25rem !important;
+    /* Original p-5 spacing */
+  }
+
+  .safe-area-h-header {
+    min-height: 4rem !important;
+    padding-top: 0 !important;
   }
 }
 

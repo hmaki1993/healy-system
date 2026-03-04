@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import AgoraRTC, { IAgoraRTCClient, ILocalVideoTrack, ILocalAudioTrack, IRemoteVideoTrack, IRemoteAudioTrack } from 'agora-rtc-sdk-ng';
-import Cropper from 'react-easy-crop';
 import {
     MessageSquare, Search, Phone, Video, MoreVertical, Send,
     Paperclip, Mic, Image as ImageIcon, X, Check, CheckCheck,
@@ -470,7 +469,7 @@ const IncomingCallModal = ({
 // ─── Active Call Modal ─────────────────────────────────────────────────────────
 const ActiveCallModal = ({
     callType, otherUserName, duration, onHangup, isMuted, toggleMute, isCameraOff, toggleCamera, otherUserAvatar,
-    facingMode, toggleFacingMode, isLocalVideoMain, setIsLocalVideoMain, onMinimize
+    facingMode, toggleFacingMode, isLocalVideoMain, setIsLocalVideoMain, onMinimize, status
 }: {
     callType: 'audio' | 'video';
     otherUserName: string;
@@ -486,6 +485,7 @@ const ActiveCallModal = ({
     isLocalVideoMain: boolean;
     setIsLocalVideoMain: (val: boolean) => void;
     onMinimize?: () => void;
+    status: 'calling' | 'ringing' | 'connected' | null;
 }) => {
     const formatDuration = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
@@ -673,9 +673,15 @@ const ActiveCallModal = ({
                         </div>
 
                         {/* Duration Timer below controls */}
-                        <div className="text-white/40 text-[11px] font-medium tabular-nums tracking-[0.2em]">
-                            {/* Adding leading zeros for the image style: HH:MM:SS:CC (approx) */}
-                            00:{formatDuration(duration)}:00
+                        <div className="text-white/40 text-[11px] font-medium tabular-nums tracking-[0.2em] flex flex-col items-center">
+                            {status === 'connected' ? (
+                                <span>00:{formatDuration(duration)}:00</span>
+                            ) : (
+                                <span className="animate-pulse flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+                                    {status === 'ringing' ? 'RINGING...' : 'CALLING...'}
+                                </span>
+                            )}
                         </div>
                     </div>
                     {/* Right Actions */}
@@ -773,7 +779,7 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: any, rotation = 0): Pr
     });
 
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) throw new Error('No 2d context');
 
     const rotRad = (rotation * Math.PI) / 180;
@@ -800,135 +806,452 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: any, rotation = 0): Pr
     });
 };
 
-// ─── Image Editor Modal ────────────────────────────────────────────────────────
+// ─── Custom Draggable Crop Tool ─────────────────────────────────────────────────
+type CropRect = { x: number; y: number; w: number; h: number };
+type DragHandle = 'move' | 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | null;
+
+const MIN_CROP = 40;
+
 const ImageEditorModal = ({
     image, onCancel, onSave, isProcessing
 }: {
     image: string; onCancel: () => void; onSave: (blob: Blob) => void; isProcessing: boolean
 }) => {
-    const [crop, setCrop] = useState({ x: 0, y: 0 });
-    const [zoom, setZoom] = useState(1);
-    const [rotation, setRotation] = useState(0);
-    const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const imgRef = useRef<HTMLImageElement>(null);
+    const drawCanvasRef = useRef<HTMLCanvasElement>(null);
+    const [imgLoaded, setImgLoaded] = useState(false);
+    const [cropRect, setCropRect] = useState<CropRect>({ x: 0, y: 0, w: 0, h: 0 });
     const [mode, setMode] = useState<'crop' | 'draw'>('crop');
-    const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
+    const [brushColor, setBrushColor] = useState('#FFDD00');
+    const [brushSize, setBrushSize] = useState(4);
+    const [caption, setCaption] = useState('');
+    const [drawHistory, setDrawHistory] = useState<ImageData[]>([]);
+    const lastPos = useRef<{ x: number; y: number } | null>(null);
+    const dragRef = useRef<{
+        handle: DragHandle;
+        startX: number; startY: number;
+        origRect: CropRect;
+    } | null>(null);
 
-    const handleSave = async () => {
-        if (!croppedAreaPixels) return;
-        try {
-            const blob = await getCroppedImg(image, croppedAreaPixels, rotation);
-            // In a real scenario, we could also merge the drawing canvas here.
-            // For now, let's keep it simple with cropping as requested.
-            onSave(blob);
-        } catch (e) {
-            toast.error('Failed to process image');
+    const handleImgLoad = () => {
+        setImgLoaded(true);
+        if (!imgRef.current) return;
+        const width = imgRef.current.clientWidth;
+        const height = imgRef.current.clientHeight;
+        const size = Math.min(width, height) * 0.8;
+        setCropRect({ x: (width - size) / 2, y: (height - size) / 2, w: size, h: size });
+        // Init draw canvas
+        if (drawCanvasRef.current) {
+            drawCanvasRef.current.width = width;
+            drawCanvasRef.current.height = height;
         }
     };
 
+    const getClient = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
+        if ('touches' in e) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        return { x: e.clientX, y: e.clientY };
+    };
+
+    const getCanvasPos = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
+        const canvas = drawCanvasRef.current;
+        if (!canvas) return null;
+        const rect = canvas.getBoundingClientRect();
+        const client = getClient(e);
+
+        // Account for scaling between internal canvas size and layout size
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        return {
+            x: (client.x - rect.left) * scaleX,
+            y: (client.y - rect.top) * scaleY
+        };
+    };
+
+    // ── Drawing manual listeners for passive event issue ──
+    useEffect(() => {
+        const canvas = drawCanvasRef.current;
+        if (!canvas) return;
+
+        const handleTouchStart = (e: TouchEvent) => {
+            if (mode !== 'draw') return;
+            e.preventDefault();
+            saveHistory();
+            const pos = getCanvasPos(e);
+            if (!pos) return;
+            lastPos.current = pos;
+            setIsDrawing(true);
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            if (ctx) {
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, brushSize / 2, 0, Math.PI * 2);
+                ctx.fillStyle = brushColor;
+                ctx.fill();
+            }
+        };
+
+        const handleTouchMove = (e: TouchEvent) => {
+            if (mode !== 'draw' || !isDrawing || !lastPos.current) return;
+            e.preventDefault();
+            const pos = getCanvasPos(e);
+            if (!pos) return;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            if (!ctx) return;
+            ctx.beginPath();
+            ctx.moveTo(lastPos.current.x, lastPos.current.y);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.strokeStyle = brushColor;
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+            lastPos.current = pos;
+        };
+
+        const handleTouchEnd = () => {
+            setIsDrawing(false);
+            lastPos.current = null;
+        };
+
+        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+        canvas.addEventListener('touchend', handleTouchEnd);
+        canvas.addEventListener('touchcancel', handleTouchEnd);
+
+        return () => {
+            canvas.removeEventListener('touchstart', handleTouchStart);
+            canvas.removeEventListener('touchmove', handleTouchMove);
+            canvas.removeEventListener('touchend', handleTouchEnd);
+            canvas.removeEventListener('touchcancel', handleTouchEnd);
+        };
+    }, [mode, isDrawing, brushColor, brushSize, drawHistory]);
+
+    // ── Crop drag handlers ──
+    const onPointerDown = (handle: DragHandle) => (e: React.MouseEvent | React.TouchEvent) => {
+        if (mode !== 'crop') return;
+        e.stopPropagation();
+        const { x, y } = getClient(e);
+        dragRef.current = { handle, startX: x, startY: y, origRect: { ...cropRect } };
+    };
+
+    const onCropPointerMove = (e: React.MouseEvent | React.TouchEvent) => {
+        if (!dragRef.current || !imgRef.current) return;
+        const { x, y } = getClient(e);
+        const dx = x - dragRef.current.startX;
+        const dy = y - dragRef.current.startY;
+        const orig = dragRef.current.origRect;
+        const maxW = imgRef.current.clientWidth;
+        const maxH = imgRef.current.clientHeight;
+        const handle = dragRef.current.handle;
+        setCropRect(prev => {
+            let { x: cx, y: cy, w: cw, h: ch } = prev;
+            const h = handle;
+            if (h === 'move') {
+                cx = Math.max(0, Math.min(maxW - orig.w, orig.x + dx));
+                cy = Math.max(0, Math.min(maxH - orig.h, orig.y + dy));
+                cw = orig.w; ch = orig.h;
+            } else {
+                let nx = orig.x, ny = orig.y, nw = orig.w, nh = orig.h;
+                if (h === 'e' || h === 'ne' || h === 'se') nw = Math.max(MIN_CROP, orig.w + dx);
+                if (h === 'w' || h === 'nw' || h === 'sw') { nx = orig.x + dx; nw = Math.max(MIN_CROP, orig.w - dx); }
+                if (h === 's' || h === 'se' || h === 'sw') nh = Math.max(MIN_CROP, orig.h + dy);
+                if (h === 'n' || h === 'nw' || h === 'ne') { ny = orig.y + dy; nh = Math.max(MIN_CROP, orig.h - dy); }
+                if (nx < 0) { nw += nx; nx = 0; }
+                if (ny < 0) { nh += ny; ny = 0; }
+                if (nx + nw > maxW) nw = maxW - nx;
+                if (ny + nh > maxH) nh = maxH - ny;
+                if (nw < MIN_CROP) { nw = MIN_CROP; if (h?.includes('w')) nx = orig.x + orig.w - MIN_CROP; }
+                if (nh < MIN_CROP) { nh = MIN_CROP; if (h?.includes('n')) ny = orig.y + orig.h - MIN_CROP; }
+                [cx, cy, cw, ch] = [nx, ny, nw, nh];
+            }
+            return { x: cx, y: cy, w: cw, h: ch };
+        });
+    };
+
+    const onCropPointerUp = () => { dragRef.current = null; };
+
+
+
+    const saveHistory = () => {
+        const canvas = drawCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+        setDrawHistory(prev => [...prev.slice(-19), ctx.getImageData(0, 0, canvas.width, canvas.height)]);
+    };
+
+    const onDrawStart = (e: React.MouseEvent) => {
+        if (mode !== 'draw') return;
+        saveHistory();
+        const pos = getCanvasPos(e);
+        if (!pos) return;
+        lastPos.current = pos;
+        setIsDrawing(true);
+        // Draw a dot for single tap
+        const canvas = drawCanvasRef.current;
+        const ctx = canvas?.getContext('2d', { willReadFrequently: true });
+        if (ctx) {
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, brushSize / 2, 0, Math.PI * 2);
+            ctx.fillStyle = brushColor;
+            ctx.fill();
+        }
+    };
+
+    const onDrawMove = (e: React.MouseEvent) => {
+        if (!isDrawing || mode !== 'draw' || !lastPos.current) return;
+        const pos = getCanvasPos(e);
+        if (!pos) return;
+        const canvas = drawCanvasRef.current;
+        const ctx = canvas?.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+        ctx.beginPath();
+        ctx.moveTo(lastPos.current.x, lastPos.current.y);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.strokeStyle = brushColor;
+        ctx.lineWidth = brushSize;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+        lastPos.current = pos;
+    };
+
+    const onDrawEnd = () => { setIsDrawing(false); lastPos.current = null; };
+
+    const handleUndo = () => {
+        const canvas = drawCanvasRef.current;
+        if (!canvas || drawHistory.length === 0) return;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+        const prev = drawHistory[drawHistory.length - 1];
+        ctx.putImageData(prev, 0, 0);
+        setDrawHistory(h => h.slice(0, -1));
+    };
+
+    const clearDrawing = () => {
+        const canvas = drawCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+        saveHistory();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    };
+
+    // ── Save & send ──
+    const handleSave = async () => {
+        if (!imgRef.current) return;
+        try {
+            const imgEl = imgRef.current;
+            const scaleX = imgEl.naturalWidth / imgEl.clientWidth;
+            const scaleY = imgEl.naturalHeight / imgEl.clientHeight;
+
+            // Step 1: Crop the image
+            const cropW = Math.round(cropRect.w * scaleX);
+            const cropH = Math.round(cropRect.h * scaleY);
+
+            // Caption height (if any)
+            const fontSize = Math.max(20, Math.round(cropW * 0.04));
+            const captionPadding = caption.trim() ? fontSize * 2 : 0;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = cropW;
+            canvas.height = cropH + captionPadding;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+
+            // Draw cropped image
+            ctx.drawImage(imgEl, cropRect.x * scaleX, cropRect.y * scaleY, cropRect.w * scaleX, cropRect.h * scaleY, 0, 0, cropW, cropH);
+
+            // Step 2: Bake drawing annotations (scale from client px to natural px)
+            const drawCanvas = drawCanvasRef.current;
+            if (drawCanvas) {
+                ctx.save();
+                ctx.scale(scaleX, scaleY);
+                ctx.translate(-cropRect.x, -cropRect.y);
+                ctx.drawImage(drawCanvas, 0, 0);
+                ctx.restore();
+            }
+
+            // Step 3: Bake caption
+            if (caption.trim() && captionPadding > 0) {
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, cropH, cropW, captionPadding);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${fontSize}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(caption.trim(), cropW / 2, cropH + captionPadding / 2, cropW - 20);
+            }
+
+            canvas.toBlob(blob => blob && onSave(blob), 'image/jpeg', 0.95);
+        } catch (err) {
+            console.error('Save error:', err);
+            toast.error('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
+        }
+    };
+
+    const hClass = "absolute w-6 h-6 bg-white border-2 border-primary rounded-full z-20 shadow-lg active:scale-125 transition-transform touch-none";
+    const COLORS = ['#FFDD00', '#FF3B30', '#34C759', '#007AFF', '#FF9F0A', '#FFFFFF', '#000000', '#AF52DE'];
+
     return (
-        <div className="fixed inset-0 z-[10000] flex flex-col bg-black">
-            <div className="flex items-center justify-between p-4 border-b border-white/5 bg-zinc-900">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
-                        <ImageIcon className="w-4 h-4 text-white/60" />
-                    </div>
-                    <div>
-                        <h3 className="text-white text-sm font-semibold">Edit Image</h3>
-                        <p className="text-white/30 text-[10px] uppercase font-medium tracking-wide">Crop and refine before sending</p>
+        <div className="fixed inset-0 z-[10000] flex flex-col bg-black overflow-hidden select-none"
+            onMouseMove={mode === 'crop' ? onCropPointerMove : undefined}
+            onTouchMove={mode === 'crop' ? onCropPointerMove : undefined}
+            onMouseUp={onCropPointerUp} onTouchEnd={mode === 'crop' ? onCropPointerUp : onDrawEnd}
+            onMouseLeave={onCropPointerUp}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 bg-[#0a0a0a] border-b border-white/5 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                    {/* Mode Toggle */}
+                    <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 border border-white/10">
+                        <button
+                            onClick={() => setMode('crop')}
+                            className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${mode === 'crop' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                        >
+                            ✂️ Crop
+                        </button>
+                        <button
+                            onClick={() => setMode('draw')}
+                            className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${mode === 'draw' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                        >
+                            ✏️ Draw
+                        </button>
                     </div>
                 </div>
-                <button onClick={onCancel} className="p-2 text-white/40 hover:text-white transition-all">
+                <button onClick={onCancel} className="p-2 text-white/40 hover:text-white rounded-full hover:bg-white/5 transition-colors">
                     <X className="w-5 h-5" />
                 </button>
             </div>
 
-            <div className="flex-1 relative bg-[#050505]">
-                {mode === 'crop' ? (
-                    <Cropper
-                        image={image}
-                        crop={crop}
-                        zoom={zoom}
-                        rotation={rotation}
-                        aspect={undefined}
-                        onCropChange={setCrop}
-                        onZoomChange={setZoom}
-                        onRotationChange={setRotation}
-                        onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)}
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center p-10">
-                        <div className="relative max-w-full max-h-full">
-                            <img src={image} alt="Drawing preview" className="max-w-full max-h-full rounded-lg shadow-2xl" />
-                            <canvas
-                                ref={canvasRef}
-                                className="absolute inset-0 w-full h-full cursor-crosshair"
-                                onMouseDown={() => setIsDrawing(true)}
-                                onMouseUp={() => setIsDrawing(false)}
-                            // Simplified drawing logic would go here
+            {/* Draw toolbar — only visible in draw mode */}
+            {mode === 'draw' && (
+                <div className="flex items-center gap-3 px-4 py-2.5 bg-[#111] border-b border-white/5 overflow-x-auto flex-shrink-0">
+                    {/* Color swatches */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {COLORS.map(c => (
+                            <button
+                                key={c}
+                                onClick={() => setBrushColor(c)}
+                                className="w-6 h-6 rounded-full border-2 transition-all active:scale-90 flex-shrink-0"
+                                style={{ backgroundColor: c, borderColor: brushColor === c ? '#fff' : 'transparent', transform: brushColor === c ? 'scale(1.2)' : undefined }}
                             />
-                        </div>
+                        ))}
                     </div>
-                )}
+                    <div className="w-px h-6 bg-white/10 flex-shrink-0" />
+                    {/* Brush sizes */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        {[2, 4, 8, 14].map(s => (
+                            <button
+                                key={s}
+                                onClick={() => setBrushSize(s)}
+                                className={`flex items-center justify-center w-8 h-8 rounded-full transition-all ${brushSize === s ? 'bg-primary/20 border border-primary' : 'bg-white/5 border border-white/10'}`}
+                            >
+                                <div className="rounded-full bg-white" style={{ width: s, height: s }} />
+                            </button>
+                        ))}
+                    </div>
+                    <div className="w-px h-6 bg-white/10 flex-shrink-0" />
+                    {/* Undo / Clear */}
+                    <button onClick={handleUndo} disabled={drawHistory.length === 0} className="px-3 h-8 rounded-lg bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-white disabled:opacity-30 transition-all flex-shrink-0">
+                        ↩ Undo
+                    </button>
+                    <button onClick={clearDrawing} className="px-3 h-8 rounded-lg bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-all flex-shrink-0">
+                        🗑 Clear
+                    </button>
+                </div>
+            )}
+
+            {/* Editing Canvas */}
+            <div className="flex-1 relative flex items-center justify-center bg-[#050505] p-4 min-h-0">
+                <div ref={containerRef} className="relative inline-block leading-[0] shadow-2xl">
+                    <img
+                        ref={imgRef}
+                        src={image}
+                        onLoad={handleImgLoad}
+                        crossOrigin="anonymous"
+                        className="max-w-full max-h-[65vh] block object-contain"
+                        draggable={false}
+                    />
+
+                    {/* Drawing canvas overlay */}
+                    {imgLoaded && (
+                        <canvas
+                            ref={drawCanvasRef}
+                            className="absolute inset-0 w-full h-full"
+                            style={{
+                                cursor: mode === 'draw' ? `url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><circle cx='12' cy='12' r='${brushSize / 2}' fill='${encodeURIComponent(brushColor)}'/></svg>") 12 12, crosshair` : 'default',
+                                pointerEvents: mode === 'draw' ? 'auto' : 'none',
+                                zIndex: mode === 'draw' ? 30 : 5,
+                            }}
+                            onMouseDown={onDrawStart}
+                            onMouseMove={onDrawMove}
+                            onMouseUp={onDrawEnd}
+                            onMouseLeave={onDrawEnd}
+                        />
+                    )}
+
+                    {/* Crop UI */}
+                    {imgLoaded && mode === 'crop' && (
+                        <div
+                            className="absolute border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] cursor-move z-10"
+                            style={{ left: cropRect.x, top: cropRect.y, width: cropRect.w, height: cropRect.h }}
+                            onMouseDown={onPointerDown('move')} onTouchStart={onPointerDown('move')}
+                        >
+                            <div className="absolute inset-0 pointer-events-none opacity-30">
+                                <div className="absolute left-1/3 w-px h-full bg-white" />
+                                <div className="absolute left-2/3 w-px h-full bg-white" />
+                                <div className="absolute top-1/3 h-px w-full bg-white" />
+                                <div className="absolute top-2/3 h-px w-full bg-white" />
+                            </div>
+                            <div className={`${hClass} -top-3 -left-3 cursor-nw-resize`} onMouseDown={onPointerDown('nw')} onTouchStart={onPointerDown('nw')} />
+                            <div className={`${hClass} -top-3 -right-3 cursor-ne-resize`} onMouseDown={onPointerDown('ne')} onTouchStart={onPointerDown('ne')} />
+                            <div className={`${hClass} -bottom-3 -left-3 cursor-sw-resize`} onMouseDown={onPointerDown('sw')} onTouchStart={onPointerDown('sw')} />
+                            <div className={`${hClass} -bottom-3 -right-3 cursor-se-resize`} onMouseDown={onPointerDown('se')} onTouchStart={onPointerDown('se')} />
+                            <div className={`${hClass} -top-3 left-1/2 -translate-x-1/2 cursor-n-resize`} onMouseDown={onPointerDown('n')} onTouchStart={onPointerDown('n')} />
+                            <div className={`${hClass} -bottom-3 left-1/2 -translate-x-1/2 cursor-s-resize`} onMouseDown={onPointerDown('s')} onTouchStart={onPointerDown('s')} />
+                            <div className={`${hClass} top-1/2 -left-3 -translate-y-1/2 cursor-w-resize`} onMouseDown={onPointerDown('w')} onTouchStart={onPointerDown('w')} />
+                            <div className={`${hClass} top-1/2 -right-3 -translate-y-1/2 cursor-e-resize`} onMouseDown={onPointerDown('e')} onTouchStart={onPointerDown('e')} />
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <div className="p-8 border-t border-white/10 bg-black/40 backdrop-blur-md">
-                <div className="max-w-md mx-auto flex flex-col gap-6">
-                    <div className="flex items-center justify-center gap-8">
-                        <div className="flex flex-col items-center gap-2">
-                            <span className="text-[10px] text-white/20 font-black uppercase tracking-widest">Zoom</span>
-                            <input
-                                type="range"
-                                min={1} max={3} step={0.1}
-                                value={zoom}
-                                onChange={(e) => setZoom(Number(e.target.value))}
-                                className="w-32 accent-primary transition-all"
-                            />
-                        </div>
-                        <div className="w-px h-8 bg-white/10" />
-                        <div className="flex flex-col items-center gap-2">
-                            <span className="text-[10px] text-white/20 font-black uppercase tracking-widest">Rotation</span>
-                            <div className="flex items-center gap-4">
-                                <button onClick={() => setRotation(r => r - 90)} className="text-white/40 hover:text-white"><RotateCcw className="w-4 h-4" /></button>
-                                <span className="text-xs font-black text-white w-8 text-center">{rotation}°</span>
-                                <button onClick={() => setRotation(r => r + 90)} className="text-white/40 hover:text-white"><RotateCcw className="w-4 h-4 scale-x-[-1]" /></button>
-                            </div>
-                        </div>
-                    </div>
+            {/* Caption input */}
+            <div className="flex-shrink-0 px-4 py-3 bg-[#0a0a0a] border-t border-white/5">
+                <input
+                    type="text"
+                    value={caption}
+                    onChange={e => setCaption(e.target.value)}
+                    placeholder="Caption..."
+                    maxLength={120}
+                    className="w-full bg-white/[0.05] border border-white/10 rounded-2xl px-4 py-2.5 text-sm text-white placeholder:text-white/20 font-medium focus:outline-none focus:border-primary/40 transition-all"
+                />
+            </div>
 
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={onCancel}
-                            className="flex-1 px-8 py-4 rounded-[1.5rem] bg-white/5 text-white/60 font-black uppercase tracking-tighter hover:bg-white/10 transition-all border border-white/5 active:scale-95"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={isProcessing}
-                            className="flex-[2] px-8 py-4 rounded-[1.5rem] bg-primary text-white font-black uppercase tracking-tighter hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50 active:scale-95 flex items-center justify-center gap-3"
-                        >
-                            {isProcessing ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                                <>
-                                    <span>Send Image</span>
-                                    <Send className="w-4 h-4" />
-                                </>
-                            )}
-                        </button>
-                    </div>
+            {/* Action Buttons */}
+            <div className="p-4 pt-2 bg-[#0a0a0a] flex-shrink-0">
+                <div className="max-w-md mx-auto flex items-center gap-3">
+                    <button onClick={onCancel} className="flex-1 h-12 rounded-2xl bg-white/5 text-white/50 font-black uppercase tracking-tight border border-white/5 text-sm hover:bg-white/10 transition-colors">
+                        Cancel
+                    </button>
+                    <button onClick={handleSave} disabled={isProcessing} className="flex-[2] h-12 rounded-2xl bg-primary text-white font-black uppercase tracking-tight shadow-xl shadow-primary/20 disabled:opacity-50 text-sm flex items-center justify-center gap-2 hover:bg-primary/90 transition-all">
+                        {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-4 h-4" /><span>Send</span></>}
+                    </button>
                 </div>
             </div>
         </div>
     );
 };
 
+
 // ─── Image Viewer Modal (Full Screen) ──────────────────────────────────────────
-const ImageViewerModal = ({ url, onClose }: { url: string; onClose: () => void }) => {
+const ImageViewerModal = ({ url, onClose, onEdit }: { url: string; onClose: () => void; onEdit?: (url: string) => void }) => {
     const [zoom, setZoom] = useState(1);
     const [panning, setPanning] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
     const lastPos = useRef({ x: 0, y: 0 });
 
     const handleWheel = (e: React.WheelEvent) => {
@@ -947,12 +1270,30 @@ const ImageViewerModal = ({ url, onClose }: { url: string; onClose: () => void }
         if (!isDragging || zoom === 1) return;
         const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
         const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
         const dx = clientX - lastPos.current.x;
         const dy = clientY - lastPos.current.y;
-
         setPanning(prev => ({ x: prev.x + dx, y: prev.y + dy }));
         lastPos.current = { x: clientX, y: clientY };
+    };
+
+    // Proper blob-based download — works on mobile too
+    const handleDownload = async () => {
+        if (isDownloading) return;
+        setIsDownloading(true);
+        try {
+            const resp = await fetch(url, { mode: 'cors' });
+            const blob = await resp.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = `image_${Date.now()}.jpg`;
+            a.click();
+            URL.revokeObjectURL(blobUrl);
+        } catch {
+            // Fallback: open in new tab
+            window.open(url, '_blank');
+        }
+        setIsDownloading(false);
     };
 
     return (
@@ -968,14 +1309,27 @@ const ImageViewerModal = ({ url, onClose }: { url: string; onClose: () => void }
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <a
-                        href={url}
-                        download
-                        className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all"
-                        title="Download"
+                    {/* Edit / Crop Button */}
+                    {onEdit && (
+                        <button
+                            onClick={() => { onClose(); onEdit(url); }}
+                            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:text-primary hover:bg-primary/10 transition-all"
+                            title="Edit & Crop"
+                        >
+                            <Pencil className="w-4 h-4" />
+                        </button>
+                    )}
+                    {/* Download Button */}
+                    <button
+                        onClick={handleDownload}
+                        disabled={isDownloading}
+                        className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all disabled:opacity-50"
+                        title="Save to device"
                     >
-                        <Download className="w-5 h-5" />
-                    </a>
+                        {isDownloading
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Download className="w-5 h-5" />}
+                    </button>
                     <button onClick={onClose} className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-all shadow-xl active:scale-95">
                         <X className="w-6 h-6" />
                     </button>
@@ -996,6 +1350,7 @@ const ImageViewerModal = ({ url, onClose }: { url: string; onClose: () => void }
                 <img
                     src={url}
                     alt="Full view"
+                    crossOrigin="anonymous"
                     className="max-w-full max-h-full object-contain shadow-[0_50px_100px_rgba(0,0,0,0.5)] transition-transform duration-75 select-none"
                     style={{
                         transform: `scale(${zoom}) translate(${panning.x / zoom}px, ${panning.y / zoom}px)`,
@@ -1004,7 +1359,7 @@ const ImageViewerModal = ({ url, onClose }: { url: string; onClose: () => void }
                 />
             </div>
 
-            <div className="flex justify-center p-6 z-10">
+            <div className="flex justify-center p-4 z-10">
                 <div className="flex items-center gap-8 bg-white/5 backdrop-blur-xl px-8 py-3 rounded-full border border-white/10 shadow-2xl">
                     <button onClick={() => { setZoom(1); setPanning({ x: 0, y: 0 }); }} className="text-white/40 hover:text-white"><RotateCcw className="w-4 h-4" /></button>
                     <div className="flex items-center gap-4">
@@ -1042,12 +1397,17 @@ export default function Communications() {
     const [showForwardModal, setShowForwardModal] = useState(false);
     const [pendingImage, setPendingImage] = useState<string | null>(null);
     const [imageToView, setImageToView] = useState<string | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingImage, setEditingImage] = useState<string | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
 
     // Call state
     const [activeCall, setActiveCall] = useState<{ type: 'audio' | 'video'; otherUser: Profile; channelId: string; conversationId: string } | null>(null);
     const [incomingCall, setIncomingCall] = useState<{ callId: string; type: 'audio' | 'video'; caller: Profile; channelId: string; conversationId: string } | null>(null);
     const [callDuration, setCallDuration] = useState(0);
+    const [callStatus, setCallStatus] = useState<'calling' | 'ringing' | 'connected' | null>(null);
+    const ringingAudioRef = useRef<HTMLAudioElement | null>(null);
+    const ringTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [isMuted, setIsMuted] = useState(false);
     const [isCameraOff, setIsCameraOff] = useState(false);
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
@@ -1274,11 +1634,27 @@ export default function Communications() {
             const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
             agoraClientRef.current = client;
 
-            // Start timer immediately so user sees responsiveness
-            callTimerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
+            // Timer will now only start when the remote user is connected (user-published)
+            // setCallDuration(0) already called above
+
 
             client.on('user-published', async (user, mediaType) => {
                 await client.subscribe(user, mediaType);
+
+                // When remote user joins, stop ringing and start timer
+                setCallStatus('connected');
+                if (ringTimeoutRef.current) {
+                    clearTimeout(ringTimeoutRef.current);
+                    ringTimeoutRef.current = null;
+                }
+                if (ringingAudioRef.current) {
+                    ringingAudioRef.current.pause();
+                    ringingAudioRef.current.currentTime = 0;
+                }
+                if (!callTimerRef.current) {
+                    callTimerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
+                }
+
                 if (mediaType === 'video') {
                     const remoteEl = document.getElementById('agora-remote-video');
                     if (remoteEl) user.videoTrack?.play(remoteEl);
@@ -1366,6 +1742,17 @@ export default function Communications() {
         const dur = callDuration;
         const callSnapshot = activeCallRef.current || activeCall;
 
+        if (ringTimeoutRef.current) {
+            clearTimeout(ringTimeoutRef.current);
+            ringTimeoutRef.current = null;
+        }
+
+        if (ringingAudioRef.current) {
+            ringingAudioRef.current.pause();
+            ringingAudioRef.current.currentTime = 0;
+        }
+
+        setCallStatus(null);
         await leaveAgoraChannel();
 
         setActiveCall(null);
@@ -1419,7 +1806,37 @@ export default function Communications() {
 
         setActiveCall({ type: callType, otherUser: activeConvo.otherUser, channelId, conversationId: activeConvo.id });
         activeCallRef.current = { type: callType, otherUser: activeConvo.otherUser, channelId, conversationId: activeConvo.id };
-        toast(`Calling ${activeConvo.otherUser.full_name}...`, { icon: callType === 'video' ? '🎥' : '📞' });
+
+        // Determine if online (ringing) or offline (calling)
+        const lastSeen = activeConvo.otherUser.last_seen;
+        const isOnline = lastSeen && (Date.now() - new Date(lastSeen).getTime() < 60000);
+        const initialStatus = isOnline ? 'ringing' : 'calling';
+        setCallStatus(initialStatus);
+
+        if (isOnline) {
+            const playRingtone = () => {
+                if (activeCallRef.current && !ringingAudioRef.current) {
+                    // Modern digital ringtone
+                    ringingAudioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1352/1352-preview.mp3');
+                }
+
+                if (ringingAudioRef.current && activeCallRef.current) {
+                    ringingAudioRef.current.play().catch(e => console.error('Ringing sound error:', e));
+
+                    // Cadence: Play once, wait 2.5s after it ends, then play again
+                    ringingAudioRef.current.onended = () => {
+                        if (activeCallRef.current) {
+                            ringTimeoutRef.current = setTimeout(() => {
+                                playRingtone();
+                            }, 2500);
+                        }
+                    };
+                }
+            };
+            playRingtone();
+        }
+
+        toast(`${initialStatus === 'ringing' ? 'Ringing' : 'Calling'} ${activeConvo.otherUser.full_name}...`, { icon: callType === 'video' ? '🎥' : '📞' });
 
         await joinAgoraChannel(channelId, callType);
     };
@@ -1434,6 +1851,7 @@ export default function Communications() {
 
         setActiveCall({ type: call.type, otherUser: call.caller, channelId: call.channelId, conversationId: call.conversationId });
         activeCallRef.current = { type: call.type, otherUser: call.caller, channelId: call.channelId, conversationId: call.conversationId };
+        setCallStatus('connected'); // Recipient direct to connected
         setIncomingCall(null);
 
         await joinAgoraChannel(call.channelId, call.type);
@@ -2079,10 +2497,27 @@ export default function Communications() {
         return name?.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
+    // ─── Viewport Lock ─────────────────────────────────────────────────────────────
+    useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
+        const originalOverscroll = document.body.style.overscrollBehavior;
+
+        // Force body to be non-scrollable and no-bounce
+        document.body.style.overflow = 'hidden';
+        document.body.style.overscrollBehavior = 'none';
+        document.documentElement.style.overscrollBehavior = 'none';
+
+        return () => {
+            document.body.style.overflow = originalOverflow;
+            document.body.style.overscrollBehavior = originalOverscroll;
+            document.documentElement.style.overscrollBehavior = originalOverscroll;
+        };
+    }, []);
+
     // ─── Render ────────────────────────────────────────────────────────────────────
     return (
-        <>
-            <div className="h-screen flex overflow-hidden bg-background">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#0E1D21] z-0 touch-none h-full" style={{ overscrollBehavior: 'none' }}>
+            <div className="flex-1 flex overflow-hidden touch-auto h-full">
 
                 {/* ── Image Editor Overlay ── */}
                 {pendingImage && (
@@ -2099,6 +2534,11 @@ export default function Communications() {
                     <ImageViewerModal
                         url={imageToView}
                         onClose={() => setImageToView(null)}
+                        onEdit={(imgUrl) => {
+                            setImageToView(null);
+                            // Pre-load the URL into the editor (treated as pending image)
+                            setPendingImage(imgUrl);
+                        }}
                     />
                 )}
 
@@ -2116,6 +2556,7 @@ export default function Communications() {
                 {activeCall && !isCallMinimized && (
                     <ActiveCallModal
                         callType={activeCall.type}
+                        status={callStatus}
                         otherUserName={activeCall.otherUser.full_name}
                         otherUserAvatar={activeCall.otherUser.avatar_url}
                         duration={callDuration}
@@ -2190,13 +2631,13 @@ export default function Communications() {
                 {/* ─────────────── LEFT: Conversation List ─────────────── */}
                 <div className={`
         w-full md:w-80 lg:w-96 flex-shrink-0 
-        border-r border-white/5 flex flex-col
+        border-r border-white/5 flex flex-col h-full min-h-0
         ${activeConvo ? 'hidden md:flex' : 'flex'}
       `}>
                     {/* Panel header */}
-                    <div className="p-5 border-b border-white/5">
+                    <div className="p-5 border-b border-white/5 safe-area-pt-large">
                         <div className="flex items-center justify-between mb-4">
-                            <div>
+                            <div className="leading-relaxed">
                                 <h1 className="text-white font-black text-lg tracking-tight">Messages</h1>
                                 <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest">Communication Center</p>
                             </div>
@@ -2448,10 +2889,10 @@ export default function Communications() {
 
                 {/* ─────────────── CENTER: Chat Window ─────────────── */}
                 {activeConvo ? (
-                    <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex-1 flex flex-col min-w-0 bg-[#0E1D21]">
 
                         {/* Chat header */}
-                        <div className={`sticky top-0 z-20 h-16 flex items-center justify-between px-5 border-b border-white/5 transition-all duration-300 bg-background/50 backdrop-blur-xl flex-shrink-0`}>
+                        <div className={`sticky top-0 z-20 flex items-center justify-between px-5 border-b border-white/5 transition-all duration-300 bg-background/50 backdrop-blur-xl flex-shrink-0 safe-area-h-header`}>
                             {/* LEFT: Contact Info */}
                             <div className="flex items-center gap-3">
                                 <button
@@ -2648,7 +3089,7 @@ export default function Communications() {
                         )}
 
                         {/* Input bar */}
-                        <div className="sticky bottom-0 z-20 flex-shrink-0 p-4 pb-6 bg-gradient-to-t from-[#0E1D21] via-[#0E1D21]/95 to-transparent backdrop-blur-3xl">
+                        <div className="flex-shrink-0 p-4 bg-gradient-to-t from-[#0E1D21] via-[#0E1D21]/90 to-transparent backdrop-blur-2xl border-t border-white/5" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}>
                             {/* Reply Preview */}
                             {replyTo && (
                                 <div className="mb-3 p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between group animate-premium-up shadow-2xl backdrop-blur-3xl">
@@ -2674,7 +3115,15 @@ export default function Communications() {
                                         type="file"
                                         accept="image/*"
                                         className="hidden"
-                                        onChange={e => e.target.files?.[0] && sendImage(e.target.files[0])}
+                                        onChange={e => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            const reader = new FileReader();
+                                            reader.onload = () => setPendingImage(reader.result as string);
+                                            reader.readAsDataURL(file);
+                                            // Reset input so same file can be re-selected
+                                            e.target.value = '';
+                                        }}
                                     />
                                     <button
                                         type="button"
@@ -2807,6 +3256,6 @@ export default function Communications() {
                     );
                 })()
             }
-        </>
+        </div>
     );
 }
