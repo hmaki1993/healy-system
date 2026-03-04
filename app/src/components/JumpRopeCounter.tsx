@@ -16,45 +16,43 @@ const JumpRopeCounter: React.FC = () => {
     const jumpThreshold = 30; // Min pixels to trigger a jump
     const lastY = useRef<number>(0);
 
+    const handleVideoLoad = () => {
+        setIsLoading(false);
+    };
+
     useEffect(() => {
         const pose = new Pose({
-            locateFile: (file) => {
-                return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
-            },
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
         });
 
-        const poseOptions: PoseConfig = {
+        pose.setOptions({
             modelComplexity: 1,
             smoothLandmarks: true,
-            enableSegmentation: false,
-            smoothSegmentation: false,
             minDetectionConfidence: 0.5,
             minTrackingConfidence: 0.5,
-        };
+        } as any);
 
-        pose.setOptions(poseOptions);
         pose.onResults(onResults);
 
-        let videoElement: HTMLVideoElement | null = null;
-
-        const initCamera = async () => {
+        let active = true;
+        const startDetection = async () => {
             if (webcamRef.current && webcamRef.current.video) {
-                videoElement = webcamRef.current.video;
-                setIsLoading(false);
-
-                const renderLoop = async () => {
-                    if (videoElement && videoElement.readyState === 4) {
-                        await pose.send({ image: videoElement });
+                const video = webcamRef.current.video;
+                if (video.readyState === 4) {
+                    try {
+                        await pose.send({ image: video });
+                    } catch (e) {
+                        console.error("AI Error:", e);
                     }
-                    requestAnimationFrame(renderLoop);
-                };
-                renderLoop();
+                }
             }
+            if (active) requestAnimationFrame(startDetection);
         };
 
-        initCamera();
+        startDetection();
 
         return () => {
+            active = false;
             pose.close();
         };
     }, []);
@@ -127,6 +125,8 @@ const JumpRopeCounter: React.FC = () => {
                     className="webcam-feed"
                     mirrored={true}
                     screenshotFormat="image/jpeg"
+                    onUserMedia={handleVideoLoad}
+                    onUserMediaError={(err) => console.error("Webcam Error:", err)}
                 />
                 <canvas
                     ref={canvasRef}
