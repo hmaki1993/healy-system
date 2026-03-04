@@ -25,9 +25,13 @@ const JumpRopeCounter: React.FC = () => {
     const valleyY = useRef<number>(0);
     const cooldownRef = useRef(false);
     const lastNoseY = useRef<number>(0);
-    const lastFrameTime = useRef<number>(Date.now());
+    const lastDisplacementRef = useRef<number>(0);
+    const emaSmoothY = useRef<number | null>(null);
+    const isStableRef = useRef<boolean>(false);
+    const stabilityStartRef = useRef<number | null>(null);
+    const [setupStatus, setSetupStatus] = useState<'MOVING' | 'STEP_BACK' | 'READY'>('MOVING');
     const velocityRef = useRef<number>(0);
-    const signalHistory = useRef<number[]>([]);
+    const lastFrameTime = useRef<number>(Date.now());
 
     const handleVideoLoad = () => {
         setIsLoading(false);
@@ -57,95 +61,109 @@ const JumpRopeCounter: React.FC = () => {
 
         canvasCtx.clearRect(0, 0, W, H);
 
-        // Landmarks
         const nose = results.poseLandmarks[0];
         const lShoulder = results.poseLandmarks[11];
         const rShoulder = results.poseLandmarks[12];
+        const lHip = results.poseLandmarks[23];
+        const rHip = results.poseLandmarks[24];
         const lAnkle = results.poseLandmarks[27];
         const rAnkle = results.poseLandmarks[28];
 
         if (!nose || !lShoulder || !rShoulder) return;
 
-        // --- NOSE PEAK DETECTION (The Core) ---
-        const currentY = nose.y * H;
+        // --- STABILITY & FULL BODY GUARD ---
+        const isFullBody = !!(lAnkle && rAnkle);
+        const noseY = nose.y * H;
+        const frameVelocity = Math.abs(lastNoseY.current - noseY) / deltaTime;
+        const isCurrentlyMoving = frameVelocity > 100; // High speed movement = phone moving or setup
+        lastNoseY.current = noseY;
 
-        // Calibration
-        const bodyH = (lAnkle || rAnkle)
-            ? Math.abs(((lAnkle?.y ?? rAnkle?.y ?? 0) - nose.y) * H)
-            : 200;
-        bodyHeightRef.current = Math.max(100, bodyH);
-
-        if (baselineY.current === null) {
-            baselineY.current = currentY;
-            valleyY.current = currentY;
+        if (isCurrentlyMoving || !isFullBody) {
+            isStableRef.current = false;
+            stabilityStartRef.current = null;
+            setSetupStatus(!isFullBody ? 'STEP_BACK' : 'MOVING');
+            baselineY.current = noseY; // Continuously reset baseline during movement
+            setDisplayStatus('READY');
+            setMovementPct(0);
             return;
         }
 
-        // Relative Movement (Higher displacement = Higher jump)
-        const displacement = baselineY.current - currentY;
-        const velocity = (lastNoseY.current - currentY) / deltaTime;
-        lastNoseY.current = currentY;
+        if (!isStableRef.current) {
+            if (stabilityStartRef.current === null) {
+                stabilityStartRef.current = now;
+            } else if (now - stabilityStartRef.current > 2000) {
+                isStableRef.current = true;
+                setSetupStatus('READY');
+            }
+            baselineY.current = noseY;
+            return;
+        }
 
-        // Signal Filtering (Light EMA for noise reduction but no lag)
-        velocityRef.current = velocityRef.current * 0.3 + velocity * 0.7;
+        if (baselineY.current === null) {
+            baselineY.current = noseY;
+            return;
+        }
 
-        // ULTRA-SENSITIVE THRESHOLD (2% of body height or 12 pixels minimum)
-        const jumpMinThreshold = Math.max(12, bodyHeightRef.current * 0.02);
+        // --- NOSE PEAK DETECTION (The Core) ---
+        const bodyH = Math.abs(((lAnkle?.y ?? rAnkle?.y ?? 0) - nose.y) * H);
+        bodyHeightRef.current = Math.max(100, bodyH);
 
-        // Movement Meter (Normalized to 10% body height)
+        // EMA Smoothing
+        if (emaSmoothY.current === null) emaSmoothY.current = noseY;
+        emaSmoothY.current = emaSmoothY.current * 0.4 + noseY * 0.6;
+        const smoothY = emaSmoothY.current;
+
+        // Relative Movement
+        const displacement = baselineY.current - smoothY;
+        const velocity = (lastDisplacementRef.current - displacement) / deltaTime; // Frame velocity
+        velocityRef.current = velocityRef.current * 0.3 + (displacement - lastDisplacementRef.current) / deltaTime * 0.7;
+        lastDisplacementRef.current = displacement;
+
+        const jumpMinThreshold = Math.max(12, bodyHeightRef.current * 0.025);
         const pct = Math.max(0, Math.min(100, (displacement / (bodyHeightRef.current * 0.10)) * 100));
         setMovementPct(Math.round(pct));
 
-        // --- Visual Feedback ---
-        // 1. Nose Circle
+        // Visual Feedback
         canvasCtx.beginPath();
         canvasCtx.arc(nose.x * W, nose.y * H, 8, 0, 2 * Math.PI);
         canvasCtx.fillStyle = jumpStatusRef.current === 'jumping' ? '#00f2fe' : '#4affc4';
         canvasCtx.fill();
         canvasCtx.strokeStyle = 'white';
-        canvasCtx.lineWidth = 2;
         canvasCtx.stroke();
 
-        // 2. Jump Target Line
-        canvasCtx.beginPath();
-        canvasCtx.moveTo(0, baselineY.current - jumpMinThreshold);
-        canvasCtx.lineTo(W, baselineY.current - jumpMinThreshold);
-        canvasCtx.strokeStyle = jumpStatusRef.current === 'jumping' ? '#00f2fe' : 'rgba(255, 255, 255, 0.2)';
-        canvasCtx.setLineDash([10, 5]);
-        canvasCtx.stroke();
-        canvasCtx.setLineDash([]);
+        if (baselineY.current !== null) {
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(0, baselineY.current - jumpMinThreshold);
+            canvasCtx.lineTo(W, baselineY.current - jumpMinThreshold);
+            canvasCtx.strokeStyle = jumpStatusRef.current === 'jumping' ? '#00f2fe' : 'rgba(255, 255, 255, 0.2)';
+            canvasCtx.setLineDash([10, 5]);
+            canvasCtx.stroke();
+            canvasCtx.setLineDash([]);
+        }
 
-        // --- State Machine ---
+        // State Machine
         if (jumpStatusRef.current === 'standing') {
-            // Takeoff: Velocity spike UP and passing threshold
             if (displacement > jumpMinThreshold && velocityRef.current > 40) {
                 jumpStatusRef.current = 'jumping';
                 peakY.current = displacement;
                 setDisplayStatus('JUMPING');
-            } else {
-                // Drift Baseline ONLY when standing and stable
-                if (Math.abs(velocityRef.current) < 15) {
-                    baselineY.current = baselineY.current * 0.9 + currentY * 0.1;
-                }
+            } else if (Math.abs(velocityRef.current) < 15 && baselineY.current !== null) {
+                baselineY.current = baselineY.current * 0.95 + smoothY * 0.05;
             }
         } else {
-            // Track Peak
             if (displacement > peakY.current) peakY.current = displacement;
 
-            // Landing: Body starts moving DOWN (velocity < 0) or returns near baseline
             if ((velocityRef.current < -30 || displacement < jumpMinThreshold * 0.5) && !cooldownRef.current) {
-                // Success!
                 if (peakY.current > jumpMinThreshold) {
                     jumpCountRef.current += 1;
                     setJumpCount(jumpCountRef.current);
                     if ('vibrate' in navigator) navigator.vibrate(50);
                 }
-
                 jumpStatusRef.current = 'standing';
                 setDisplayStatus('READY');
                 peakY.current = 0;
                 cooldownRef.current = true;
-                setTimeout(() => { cooldownRef.current = false; }, 120); // Extreme fast cooldown
+                setTimeout(() => { cooldownRef.current = false; }, 120);
             }
         }
     }, []);
@@ -201,10 +219,15 @@ const JumpRopeCounter: React.FC = () => {
         jumpCountRef.current = 0;
         setJumpCount(0);
         baselineY.current = null;
+        emaSmoothY.current = null;
         jumpStatusRef.current = 'standing';
         setDisplayStatus('READY');
         setMovementPct(0);
         velocityRef.current = 0;
+        lastDisplacementRef.current = 0;
+        isStableRef.current = false;
+        stabilityStartRef.current = null;
+        setSetupStatus('MOVING');
     };
 
     return (
@@ -261,6 +284,18 @@ const JumpRopeCounter: React.FC = () => {
                                 <div className="text-center">
                                     <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                                     <p className="text-white/60 font-bold uppercase tracking-widest text-xs">Initializing AI...</p>
+                                </div>
+                            </div>
+                        )}
+                        {!isLoading && setupStatus !== 'READY' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+                                <div className="text-center translate-y-8">
+                                    <p className="text-cyan-400 font-black text-2xl uppercase italic animate-pulse">
+                                        {setupStatus === 'MOVING' ? 'Set up Phone...' : 'Step Back...'}
+                                    </p>
+                                    <p className="text-white/50 text-xs mt-2 uppercase tracking-widest font-bold">
+                                        Wait for camera to stabilize
+                                    </p>
                                 </div>
                             </div>
                         )}
