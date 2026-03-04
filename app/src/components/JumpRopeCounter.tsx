@@ -25,6 +25,7 @@ const JumpRopeCounter: React.FC = () => {
     const valleyY = useRef<number>(0);
     const cooldownRef = useRef(false);
     const lastNoseY = useRef<number>(0);
+    const lastNoseX = useRef<number>(0);
     const lastDisplacementRef = useRef<number>(0);
     const emaSmoothY = useRef<number | null>(null);
     const isStableRef = useRef<boolean>(false);
@@ -74,24 +75,37 @@ const JumpRopeCounter: React.FC = () => {
         // --- STABILITY & FULL BODY GUARD ---
         const isFullBody = !!(lAnkle && rAnkle);
         const noseY = nose.y * H;
-        const frameVelocity = Math.abs(lastNoseY.current - noseY) / deltaTime;
-        const isCurrentlyMoving = frameVelocity > 100; // High speed movement = phone moving or setup
+        const noseX = nose.x * W;
+        const frameVelocityY = Math.abs(lastNoseY.current - noseY) / deltaTime;
+        const frameVelocityX = Math.abs(lastNoseX.current - noseX) / deltaTime;
+
+        // Stability Guard: Mistake threshold (200px/s vertical, 80px/s horizontal)
+        const isCurrentlyMoving = frameVelocityY > 200 || frameVelocityX > 80;
         lastNoseY.current = noseY;
+        lastNoseX.current = noseX;
 
-        if (isCurrentlyMoving || !isFullBody) {
-            isStableRef.current = false;
-            stabilityStartRef.current = null;
-            setSetupStatus(!isFullBody ? 'STEP_BACK' : 'MOVING');
-            baselineY.current = noseY; // Continuously reset baseline during movement
-            setDisplayStatus('READY');
-            setMovementPct(0);
-            return;
-        }
+        // --- STABILITY LOCK LOGIC ---
+        if (isStableRef.current) {
+            // Once stable, only RESET if we lose full body or there is massive SIDEWAYS movement
+            if (!isFullBody || frameVelocityX > 150) {
+                isStableRef.current = false;
+                stabilityStartRef.current = null;
+                setSetupStatus(!isFullBody ? 'STEP_BACK' : 'MOVING');
+                baselineY.current = noseY;
+            }
+        } else {
+            // Setup Mode
+            if (isCurrentlyMoving || !isFullBody) {
+                stabilityStartRef.current = null;
+                setSetupStatus(!isFullBody ? 'STEP_BACK' : 'MOVING');
+                baselineY.current = noseY;
+                setMovementPct(0);
+                return;
+            }
 
-        if (!isStableRef.current) {
             if (stabilityStartRef.current === null) {
                 stabilityStartRef.current = now;
-            } else if (now - stabilityStartRef.current > 2000) {
+            } else if (now - stabilityStartRef.current > 1500) {
                 isStableRef.current = true;
                 setSetupStatus('READY');
             }
