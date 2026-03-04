@@ -474,7 +474,7 @@ export default function DashboardLayout() {
                                 </div>
 
                                 <div className="flex-1 min-w-0">
-                                    <p className={`text-[7px] font-black uppercase tracking-[0.2em] leading-none mb-1 ${userStatus === 'online' ? 'text-emerald-400' : userStatus === 'away' ? 'text-orange-400' : 'text-white/20'}`}>
+                                    <p className={`text-[7px] font-black uppercase tracking-[0.2em] leading-none mb-1 ${userStatus === 'online' ? 'text-emerald-400' : userStatus === 'busy' ? 'text-orange-400' : 'text-white/20'}`}>
                                         {userStatus || 'offline'}
                                     </p>
                                     <h3 className="font-extrabold text-white tracking-tight text-[11px] truncate leading-tight">
