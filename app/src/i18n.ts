@@ -445,13 +445,27 @@ i18n
                         attendanceHistory: 'Attendance History'
                     },
                     notifications: {
-                        coachCheckedIn: '{{name}} Checked In',
-                        checkedInAt: 'Checked in at {{time}}',
-                        coachCheckedOut: '{{name}} Checked Out',
-                        checkedOutAt: 'Checked out at {{time}}',
-                        ptSessionRecorded: 'PT Session Recorded',
-                        by: 'By {{name}}',
                         for: 'For {{student}}'
+                    },
+                    jumpCounter: {
+                        title: 'AI Jump Counter',
+                        subtitle: 'Stand 2-3m away • Head to toes visible',
+                        readyBadge: 'System Ready • Starts on Jump',
+                        totalJumps: 'Total Jumps',
+                        time: 'Time',
+                        jpmIntensity: 'JPM Intensity',
+                        summaryTitle: 'Workout Complete!',
+                        summaryQuoteHigh: "Amazing intensity! You're a beast!",
+                        summaryQuoteLow: 'Great session! Consistency is key.',
+                        startNew: 'START NEW SESSION',
+                        instruction1: 'Place device on a stable surface at waist height.',
+                        instruction2: 'Stand 2-3m back so your whole body is visible.',
+                        instruction3: 'Jump! AI automatically starts and counts each rep.',
+                        resetCount: 'Reset Count',
+                        freeMode: 'Free Mode',
+                        set: 'SET',
+                        min: 'Min',
+                        sec: 'Sec'
                     }
                 }
             },

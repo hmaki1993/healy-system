@@ -1,10 +1,12 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
+import { useTranslation } from 'react-i18next';
 import '../styles/JumpRope.css';
 
 const MEDIAPIPE_POSE_VERSION = '0.5.1675469404';
 
-const JumpRopeCounter: React.FC = () => {
+const JumpRopeCounter = () => {
+    const { t } = useTranslation();
     const webcamRef = useRef<Webcam>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -54,6 +56,8 @@ const JumpRopeCounter: React.FC = () => {
     const lastActivityTimeRef = useRef<number>(0);
     const workTimeRef = useRef(0);
     const restTimeRef = useRef(0);
+    const timerRemainingRef = useRef<number | null>(null);
+    const isTimerActiveRef = useRef(false);
 
     const handleVideoLoad = () => {
         setIsLoading(false);
@@ -226,9 +230,10 @@ const JumpRopeCounter: React.FC = () => {
                     if ('vibrate' in navigator) navigator.vibrate(50);
 
                     // Auto-start timer on first jump
-                    if (timerRemaining !== null && !isTimerStartedRef.current) {
+                    if (timerRemainingRef.current !== null && !isTimerStartedRef.current) {
                         isTimerStartedRef.current = true;
                         setIsTimerActive(true);
+                        isTimerActiveRef.current = true;
                         lastActivityTimeRef.current = Date.now();
                     }
                     lastActivityTimeRef.current = Date.now();
@@ -240,7 +245,7 @@ const JumpRopeCounter: React.FC = () => {
             cooldownRef.current = true;
             setTimeout(() => { cooldownRef.current = false; }, 120);
         }
-    }, [timerRemaining]);
+    }, []); // STABLE CALLBACK - NO RE-INITIALIZATION
 
     useEffect(() => {
         let active = true;
@@ -291,6 +296,8 @@ const JumpRopeCounter: React.FC = () => {
 
     useEffect(() => {
         if (isTimerActive && timerRemaining !== null && timerRemaining > 0) {
+            timerRemainingRef.current = timerRemaining;
+            isTimerActiveRef.current = true;
             timerIntervalRef.current = setInterval(() => {
                 setTimerRemaining(prev => {
                     if (prev !== null && prev > 0) {
@@ -306,13 +313,16 @@ const JumpRopeCounter: React.FC = () => {
                             setRestTime(restTimeRef.current);
                             setIntensityStatus('RESTING');
                         }
+                        timerRemainingRef.current = prev - 1;
                         return prev - 1;
                     }
+                    timerRemainingRef.current = 0;
                     return 0;
                 });
             }, 1000);
         } else if (timerRemaining === 0) {
             setIsTimerActive(false);
+            isTimerActiveRef.current = false;
             const activeMinutes = (workTimeRef.current || 1) / 60;
             setJpm(Math.round(jumpCountRef.current / activeMinutes) || 0);
             setShowSummary(true);
@@ -326,6 +336,7 @@ const JumpRopeCounter: React.FC = () => {
         const secs = mins * 60;
         setWorkoutDuration(secs);
         setTimerRemaining(secs);
+        timerRemainingRef.current = secs;
         resetCounter();
     };
 
@@ -344,6 +355,7 @@ const JumpRopeCounter: React.FC = () => {
         setSetupStatus('MOVING');
         isTimerStartedRef.current = false;
         setIsTimerActive(false);
+        isTimerActiveRef.current = false;
         setShowSummary(false);
         setWorkTime(0);
         setRestTime(0);
@@ -352,6 +364,7 @@ const JumpRopeCounter: React.FC = () => {
         lastActivityTimeRef.current = 0;
         setIntensityStatus('RESTING');
         setCustomSecs('');
+        timerRemainingRef.current = null;
     };
 
     // Robust Wheel-to-Adjust Logic (Non-passive)
@@ -391,8 +404,8 @@ const JumpRopeCounter: React.FC = () => {
     return (
         <div className="jump-counter-container animate-in fade-in duration-700">
             <div className="header-minimal">
-                <h1 className="title-gradient">AI Jump Counter</h1>
-                <p>Stand 2-3m away • Head to toes visible</p>
+                <h1 className="title-gradient">{t('jumpCounter.title')}</h1>
+                <p>{t('jumpCounter.subtitle')}</p>
             </div>
 
             <div className="video-wrapper">
@@ -475,7 +488,7 @@ const JumpRopeCounter: React.FC = () => {
                                     value={customMins}
                                     onChange={(e) => setCustomMins(e.target.value.slice(0, 2))}
                                 />
-                                <span className="clock-label">Min</span>
+                                <span className="clock-label">{t('jumpCounter.min')}</span>
                             </div>
                             <span className="clock-sep">:</span>
                             <div className="clock-input-wrapper">
@@ -487,7 +500,7 @@ const JumpRopeCounter: React.FC = () => {
                                     value={customSecs}
                                     onChange={(e) => setCustomSecs(e.target.value.slice(0, 2))}
                                 />
-                                <span className="clock-label">Sec</span>
+                                <span className="clock-label">{t('jumpCounter.sec')}</span>
                             </div>
                             <button
                                 onClick={() => {
@@ -497,12 +510,13 @@ const JumpRopeCounter: React.FC = () => {
                                     if (total > 0) {
                                         setWorkoutDuration(total);
                                         setTimerRemaining(total);
+                                        timerRemainingRef.current = total;
                                         resetCounter();
                                     }
                                 }}
                                 className="btn-set-compact"
                             >
-                                SET
+                                {t('jumpCounter.set')}
                             </button>
                         </div>
 
@@ -512,6 +526,7 @@ const JumpRopeCounter: React.FC = () => {
                             onClick={() => {
                                 setWorkoutDuration(0);
                                 setTimerRemaining(null);
+                                timerRemainingRef.current = null;
                                 resetCounter();
                                 setCustomMins('');
                                 setCustomSecs('');
@@ -521,14 +536,14 @@ const JumpRopeCounter: React.FC = () => {
                                 : 'bg-transparent border-white/5 text-white/30 hover:bg-white/5'
                                 }`}
                         >
-                            Free Mode
+                            {t('jumpCounter.freeMode')}
                         </button>
                     </div>
 
                     {timerRemaining !== null && !isTimerStartedRef.current && (
                         <div className="timer-ready-badge animate-pulse">
                             <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_8px_#00f2ff]"></span>
-                            System Ready • Starts on Jump
+                            {t('jumpCounter.readyBadge')}
                         </div>
                     )}
                 </div>
@@ -537,7 +552,7 @@ const JumpRopeCounter: React.FC = () => {
             <div className="stats-grid">
                 <div className="stat-card">
                     <span className="stat-value">{jumpCount}</span>
-                    <span className="stat-label">Total Jumps</span>
+                    <span className="stat-label">{t('jumpCounter.totalJumps')}</span>
                 </div>
                 {timerRemaining !== null && (
                     <div className={`stat-card relative ${timerRemaining < 60 && isTimerActive ? 'border-rose-500/50' : ''}`}>
@@ -547,7 +562,7 @@ const JumpRopeCounter: React.FC = () => {
                         <span className={`stat-value ${timerRemaining < 60 && isTimerActive ? 'text-rose-400' : 'text-cyan-400'}`}>
                             {Math.floor(timerRemaining / 60)}:{String(timerRemaining % 60).padStart(2, '0')}
                         </span>
-                        <span className="stat-label">Time</span>
+                        <span className="stat-label">{t('jumpCounter.time')}</span>
                     </div>
                 )}
                 <div className="stat-card relative overflow-hidden">
@@ -556,7 +571,7 @@ const JumpRopeCounter: React.FC = () => {
                         style={{ width: `${movementPct}%` }}
                     />
                     <span className="stat-value text-base">{jpm}</span>
-                    <span className="stat-label">JPM Intensity</span>
+                    <span className="stat-label">{t('jumpCounter.jpmIntensity')}</span>
                 </div>
             </div>
 
@@ -566,29 +581,29 @@ const JumpRopeCounter: React.FC = () => {
                     <div className="summary-card">
                         <div className="summary-header">
                             <span className="summary-icon">🏆</span>
-                            <h3>Workout Complete!</h3>
+                            <h3>{t('jumpCounter.summaryTitle')}</h3>
                         </div>
                         <div className="summary-stats">
                             <div className="summary-stat-item">
-                                <span className="label">Total Jumps</span>
+                                <span className="label">{t('jumpCounter.totalJumps')}</span>
                                 <span className="value text-cyan-400">{jumpCount}</span>
                             </div>
                             <div className="summary-stat-item">
-                                <span className="label">Intensity (JPM)</span>
+                                <span className="label">{t('jumpCounter.jpmIntensity')}</span>
                                 <span className="value text-amber-400">{jpm}</span>
                             </div>
                             <div className="summary-stat-item">
-                                <span className="label">Work / Rest</span>
+                                <span className="label">{t('jumpCounter.time')}</span>
                                 <span className="value text-white text-sm">
                                     <span className="text-rose-400">{Math.floor(workTime / 60)}m</span> / <span className="text-blue-400">{Math.floor(restTime / 60)}m</span>
                                 </span>
                             </div>
                         </div>
                         <p className="summary-quote">
-                            {jumpCount > 100 ? "Amazing intensity! You're a beast!" : "Great session! Consistency is key."}
+                            {jumpCount > 100 ? t('jumpCounter.summaryQuoteHigh') : t('jumpCounter.summaryQuoteLow')}
                         </p>
                         <button onClick={resetCounter} className="summary-btn">
-                            START NEW SESSION
+                            {t('jumpCounter.startNew')}
                         </button>
                     </div>
                 </div>
@@ -599,15 +614,15 @@ const JumpRopeCounter: React.FC = () => {
             <div className="instructions-glassy animate-in fade-in slide-in-from-bottom-2 duration-1000 delay-300">
                 <div className="instruction-item">
                     <span className="instruction-num">1</span>
-                    <p className="instruction-text">Place device on a stable surface at waist height.</p>
+                    <p className="instruction-text">{t('jumpCounter.instruction1')}</p>
                 </div>
                 <div className="instruction-item">
                     <span className="instruction-num">2</span>
-                    <p className="instruction-text">Stand 2-3m back so your whole body is visible.</p>
+                    <p className="instruction-text">{t('jumpCounter.instruction2')}</p>
                 </div>
                 <div className="instruction-item">
                     <span className="instruction-num">3</span>
-                    <p className="instruction-text">Jump! AI automatically starts and counts each rep.</p>
+                    <p className="instruction-text">{t('jumpCounter.instruction3')}</p>
                 </div>
             </div>
 
@@ -616,7 +631,7 @@ const JumpRopeCounter: React.FC = () => {
                     className="btn-minimal btn-secondary-minimal px-8 !text-[8px] uppercase tracking-[0.3em] !opacity-30 hover:!opacity-100"
                     onClick={resetCounter}
                 >
-                    Reset Count
+                    {t('jumpCounter.resetCount')}
                 </button>
             </div>
         </div>
