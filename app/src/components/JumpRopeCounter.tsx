@@ -22,11 +22,14 @@ const JumpRopeCounter: React.FC = () => {
     // --- Detection Refs (not state, avoids stale closures) ---
     const jumpCountRef = useRef(0);
     const jumpStatusRef = useRef<'standing' | 'jumping'>('standing');
-    const hipYHistory = useRef<number[]>([]);
+    const centroidYHistory = useRef<number[]>([]);
     const baselineY = useRef<number | null>(null);
-    const bodyHeightRef = useRef<number>(200); // px estimate, updated per frame
-    const peakY = useRef<number>(0); // highest point reached during a jump
-    const cooldownRef = useRef(false); // prevents double counting on landing
+    const bodyHeightRef = useRef<number>(200);
+    const peakY = useRef<number>(0);
+    const cooldownRef = useRef(false);
+    const lastFrameTime = useRef<number>(Date.now());
+    const velocityRef = useRef<number>(0);
+    const lastMovementTime = useRef<number>(Date.now());
 
     const handleVideoLoad = () => {
         setIsLoading(false);
@@ -50,102 +53,118 @@ const JumpRopeCounter: React.FC = () => {
 
         const W = canvasRef.current.width;
         const H = canvasRef.current.height;
+        const now = Date.now();
+        const deltaTime = (now - lastFrameTime.current) / 1000;
+        lastFrameTime.current = now;
 
         canvasCtx.clearRect(0, 0, W, H);
 
-        // Draw skeleton landmarks
-        for (const lm of results.poseLandmarks) {
-            canvasCtx.beginPath();
-            canvasCtx.arc(lm.x * W, lm.y * H, 4, 0, 2 * Math.PI);
-            canvasCtx.fillStyle = jumpStatusRef.current === 'jumping' ? '#00f2fe' : '#4affc4';
-            canvasCtx.fill();
-        }
-
         // --- Landmark indices ---
         const nose = results.poseLandmarks[0];
+        const lShoulder = results.poseLandmarks[11];
+        const rShoulder = results.poseLandmarks[12];
         const lHip = results.poseLandmarks[23];
         const rHip = results.poseLandmarks[24];
         const lAnkle = results.poseLandmarks[27];
         const rAnkle = results.poseLandmarks[28];
-        const lShoulder = results.poseLandmarks[11];
-        const rShoulder = results.poseLandmarks[12];
 
-        if (!lHip || !rHip) return;
+        if (!lShoulder || !rShoulder || !lHip || !rHip) return;
 
-        // --- Use SHOULDER midpoint — more stable & always visible ---
-        const trackingY = lShoulder && rShoulder
-            ? ((lShoulder.y + rShoulder.y) / 2) * H
-            : ((lHip.y + rHip.y) / 2) * H;
+        // --- CALC CENTROID (The Magic) ---
+        // Use an average of shoulders and hips for maximum stability
+        const centroidY = ((lShoulder.y + rShoulder.y + lHip.y + rHip.y) / 4) * H;
 
-        // Estimate body height for scaling
+        // Calibrate scale using shoulder width (distance from camera)
+        const shoulderWidth = Math.abs(lShoulder.x - rShoulder.x) * W;
+        const scaleFactor = shoulderWidth / 150; // normalized to standard distance
+
+        // Estimate body height
         if (nose && (lAnkle || rAnkle)) {
-            const ankleY = (lAnkle && rAnkle)
-                ? (lAnkle.y + rAnkle.y) / 2 * H
-                : (lAnkle?.y ?? rAnkle!.y) * H;
+            const ankleY = (lAnkle && rAnkle) ? (lAnkle.y + rAnkle.y) / 2 * H : (lAnkle?.y ?? rAnkle!.y) * H;
             bodyHeightRef.current = Math.max(100, Math.abs(ankleY - nose.y * H));
         }
+        const bodyH = bodyHeightRef.current;
 
-        // --- Smooth using rolling average ---
-        hipYHistory.current.push(trackingY);
-        if (hipYHistory.current.length > HISTORY_SIZE) hipYHistory.current.shift();
-        const smoothY = hipYHistory.current.reduce((a, b) => a + b, 0) / hipYHistory.current.length;
+        // --- Smoothing ---
+        centroidYHistory.current.push(centroidY);
+        if (centroidYHistory.current.length > 4) centroidYHistory.current.shift();
+        const smoothY = centroidYHistory.current.reduce((a, b) => a + b, 0) / centroidYHistory.current.length;
 
-        // --- Set baseline on first good reading ---
         if (baselineY.current === null) {
             baselineY.current = smoothY;
             return;
         }
 
-        // Upward movement = hips rise = Y decreases (canvas coords)
+        // --- Analytics ---
         const displacement = baselineY.current - smoothY; // positive = up
-        const bodyH = bodyHeightRef.current;
+        const newVelocity = (displacement - peakY.current) / deltaTime; // relative velocity
+        velocityRef.current = velocityRef.current * 0.7 + newVelocity * 0.3; // low-pass filter
 
-        // Jump threshold: 4% of body height (rope jumps are smaller and faster)
+        // Dynamic thresholds based on scale and body height
         const jumpThreshold = bodyH * 0.04;
-        // Landing threshold: come back within 2% of baseline
-        const landThreshold = bodyH * 0.02;
+        const landThreshold = bodyH * 0.015;
 
-        // Movement bar — show as 0-100% relative to 20% body height = "full jump"
-        const pct = Math.max(0, Math.min(100, (displacement / (bodyH * 0.20)) * 100));
+        // Movement meter
+        const pct = Math.max(0, Math.min(100, (displacement / (bodyH * 0.15)) * 100));
         setMovementPct(Math.round(pct));
+
+        // Auto-reset baseline if idle
+        if (Math.abs(newVelocity) < 5) {
+            if (now - lastMovementTime.current > 2000) {
+                baselineY.current = smoothY;
+                lastMovementTime.current = now;
+            }
+        } else {
+            lastMovementTime.current = now;
+        }
+
+        // --- Draw Visual Feedback ---
+        // 1. Skeleton
+        for (const lm of results.poseLandmarks) {
+            canvasCtx.beginPath();
+            canvasCtx.arc(lm.x * W, lm.y * H, 3, 0, 2 * Math.PI);
+            canvasCtx.fillStyle = jumpStatusRef.current === 'jumping' ? '#00f2fe' : '#4affc4';
+            canvasCtx.fill();
+        }
+
+        // 2. The "Jump Line"
+        canvasCtx.beginPath();
+        canvasCtx.moveTo(0, baselineY.current - jumpThreshold);
+        canvasCtx.lineTo(W, baselineY.current - jumpThreshold);
+        canvasCtx.strokeStyle = jumpStatusRef.current === 'jumping' ? 'rgba(0, 242, 254, 0.5)' : 'rgba(74, 255, 196, 0.2)';
+        canvasCtx.lineWidth = 2;
+        canvasCtx.setLineDash([10, 5]);
+        canvasCtx.stroke();
+        canvasCtx.setLineDash([]);
 
         // --- State Machine ---
         if (jumpStatusRef.current === 'standing') {
-            // Slow drift baseline when user is near ground level
-            if (Math.abs(displacement) < jumpThreshold * 0.5) {
-                baselineY.current = baselineY.current * 0.97 + smoothY * 0.03;
-            }
-
-            // Detect TAKEOFF
-            if (displacement > jumpThreshold && !cooldownRef.current) {
+            // Predict takeoff via velocity + displacement
+            if (displacement > jumpThreshold && velocityRef.current > 50) {
                 jumpStatusRef.current = 'jumping';
                 peakY.current = displacement;
                 setDisplayStatus('JUMPING');
+            } else if (Math.abs(displacement) < landThreshold) {
+                // Micro-adjust baseline while standing
+                baselineY.current = baselineY.current * 0.98 + smoothY * 0.02;
             }
         } else {
-            // Track highest point of jump
-            if (displacement > peakY.current) {
-                peakY.current = displacement;
-            }
+            if (displacement > peakY.current) peakY.current = displacement;
 
-            // Detect LANDING — body returns close to baseline AND we reached a real peak
-            if (displacement < landThreshold && peakY.current > jumpThreshold) {
+            // Detect landing via return to baseline or negative velocity
+            if (displacement < landThreshold && !cooldownRef.current) {
                 jumpStatusRef.current = 'standing';
                 setDisplayStatus('READY');
 
-                // Count the jump
-                jumpCountRef.current += 1;
-                setJumpCount(jumpCountRef.current);
+                if (peakY.current > jumpThreshold) {
+                    jumpCountRef.current += 1;
+                    setJumpCount(jumpCountRef.current);
+                    if ('vibrate' in navigator) navigator.vibrate(50);
+                }
 
-                // Vibrate on landing
-                if ('vibrate' in navigator) navigator.vibrate(60);
-
-                // Cooldown 300ms to prevent double-count (faster for rope)
+                peakY.current = 0;
                 cooldownRef.current = true;
-                setTimeout(() => { cooldownRef.current = false; }, 300);
-
-                // Reset baseline to current landing position
-                baselineY.current = smoothY;
+                setTimeout(() => { cooldownRef.current = false; }, 200);
             }
         }
     }, []);
@@ -203,10 +222,11 @@ const JumpRopeCounter: React.FC = () => {
         jumpCountRef.current = 0;
         setJumpCount(0);
         baselineY.current = null;
-        hipYHistory.current = [];
+        centroidYHistory.current = [];
         jumpStatusRef.current = 'standing';
         setDisplayStatus('READY');
         setMovementPct(0);
+        velocityRef.current = 0;
     };
 
     return (
