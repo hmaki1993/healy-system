@@ -15,6 +15,11 @@ const JumpRopeCounter: React.FC = () => {
     const [aiStatus, setAiStatus] = useState<'initializing' | 'live' | 'error'>('initializing');
     const [displayStatus, setDisplayStatus] = useState<'READY' | 'JUMPING'>('READY');
     const [movementPct, setMovementPct] = useState(0);
+    const [timerRemaining, setTimerRemaining] = useState<number | null>(null);
+    const [isTimerActive, setIsTimerActive] = useState(false);
+    const [showSummary, setShowSummary] = useState(false);
+    const [workoutDuration, setWorkoutDuration] = useState<number>(0);
+    const [jpm, setJpm] = useState(0);
 
     // --- Detection Refs (Optimized for Speed) ---
     const jumpCountRef = useRef(0);
@@ -35,6 +40,8 @@ const JumpRopeCounter: React.FC = () => {
     const [setupStatus, setSetupStatus] = useState<'MOVING' | 'STEP_BACK' | 'READY'>('MOVING');
     const velocityRef = useRef<number>(0);
     const lastFrameTime = useRef<number>(Date.now());
+    const isTimerStartedRef = useRef(false);
+    const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     const handleVideoLoad = () => {
         setIsLoading(false);
@@ -205,6 +212,12 @@ const JumpRopeCounter: React.FC = () => {
                     jumpCountRef.current += 1;
                     setJumpCount(jumpCountRef.current);
                     if ('vibrate' in navigator) navigator.vibrate(50);
+
+                    // Auto-start timer on first jump
+                    if (timerRemaining !== null && !isTimerStartedRef.current) {
+                        isTimerStartedRef.current = true;
+                        setIsTimerActive(true);
+                    }
                 }
                 jumpStatusRef.current = 'standing';
                 setDisplayStatus('READY');
@@ -260,7 +273,30 @@ const JumpRopeCounter: React.FC = () => {
             active = false;
             if (pose?.close) pose.close();
         };
-    }, [onResults]);
+    }, [onResults]); // Added onResults to dependency array
+
+    useEffect(() => {
+        if (isTimerActive && timerRemaining !== null && timerRemaining > 0) {
+            timerIntervalRef.current = setInterval(() => {
+                setTimerRemaining(prev => (prev !== null && prev > 0) ? prev - 1 : 0);
+            }, 1000);
+        } else if (timerRemaining === 0) {
+            setIsTimerActive(false);
+            const totalMinutes = (workoutDuration || 60) / 60; // Added default for workoutDuration
+            setJpm(Math.round(jumpCountRef.current / totalMinutes) || 0);
+            setShowSummary(true);
+        }
+        return () => {
+            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+        };
+    }, [isTimerActive, timerRemaining, workoutDuration]);
+
+    const handleSetDuration = (mins: number) => {
+        const secs = mins * 60;
+        setWorkoutDuration(secs);
+        setTimerRemaining(secs);
+        resetCounter();
+    };
 
     const resetCounter = () => {
         jumpCountRef.current = 0;
@@ -275,6 +311,9 @@ const JumpRopeCounter: React.FC = () => {
         isStableRef.current = false;
         stabilityStartRef.current = null;
         setSetupStatus('MOVING');
+        isTimerStartedRef.current = false;
+        setIsTimerActive(false);
+        setShowSummary(false);
     };
 
     return (
@@ -350,11 +389,46 @@ const JumpRopeCounter: React.FC = () => {
                 )}
             </div>
 
+            {/* Timer Selection */}
+            {!isTimerActive && !isTimerStartedRef.current && !showSummary && (
+                <div className="flex justify-center gap-2 mb-4 overflow-x-auto py-2 px-4 no-scrollbar">
+                    {[1, 5, 10, 20].map(mins => (
+                        <button
+                            key={mins}
+                            onClick={() => handleSetDuration(mins)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${workoutDuration === mins * 60
+                                ? 'bg-cyan-500 border-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                                : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                                }`}
+                        >
+                            {mins} MIN
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => { setWorkoutDuration(0); setTimerRemaining(null); resetCounter(); }}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${workoutDuration === 0
+                            ? 'bg-white/20 border-white/30 text-white'
+                            : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                            }`}
+                    >
+                        FREE
+                    </button>
+                </div>
+            )}
+
             <div className="stats-grid">
                 <div className="stat-card">
                     <span className="stat-value">{jumpCount}</span>
                     <span className="stat-label">Total Jumps</span>
                 </div>
+                {timerRemaining !== null && (
+                    <div className={`stat-card ${timerRemaining < 60 && isTimerActive ? 'animate-pulse border-rose-500/50' : ''}`}>
+                        <span className={`stat-value ${timerRemaining < 60 && isTimerActive ? 'text-rose-400' : 'text-amber-400'}`}>
+                            {Math.floor(timerRemaining / 60)}:{String(timerRemaining % 60).padStart(2, '0')}
+                        </span>
+                        <span className="stat-label">Time Remaining</span>
+                    </div>
+                )}
                 <div className="stat-card relative overflow-hidden">
                     <div
                         className={`absolute bottom-0 left-0 h-1.5 transition-all duration-75 rounded-full ${movementPct > 70 ? 'bg-cyan-400' : 'bg-primary'}`}
@@ -364,6 +438,38 @@ const JumpRopeCounter: React.FC = () => {
                     <span className="stat-label">Status</span>
                 </div>
             </div>
+
+            {/* Completion Summary Modal */}
+            {showSummary && (
+                <div className="summary-overlay">
+                    <div className="summary-card">
+                        <div className="summary-header">
+                            <span className="summary-icon">🏆</span>
+                            <h3>Workout Complete!</h3>
+                        </div>
+                        <div className="summary-stats">
+                            <div className="summary-stat-item">
+                                <span className="label">Total Jumps</span>
+                                <span className="value text-cyan-400">{jumpCount}</span>
+                            </div>
+                            <div className="summary-stat-item">
+                                <span className="label">Avg Jumps/Min</span>
+                                <span className="value text-amber-400">{jpm}</span>
+                            </div>
+                            <div className="summary-stat-item">
+                                <span className="label">Duration</span>
+                                <span className="value">{workoutDuration / 60}m</span>
+                            </div>
+                        </div>
+                        <p className="summary-quote">
+                            {jumpCount > 100 ? "Amazing intensity! You're a beast!" : "Great session! Consistency is key."}
+                        </p>
+                        <button onClick={resetCounter} className="summary-btn">
+                            START NEW SESSION
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="w-full bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
                 <p className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-1">Sensitivity Meter</p>
