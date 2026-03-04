@@ -85,10 +85,10 @@ const JumpRopeCounter: React.FC = () => {
         const frameVelocityX = Math.abs(lastNoseX.current - noseX) / deltaTime;
         const scaleVelocity = (shoulderW - lastShoulderWidth.current) / deltaTime;
 
-        // Final Precision thresholds: 30% screen coverage or 80px/s forward speed
-        const isTooClose = shoulderW > (W * 0.30);
-        const isApproaching = scaleVelocity > 80;
-        const isCurrentlyMoving = frameVelocityY > 300 || frameVelocityX > 150 || isApproaching;
+        // Balanced Pro-Level thresholds: 38% coverage or 180px/s forward speed
+        const isTooClose = shoulderW > (W * 0.38);
+        const isApproaching = scaleVelocity > 180;
+        const isCurrentlyMoving = frameVelocityY > 400 || frameVelocityX > 200 || isApproaching;
 
         lastNoseY.current = noseY;
         lastNoseX.current = noseX;
@@ -96,30 +96,34 @@ const JumpRopeCounter: React.FC = () => {
 
         // --- STABLE PERSISTENCE LOGIC ---
         if (isStableRef.current) {
-            // Immediate Stability RESET for proximity or approach to kill false counts
+            // Balanced Approach Guard: Needs 0.6s persistent proximity to reset
             if (isTooClose || isApproaching) {
-                isStableRef.current = false;
-                stabilityStartRef.current = null;
-                peakY.current = 0; // Hard-stop: Kill any pending jump peak
-                setSetupStatus('STEP_BACK');
-                return;
-            }
-
-            const essentialTrackingLost = !hasAura || (!lAnkle && !rAnkle);
-            const massiveLateralMovement = frameVelocityX > 400;
-
-            if (essentialTrackingLost || massiveLateralMovement) {
                 if (trackingLossStartRef.current === null) {
                     trackingLossStartRef.current = now;
-                } else if (now - trackingLossStartRef.current > 1000) {
+                } else if (now - trackingLossStartRef.current > 600) {
                     isStableRef.current = false;
                     stabilityStartRef.current = null;
-                    setSetupStatus(!isFullBody ? 'STEP_BACK' : 'MOVING');
+                    peakY.current = 0;
+                    setSetupStatus('STEP_BACK');
                     return;
                 }
             } else {
                 trackingLossStartRef.current = null;
                 setSetupStatus('READY');
+            }
+
+            const essentialTrackingLost = !hasAura || (!lAnkle && !rAnkle);
+            const massiveLateralMovement = frameVelocityX > 500;
+
+            if (essentialTrackingLost || massiveLateralMovement) {
+                if (trackingLossStartRef.current === null) {
+                    trackingLossStartRef.current = now;
+                } else if (now - trackingLossStartRef.current > 1200) {
+                    isStableRef.current = false;
+                    stabilityStartRef.current = null;
+                    setSetupStatus(!isFullBody ? 'STEP_BACK' : 'MOVING');
+                    return;
+                }
             }
         } else {
             // Setup Mode
@@ -196,8 +200,8 @@ const JumpRopeCounter: React.FC = () => {
             if (displacement > peakY.current) peakY.current = displacement;
 
             if ((velocityRef.current < -30 || displacement < jumpMinThreshold * 0.5) && !cooldownRef.current) {
-                // Success! Block if user is already pushing forward even slightly
-                if (peakY.current > jumpMinThreshold && scaleVelocity < 40) {
+                // Success! Block if user is already pushing forward for real
+                if (peakY.current > jumpMinThreshold && scaleVelocity < 100) {
                     jumpCountRef.current += 1;
                     setJumpCount(jumpCountRef.current);
                     if ('vibrate' in navigator) navigator.vibrate(50);
