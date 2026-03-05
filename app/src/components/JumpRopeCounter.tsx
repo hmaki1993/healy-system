@@ -351,7 +351,7 @@ const JumpRopeCounter = () => {
         resetCounter();
     };
 
-    const resetCounter = () => {
+    const resetCounter = (preserveTimer: boolean = false) => {
         jumpCountRef.current = 0;
         setJumpCount(0);
         baselineY.current = null;
@@ -374,8 +374,15 @@ const JumpRopeCounter = () => {
         restTimeRef.current = 0;
         lastActivityTimeRef.current = 0;
         setIntensityStatus('RESTING');
-        setCustomSecs('');
-        timerRemainingRef.current = null;
+
+        // Only clear timer state if NOT preserving (e.g., clicking general reset)
+        if (!preserveTimer) {
+            setTimerRemaining(null);
+            timerRemainingRef.current = null;
+            setWorkoutDuration(0);
+            setCustomMins('');
+            setCustomSecs('');
+        }
     };
 
     // Robust Wheel-to-Adjust Logic (Non-passive)
@@ -519,10 +526,10 @@ const JumpRopeCounter = () => {
                                     const s = parseInt(customSecs || '0');
                                     const total = (m * 60) + s;
                                     if (total > 0) {
+                                        resetCounter(true); // Reset count but keep logic
                                         setWorkoutDuration(total);
                                         setTimerRemaining(total);
                                         timerRemainingRef.current = total;
-                                        resetCounter();
                                     }
                                 }}
                                 className="btn-set-compact"
@@ -565,17 +572,34 @@ const JumpRopeCounter = () => {
                     <span className="stat-value">{jumpCount}</span>
                     <span className="stat-label">{t('jumpCounter.totalJumps')}</span>
                 </div>
-                {timerRemaining !== null && (
-                    <div className={`stat-card relative ${timerRemaining < 60 && isTimerActive ? 'border-rose-500/50' : ''}`}>
-                        <div className={`absolute top-2 right-2 ${intensityStatus === 'WORKING' ? 'working-pill animate-pulse' : 'resting-pill'} !text-[7px]`}>
-                            {intensityStatus}
-                        </div>
-                        <span className={`stat-value ${timerRemaining < 60 && isTimerActive ? 'text-rose-400' : 'text-cyan-400'}`}>
-                            {Math.floor(timerRemaining / 60)}:{String(timerRemaining % 60).padStart(2, '0')}
-                        </span>
-                        <span className="stat-label">{t('jumpCounter.time')}</span>
+                <div className={`stat-card relative ${timerRemaining !== null && timerRemaining < 60 && isTimerActive ? 'border-rose-500/50' : ''}`}>
+                    <div className={`absolute top-2 right-2 ${intensityStatus === 'WORKING' ? 'working-pill animate-pulse' : 'resting-pill'} !text-[7px]`}>
+                        {intensityStatus}
                     </div>
-                )}
+                    <div className="flex flex-col items-center">
+                        <span className={`stat-value ${timerRemaining !== null && timerRemaining < 60 && isTimerActive ? 'text-rose-400' : 'text-cyan-400'}`}>
+                            {timerRemaining !== null ? (
+                                `${Math.floor(timerRemaining / 60)}:${String(timerRemaining % 60).padStart(2, '0')}`
+                            ) : (
+                                `${Math.floor((workTime + restTime) / 60)}:${String((workTime + restTime) % 60).padStart(2, '0')}`
+                            )}
+                        </span>
+
+                        {(workTime > 0 || restTime > 0) && (
+                            <div className="flex gap-4 mt-1 opacity-60">
+                                <div className="flex items-center gap-1">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_5px_rgba(244,63,94,0.5)]"></div>
+                                    <span className="text-[9px] font-black text-white/50">{Math.floor(workTime / 60)}m {workTime % 60}s</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.5)]"></div>
+                                    <span className="text-[9px] font-black text-white/50">{Math.floor(restTime / 60)}m {restTime % 60}s</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <span className="stat-label">{timerRemaining !== null ? t('jumpCounter.time') : t('jumpCounter.elapsed')}</span>
+                </div>
                 <div className="stat-card relative overflow-hidden">
                     <div
                         className={`absolute bottom-0 left-0 h-1 transition-all duration-700 ${movementPct > 70 ? 'bg-cyan-400' : 'bg-white/10'}`}
@@ -613,7 +637,7 @@ const JumpRopeCounter = () => {
                         <p className="summary-quote">
                             {jumpCount > 100 ? t('jumpCounter.summaryQuoteHigh') : t('jumpCounter.summaryQuoteLow')}
                         </p>
-                        <button onClick={resetCounter} className="summary-btn">
+                        <button onClick={() => resetCounter()} className="summary-btn">
                             {t('jumpCounter.startNew')}
                         </button>
                     </div>
@@ -640,7 +664,7 @@ const JumpRopeCounter = () => {
             <div className="w-full flex justify-center">
                 <button
                     className="btn-minimal btn-secondary-minimal px-8 !text-[8px] uppercase tracking-[0.3em] !opacity-30 hover:!opacity-100"
-                    onClick={resetCounter}
+                    onClick={() => resetCounter()}
                 >
                     {t('jumpCounter.resetCount')}
                 </button>
