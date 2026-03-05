@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import { useTranslation } from 'react-i18next';
 import '../styles/JumpRope.css';
+import { supabase } from '../lib/supabase';
 
 const MEDIAPIPE_POSE_VERSION = '0.5.1675469404';
 
@@ -9,6 +10,67 @@ const JumpRopeCounter = () => {
     const { t } = useTranslation();
     const webcamRef = useRef<Webcam>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyError, setHistoryError] = useState<string | null>(null);
+
+    const fetchHistory = async () => {
+        setHistoryLoading(true);
+        setHistoryError(null);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data, error: sbError } = await supabase
+                .from('jump_sessions')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            if (sbError) throw sbError;
+            if (data) setHistory(data);
+        } catch (error: any) {
+            console.error('Error fetching history:', error);
+            setHistoryError(error.message || 'Failed to load history');
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    // --- Save Session ---
+    const saveSession = async () => {
+        if (jumpCountRef.current === 0 || isSaving) return;
+
+        setIsSaving(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const totalTime = workTimeRef.current + restTimeRef.current;
+            const finalJpm = totalTime > 0 ? Math.round((jumpCountRef.current / (workTimeRef.current / 60)) || 0) : 0;
+
+            const { error } = await supabase
+                .from('jump_sessions')
+                .insert({
+                    user_id: user.id,
+                    jump_count: jumpCountRef.current,
+                    work_time: workTimeRef.current,
+                    rest_time: restTimeRef.current,
+                    jpm: finalJpm,
+                    date: new Date().toISOString().split('T')[0]
+                });
+
+            if (error) throw error;
+
+            // Refresh history after save
+            fetchHistory();
+        } catch (error) {
+            console.error('Error saving session:', error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     // --- Core State ---
     const [jumpCount, setJumpCount] = useState(0);
@@ -24,6 +86,9 @@ const JumpRopeCounter = () => {
     const [jpm, setJpm] = useState(0);
     const [workTime, setWorkTime] = useState(0);
     const [restTime, setRestTime] = useState(0);
+    const [history, setHistory] = useState<any[]>([]);
+    const [showHistory, setShowHistory] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [intensityStatus, setIntensityStatus] = useState<'WORKING' | 'RESTING'>('RESTING');
     const [customMins, setCustomMins] = useState('');
     const [customSecs, setCustomSecs] = useState('');
@@ -250,6 +315,10 @@ const JumpRopeCounter = () => {
     }, []); // STABLE CALLBACK - NO RE-INITIALIZATION
 
     useEffect(() => {
+        fetchHistory(); // Fetch history on component mount
+    }, []);
+
+    useEffect(() => {
         let active = true;
         let pose: any = null;
 
@@ -326,6 +395,7 @@ const JumpRopeCounter = () => {
                     if (nextValue === 0) {
                         setIsTimerActive(false);
                         isTimerActiveRef.current = false;
+                        saveSession(); // Call saveSession when timer ends
                         const activeMinutes = (workTimeRef.current || 1) / 60;
                         setJpm(Math.round(jumpCountRef.current / activeMinutes) || 0);
                         setShowSummary(true);
@@ -421,9 +491,17 @@ const JumpRopeCounter = () => {
 
     return (
         <div className="jump-counter-container animate-in fade-in duration-700">
-            <div className="header-minimal">
-                <h1 className="title-gradient">{t('jumpCounter.title')}</h1>
-                <p>{t('jumpCounter.subtitle')}</p>
+            <div className="flex items-center gap-3">
+                <div className="header-minimal">
+                    <p>{t('jumpCounter.subtitle')}</p>
+                    <h1 className="title-gradient">{t('jumpCounter.title')}</h1>
+                </div>
+                <button
+                    onClick={() => setShowHistory(!showHistory)}
+                    className={`btn-minimal !py-1 !px-3 !text-[9px] border-white/10 ${showHistory ? 'bg-cyan-400 !text-black' : 'bg-white/5 text-white/40'}`}
+                >
+                    {showHistory ? t('jumpCounter.hideHistory') : t('jumpCounter.showHistory')}
+                </button>
             </div>
 
             <div className="video-wrapper">
@@ -610,6 +688,54 @@ const JumpRopeCounter = () => {
                 </div>
             </div>
 
+            {/* --- History Overlay --- */}
+            {showHistory && (
+                <div className="w-full mt-4 glass-panel p-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/5">
+                        <h3 className="text-[10px] font-black tracking-widest text-white/50 uppercase">{t('jumpCounter.historyTitle')}</h3>
+                    </div>
+
+                    <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto px-1 custom-scroll">
+                        {historyLoading ? (
+                            <div className="flex flex-col items-center py-12 gap-2">
+                                <div className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                                <span className="text-[8px] text-white/20 uppercase tracking-[0.2em]">{t('common.loading')}</span>
+                            </div>
+                        ) : historyError ? (
+                            <div className="text-center py-8">
+                                <p className="text-[9px] text-rose-400/70 font-bold mb-1 uppercase tracking-wider">Database Error</p>
+                                <p className="text-[8px] text-white/20 leading-relaxed max-w-[200px] mx-auto">Make sure you ran the SQL script in Supabase.</p>
+                                <button onClick={() => fetchHistory()} className="mt-3 text-[8px] text-cyan-400 font-black uppercase hover:underline">Retry</button>
+                            </div>
+                        ) : history.length === 0 ? (
+                            <p className="text-center py-8 text-[10px] text-white/20 uppercase tracking-widest">{t('jumpCounter.noHistory')}</p>
+                        ) : (
+                            history.map((session) => (
+                                <div key={session.id} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-colors">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-[10px] font-bold text-white/70">{new Date(session.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                        <div className="flex gap-2">
+                                            <span className="text-[8px] working-pill !px-2 !py-0.5">{session.jump_count} {t('jumpCounter.jumps')}</span>
+                                            <span className="text-[8px] bg-white/5 text-white/40 border border-white/10 px-2 py-0.5 rounded-full">{session.jpm} {t('jumpCounter.jpm')}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-3 text-right">
+                                        <div className="flex flex-col">
+                                            <span className="text-[7px] uppercase text-white/30">{t('jumpCounter.work')}</span>
+                                            <span className="text-[9px] font-mono font-bold text-rose-400">{Math.floor(session.work_time / 60)}:{String(session.work_time % 60).padStart(2, '0')}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[7px] uppercase text-white/30">{t('jumpCounter.rest')}</span>
+                                            <span className="text-[9px] font-mono font-bold text-blue-400">{Math.floor(session.rest_time / 60)}:{String(session.rest_time % 60).padStart(2, '0')}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Completion Summary Modal */}
             {showSummary && (
                 <div className="summary-overlay">
@@ -637,8 +763,15 @@ const JumpRopeCounter = () => {
                         <p className="summary-quote">
                             {jumpCount > 100 ? t('jumpCounter.summaryQuoteHigh') : t('jumpCounter.summaryQuoteLow')}
                         </p>
-                        <button onClick={() => resetCounter()} className="summary-btn">
-                            {t('jumpCounter.startNew')}
+                        <button
+                            onClick={async () => {
+                                await saveSession();
+                                resetCounter();
+                            }}
+                            className="summary-btn"
+                            disabled={isSaving}
+                        >
+                            {isSaving ? t('common.saving') : t('jumpCounter.startNew')}
                         </button>
                     </div>
                 </div>

@@ -465,7 +465,16 @@ i18n
                         freeMode: 'Free Mode',
                         set: 'SET',
                         min: 'Min',
-                        sec: 'Sec'
+                        sec: 'Sec',
+                        historyTitle: 'Recent Sessions',
+                        showHistory: 'Show History',
+                        hideHistory: 'Hide History',
+                        noHistory: 'No sessions recorded yet',
+                        date: 'Date',
+                        jumps: 'Jumps',
+                        work: 'Work',
+                        rest: 'Rest',
+                        jpm: 'JPM'
                     }
                 }
             },
@@ -893,6 +902,38 @@ i18n
                         subscriptionAdded: 'تم إضافة الاشتراك بنجاح',
                         ptGymnast: 'حضور PT الجيمناستيك',
                         attendanceHistory: 'سجل الحضور'
+                    },
+                    notifications: {
+                        for: 'لـ {{student}}'
+                    },
+                    jumpCounter: {
+                        title: 'عداد النط بالذكاء الاصطناعي',
+                        subtitle: 'قف على بعد 2-3 متر • جسمك بالكامل ظاهر',
+                        readyBadge: 'النظام جاهز • يبدأ عند القفز',
+                        totalJumps: 'إجمالي النطات',
+                        time: 'الوقت',
+                        jpmIntensity: 'شدة القفز/دقيقة',
+                        summaryTitle: 'اكتمل التمرين!',
+                        summaryQuoteHigh: 'كفو يا بطل! استمر على هذا المنوال!',
+                        summaryQuoteLow: 'عاش! الاستمرارية هي سر النجاح.',
+                        startNew: 'بدء جلسة جديدة',
+                        instruction1: 'ضع الجهاز على سطح مستقر في مستوى الخصر.',
+                        instruction2: 'قف للخلف 2-3 متر حتى يظهر جسمك بالكامل.',
+                        instruction3: 'ابدأ النط! سيقوم الذكاء الاصطناعي بالعد تلقائياً.',
+                        resetCount: 'إعادة العداد',
+                        freeMode: 'الوضع الحر',
+                        set: 'ضبط',
+                        min: 'دقيقة',
+                        sec: 'ثانية',
+                        historyTitle: 'السجلات الأخيرة',
+                        showHistory: 'عرض السجل',
+                        hideHistory: 'إخفاء السجل',
+                        noHistory: 'لا توجد جلسات مسجلة بعد',
+                        date: 'التاريخ',
+                        jumps: 'النطات',
+                        work: 'تمرين',
+                        rest: 'راحة',
+                        jpm: 'نطة/د'
                     }
                 }
             }

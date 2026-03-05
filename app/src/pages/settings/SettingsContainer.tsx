@@ -330,6 +330,7 @@ export default function Settings() {
     }, []);
 
     const themes = [
+        // Premium Dark Themes
         { id: 'elite', name: 'Elite Red', primary: '#A30000', secondary: '#0B120F', bg: '#0B120F', accent: '#A30000', surface: '#151f1ccc', hover: '#A3000080', input: '#070D0B', font: 'Cairo' },
         { id: 'midnight', name: 'Midnight', primary: '#818cf8', secondary: '#1e293b', bg: '#0f172a', accent: '#c084fc', surface: '#1e293bb3', hover: '#818cf880', input: '#0f172a' },
         { id: 'noguchi', name: 'Noguchi Pink', primary: '#ff096c', secondary: '#192731', bg: '#192731', accent: '#ff096c', surface: '#2a3843b3', hover: '#ff096c80', input: '#111d26' },
@@ -343,7 +344,14 @@ export default function Settings() {
         { id: 'forest', name: 'Forest', primary: '#84cc16', secondary: '#14532d', bg: '#052e16', accent: '#34d399', surface: '#14532db3', hover: '#84cc1680', input: '#042211' },
         { id: 'lavender', name: 'Lavender', primary: '#d8b4fe', secondary: '#4c1d95', bg: '#2e1065', accent: '#818cf8', surface: '#4c1d95b3', hover: '#d8b4fe80', input: '#210b4a' },
         { id: 'coffee', name: 'Coffee', primary: '#d4a373', secondary: '#281b15', bg: '#1a0f0a', accent: '#faedcd', surface: '#281b15b3', hover: '#d4a37380', input: '#1a110d' },
-        { id: 'shoqata', name: 'Shoqata', primary: '#1a2937', secondary: '#e3e4e4', bg: '#e3e4e4', accent: '#344351', surface: '#bbbdbeb3', hover: '#1a293780', input: '#ffffff' },
+
+        // Premium Light Themes
+        { id: 'aurora', name: 'Aurora Light', primary: '#6366f1', secondary: '#f8fafc', bg: '#f8fafc', accent: '#8b5cf6', surface: '#ffffffcc', hover: '#6366f133', input: '#ffffff', text_base: '#0f172a', text_muted: '#475569', font: 'Cairo' },
+        { id: 'frost', name: 'Frost White', primary: '#0ea5e9', secondary: '#f1f5f9', bg: '#f1f5f9', accent: '#38bdf8', surface: '#ffffffcc', hover: '#0ea5e933', input: '#ffffff', text_base: '#0f172a', text_muted: '#64748b', font: 'Cairo' },
+        { id: 'mint', name: 'Mint Fresh', primary: '#10b981', secondary: '#f0fdf4', bg: '#f0fdf4', accent: '#34d399', surface: '#ffffffcc', hover: '#10b98133', input: '#ffffff', text_base: '#064e3b', text_muted: '#047857', font: 'Cairo' },
+        { id: 'blossom', name: 'Blossom Pink', primary: '#f43f5e', secondary: '#fff1f2', bg: '#fff1f2', accent: '#fb7185', surface: '#ffffffcc', hover: '#f43f5e33', input: '#ffffff', text_base: '#4c0519', text_muted: '#881337', font: 'Cairo' },
+        { id: 'sand', name: 'Desert Sand', primary: '#d97706', secondary: '#fefce8', bg: '#fefce8', accent: '#f59e0b', surface: '#ffffffcc', hover: '#d9770633', input: '#ffffff', text_base: '#451a03', text_muted: '#78350f', font: 'Cairo' },
+        { id: 'shoqata-light', name: 'Shoqata White', primary: '#1a2937', secondary: '#f4f4f5', bg: '#f4f4f5', accent: '#344351', surface: '#ffffffcc', hover: '#1a293733', input: '#ffffff', text_base: '#18181b', text_muted: '#52525b', font: 'Cairo' },
     ];
 
     const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('theme') || 'midnight');

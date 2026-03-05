@@ -2174,10 +2174,17 @@ export default function Communications() {
     // ─── Load all users for new chat ──────────────────────────────────────────────
     useEffect(() => {
         const load = async () => {
-            const { data: profiles } = await supabase
+            let query = supabase
                 .from('profiles')
                 .select('id, full_name, role, avatar_url, last_seen, is_in_chat')
                 .neq('id', currentUserId || '');
+
+            // Privacy: Students can only see coaches and admins
+            if (userProfile?.role === 'student') {
+                query = query.in('role', ['admin', 'head_coach', 'coach']);
+            }
+
+            const { data: profiles } = await query;
 
             if (!profiles) return;
 
@@ -2516,7 +2523,7 @@ export default function Communications() {
 
     // ─── Render ────────────────────────────────────────────────────────────────────
     return (
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#0E1D21] z-0 touch-none h-full" style={{ overscrollBehavior: 'none' }}>
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background z-0 touch-none h-full" style={{ overscrollBehavior: 'none' }}>
             <div className="flex-1 flex overflow-hidden touch-auto h-full">
 
                 {/* ── Image Editor Overlay ── */}
@@ -2889,7 +2896,7 @@ export default function Communications() {
 
                 {/* ─────────────── CENTER: Chat Window ─────────────── */}
                 {activeConvo ? (
-                    <div className="flex-1 flex flex-col min-w-0 bg-[#0E1D21]">
+                    <div className="flex-1 flex flex-col min-w-0 bg-background">
 
                         {/* Chat header */}
                         <div className={`sticky top-0 z-20 flex items-center justify-between px-5 border-b border-white/5 transition-all duration-300 bg-background/50 backdrop-blur-xl flex-shrink-0 safe-area-h-header`}>
@@ -2940,7 +2947,7 @@ export default function Communications() {
 
                             {/* Selection Actions Overlay */}
                             {selectedMessageIds.size > 0 && (
-                                <div className="absolute inset-0 bg-[#0E1D21] z-20 flex items-center justify-between px-4 md:px-6 animate-in fade-in duration-200">
+                                <div className="absolute inset-0 bg-background z-20 flex items-center justify-between px-4 md:px-6 animate-in fade-in duration-200">
                                     <div className="flex items-center gap-3">
                                         <button
                                             onClick={() => setSelectedMessageIds(new Set())}

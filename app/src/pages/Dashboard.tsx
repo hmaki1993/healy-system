@@ -9,6 +9,7 @@ import CoachDashboard from './CoachDashboard';
 import HeadCoachDashboard from './HeadCoachDashboard';
 import ReceptionDashboard from './ReceptionDashboard';
 import CleanerDashboard from './CleanerDashboard';
+import StudentDashboard from './StudentDashboard';
 import LiveStudentsWidget from '../components/LiveStudentsWidget';
 import GroupsList from '../components/GroupsList';
 import BatchAssessmentModal from '../components/BatchAssessmentModal';
@@ -55,6 +56,11 @@ export default function Dashboard() {
     // Show Cleaner Dashboard
     if (role === 'cleaner') {
         return <CleanerDashboard />;
+    }
+
+    // Show Student Dashboard
+    if (role === 'student') {
+        return <StudentDashboard />;
     }
 
     // If Admin or any other role, continue to show the main admin dashboard stats below

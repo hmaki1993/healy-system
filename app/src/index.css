@@ -300,6 +300,16 @@ input[type=number] {
   }
 }
 
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+
+  to {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}
+
 .animate-premium-in {
   animation: premium-fade-in 0.3s cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }

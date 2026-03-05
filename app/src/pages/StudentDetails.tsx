@@ -9,7 +9,10 @@ import {
     XCircle,
     ArrowLeft,
     Clock,
-    MessageSquare
+    MessageSquare,
+    Shield,
+    Key,
+    UserPlus
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -132,6 +135,50 @@ export default function StudentDetails() {
                             <p className="text-white/50 text-xs font-bold uppercase tracking-wider">Absent Days</p>
                             <h3 className="text-2xl font-black text-white">{stats.absent}</h3>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Portal Access Card */}
+            <div className="glass-card p-8 rounded-[2.5rem] border border-white/10 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                    <div className="flex items-center gap-6">
+                        <div className={`w-16 h-16 rounded-[2rem] flex items-center justify-center ${student.user_id ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-white/20'}`}>
+                            <Shield className="w-8 h-8" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+                                Portal Access
+                                {student.user_id ? (
+                                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">Active</span>
+                                ) : (
+                                    <span className="text-[10px] bg-white/5 text-white/40 px-2 py-0.5 rounded-full border border-white/10">Disabled</span>
+                                )}
+                            </h2>
+                            <p className="text-white/40 text-sm font-medium">
+                                {student.user_id
+                                    ? 'Student can log in to view their performance and chat with you.'
+                                    : 'Grant this student access to their own portal to track sessions and chat.'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {student.user_id ? (
+                            <div className="flex items-center gap-3 px-6 py-3 bg-white/5 rounded-2xl border border-white/10">
+                                <Key className="w-4 h-4 text-emerald-400" />
+                                <span className="text-xs font-black text-white/60 tracking-widest uppercase">Account Linked</span>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => navigate('/register', { state: { prefill: { email: student.email, full_name: student.full_name, student_id: student.id, role: 'student' } } })}
+                                className="flex items-center gap-3 px-8 py-4 bg-primary text-white rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-primary/20 hover:scale-105 transition-all"
+                            >
+                                <UserPlus className="w-5 h-5" />
+                                Create Portal Access
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

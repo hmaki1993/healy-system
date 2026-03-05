@@ -1,14 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Lock, Mail, Loader2, User, Globe, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export default function Register() {
-    const [fullName, setFullName] = useState('');
-    const [email, setEmail] = useState('');
+    const location = useLocation();
+    const prefill = location.state?.prefill || {};
+
+    const [fullName, setFullName] = useState(prefill.full_name || '');
+    const [email, setEmail] = useState(prefill.email || '');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState<'admin' | 'coach'>('coach'); // Default to coach
+    const [role, setRole] = useState<'admin' | 'coach' | 'student'>(prefill.role || 'coach');
+    const [studentId, setStudentId] = useState<string | null>(prefill.student_id || null);
+    const [ptId, setPtId] = useState<string | null>(prefill.pt_id || null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
@@ -20,36 +25,27 @@ export default function Register() {
         setError(null);
 
         try {
-            // 1. Sign up with auto-confirm (no email verification needed)
+            // 1. Sign up with metadata for the trigger
             const { data, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
                     data: {
                         full_name: fullName,
-                        role: role, // Add role to metadata
+                        role: role,
+                        student_id: studentId,
+                        pt_id: ptId,
                     },
-                    emailRedirectTo: undefined, // Disable email confirmation
                 },
             });
 
             if (signUpError) throw signUpError;
 
-            // 2. If signup successful, automatically sign in
+            // 2. If signup successful
             if (data.user) {
-                // 2.5 Create a profile record (CRITICAL: Dashboard depends on this)
-                const { error: profileError } = await supabase.from('profiles').insert({
-                    id: data.user.id,
-                    full_name: fullName,
-                    email: email,
-                    role: role,
-                });
-
-                if (profileError) {
-                    console.error('Error creating profile:', profileError);
-                    // We don't throw here to avoid blocking sign-in, 
-                    // but the user might have empty dashboard until fixed
-                }
+                // Notice: We removed the manual insert to 'profiles' here
+                // because the database trigger 'handle_new_user' handles it automatically
+                // and more safely.
 
                 const { error: signInError } = await supabase.auth.signInWithPassword({
                     email,
@@ -58,7 +54,10 @@ export default function Register() {
 
                 if (signInError) throw signInError;
 
-                // 3. If role is coach, create a record in the coaches table
+                // 3. For students, the trigger handles the linking to students table, 
+                // but we also need to ensure the profile exists (already handled by insert above)
+
+                // 4. If role is coach, create a record in the coaches table
                 if (role === 'coach') {
                     const { error: coachError } = await supabase.from('coaches').insert({
                         id: data.user.id,
@@ -193,11 +192,12 @@ export default function Register() {
                                 <div className="relative group/role">
                                     <select
                                         value={role}
-                                        onChange={(e) => setRole(e.target.value as 'admin' | 'coach')}
+                                        onChange={(e) => setRole(e.target.value as 'admin' | 'coach' | 'student')}
                                         className="w-full px-8 py-4 bg-white/5 border border-white/10 rounded-[2rem] text-white focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/50 transition-all font-bold text-lg tracking-tight appearance-none cursor-pointer pr-16"
                                     >
                                         <option value="coach" className="bg-slate-900">Coach / مدرب</option>
                                         <option value="admin" className="bg-slate-900">Admin / مدير</option>
+                                        <option value="student" className="bg-slate-900">Student / متدرب</option>
                                     </select>
                                     <div className="absolute inset-y-0 right-8 flex items-center pointer-events-none opacity-40 group-hover/role:opacity-100 transition-opacity">
                                         <ChevronDown className="w-6 h-6 text-white" />

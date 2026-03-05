@@ -26,6 +26,7 @@ interface Coach {
 interface Student {
     id: string;
     full_name: string;
+    email?: string;
 }
 
 export default function AddPTSubscriptionForm({ onClose, onSuccess, editData, role }: AddPTSubscriptionFormProps) {
@@ -46,7 +47,8 @@ export default function AddPTSubscriptionForm({ onClose, onSuccess, editData, ro
         expiry_date: editData?.expiry_date || format(addMonths(new Date(), 12), 'yyyy-MM-dd'),
         price: editData?.total_price || '',
         coach_share: editData?.coach_share || '',
-        student_phone: editData?.student_phone || ''
+        student_phone: editData?.student_phone || '',
+        student_email: editData?.student_email || ''
     });
 
     const selectedCoach = coaches.find(c => c.id === formData.coach_id);
@@ -91,7 +93,7 @@ export default function AddPTSubscriptionForm({ onClose, onSuccess, editData, ro
     const fetchStudents = async () => {
         const { data, error } = await supabase
             .from('students')
-            .select('id, full_name')
+            .select('id, full_name, email')
             .order('full_name');
 
         if (error) {
@@ -143,6 +145,7 @@ export default function AddPTSubscriptionForm({ onClose, onSuccess, editData, ro
                 price_per_session: totalPrice / totalSessions,
                 coach_share: Number(formData.coach_share) || 0,
                 student_phone: formData.student_phone,
+                student_email: formData.student_email,
                 status: 'active'
             };
 
@@ -217,19 +220,19 @@ export default function AddPTSubscriptionForm({ onClose, onSuccess, editData, ro
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
             {/* Ultra-Neutral Backdrop */}
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-1000"
                 onClick={onClose}
             />
 
-            <div className="w-full max-w-2xl bg-black/60 backdrop-blur-3xl rounded-[3rem] border border-white/5 shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-700 relative flex flex-col max-h-[90vh]">
+            <div className="w-full max-w-2xl bg-[#0a0c10] bg-opacity-95 backdrop-blur-3xl rounded-[2rem] sm:rounded-[3rem] border border-white/5 shadow-[0_50px_100px_rgba(0,0,0,0.9)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-12 duration-700 relative flex flex-col max-h-[100%] sm:max-h-[95vh] h-auto">
                 {/* Dynamic Glass Shimmer */}
                 <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent pointer-events-none"></div>
 
                 {/* Header Section */}
-                <div className="relative z-10 px-8 pt-10 pb-6 border-b border-white/5 flex-shrink-0">
+                <div className="relative z-10 px-6 sm:px-8 pt-6 sm:pt-10 pb-4 sm:pb-6 border-b border-white/5 flex-shrink-0">
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
                             <h2 className="text-xl font-black text-white tracking-widest uppercase mb-1 drop-shadow-lg leading-tight">
@@ -249,7 +252,7 @@ export default function AddPTSubscriptionForm({ onClose, onSuccess, editData, ro
                 </div>
 
                 {/* Compact Form Body */}
-                <form onSubmit={handleSubmit} className="relative z-10 px-8 py-4 space-y-4 flex-1">
+                <form onSubmit={handleSubmit} className="relative z-10 px-6 sm:px-8 pt-4 pb-8 space-y-4 flex-1 overflow-y-auto min-h-0 custom-scrollbar">
 
                     {/* Mode Toggle & Student Selection */}
                     <div className="space-y-4">
@@ -285,7 +288,10 @@ export default function AddPTSubscriptionForm({ onClose, onSuccess, editData, ro
                                     <PremiumSelect
                                         required
                                         value={formData.student_id}
-                                        onChange={val => setFormData({ ...formData, student_id: val })}
+                                        onChange={val => {
+                                            const student = students.find(s => s.id === val);
+                                            setFormData({ ...formData, student_id: val, student_email: student?.email || '' });
+                                        }}
                                         options={[
                                             { value: "", label: t('pt.chooseAthlete') },
                                             ...students.map(s => ({ value: s.id, label: s.full_name }))
@@ -305,6 +311,18 @@ export default function AddPTSubscriptionForm({ onClose, onSuccess, editData, ro
                                     value={formData.student_phone}
                                     onChange={(e) => setFormData({ ...formData, student_phone: e.target.value })}
                                     className="w-full px-5 py-2.5 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-[10px] font-bold"
+                                />
+                            </div>
+
+                            {/* Email */}
+                            <div className="space-y-2 group/field">
+                                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 ml-1 group-focus-within/field:text-primary transition-colors">Email Address (Optional)</label>
+                                <input
+                                    type="email"
+                                    value={formData.student_email}
+                                    onChange={(e) => setFormData({ ...formData, student_email: e.target.value })}
+                                    className="w-full px-5 py-2.5 bg-white/[0.02] border border-white/5 rounded-2xl focus:border-primary/40 outline-none transition-all text-white text-[10px] font-bold"
+                                    placeholder="For login access"
                                 />
                             </div>
 
@@ -398,18 +416,18 @@ export default function AddPTSubscriptionForm({ onClose, onSuccess, editData, ro
                 </form>
 
                 {/* Footer Section - Single Premium Button */}
-                <div className="relative z-10 px-8 py-8 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-6">
+                <div className="relative z-10 px-6 sm:px-8 py-4 sm:py-6 border-t border-white/5 flex-shrink-0 flex items-center justify-between gap-4 sm:gap-6 bg-[#0a0c10]/95 backdrop-blur-xl">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-6 py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 whitespace-nowrap"
+                        className="px-4 sm:px-6 py-3 sm:py-4 text-[9px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white transition-all duration-500 whitespace-nowrap"
                     >
                         Discard
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
-                        className="flex-1 py-4 rounded-3xl bg-white text-black hover:bg-white/90 transition-all duration-500 shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
+                        className="flex-1 py-3 sm:py-4 rounded-2xl sm:rounded-3xl bg-white text-black hover:bg-white/90 transition-all duration-500 shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 flex items-center justify-center group/btn overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
                     >
                         {loading ? (
                             <span className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Processing...</span>

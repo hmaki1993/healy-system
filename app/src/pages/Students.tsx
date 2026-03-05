@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { debounce } from 'lodash';
 import { supabase } from '../lib/supabase';
-import { Plus, Search, X, Smile, Edit, Trash2, TrendingUp, User as UserIcon, Calendar, RefreshCw, Users, FileSpreadsheet, Filter, ChevronDown, Check, FileText } from 'lucide-react';
+import { Plus, Search, X, Smile, Edit, Trash2, TrendingUp, User as UserIcon, Calendar, RefreshCw, Users, FileSpreadsheet, Filter, ChevronDown, Check, FileText, UserPlus } from 'lucide-react';
 import { differenceInDays, format } from 'date-fns';
 import AddStudentForm from '../components/AddStudentForm';
 import AddPTSubscriptionForm from '../components/AddPTSubscriptionForm';
@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { useStudents, useCoaches, useGroups } from '../hooks/useData';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../context/CurrencyContext';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import GymnastProfileModal from '../components/GymnastProfileModal';
 import PremiumCheckbox from '../components/PremiumCheckbox';
 import MonthlyReportModal from '../components/MonthlyReportModal';
@@ -216,6 +216,7 @@ const StudentRow = memo(({
 export default function Students() {
     const { t } = useTranslation();
     const { currency } = useCurrency();
+    const navigate = useNavigate();
     const { role, userId } = useOutletContext<{ role: string, userId: string }>() || { role: null, userId: null };
     const { data: studentsData, isLoading: loading, refetch } = useStudents();
     const students = studentsData || [];
@@ -358,7 +359,7 @@ export default function Students() {
             .from('pt_subscriptions')
             .select(`
                 *,
-                students(id, full_name),
+                students(id, full_name, email),
                 coaches(id, full_name)
             `)
             .order('status', { ascending: true })
@@ -545,6 +546,27 @@ export default function Students() {
                                     <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-[100px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
 
                                     <div className="absolute top-2 right-4 flex gap-1.5 z-20" onClick={(e) => e.stopPropagation()}>
+                                        {/* Create Portal: Admin/Coach, if guest/student has email but no user_id */}
+                                        {(role === 'admin' || role === 'head_coach' || role === 'coach') && subscription.student_email && !subscription.user_id && (
+                                            <button
+                                                onClick={() => navigate('/register', {
+                                                    state: {
+                                                        prefill: {
+                                                            email: subscription.student_email,
+                                                            full_name: subscription.student_name || subscription.students?.full_name,
+                                                            student_id: subscription.student_id,
+                                                            pt_id: subscription.id,
+                                                            role: 'student'
+                                                        }
+                                                    }
+                                                })}
+                                                className="p-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg border border-primary/20 transition-all hover:scale-110 active:scale-95 shadow-lg shadow-primary/10"
+                                                title="Create Portal Access"
+                                            >
+                                                <UserPlus className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+
                                         {/* Renew: Admin only */}
                                         {role === 'admin' && (
                                             <button
@@ -610,6 +632,11 @@ export default function Students() {
                                                         >
                                                             {subscription.student_name && !subscription.students ? t('pt.guestStudent') : t('pt.academyStudent')}
                                                         </span>
+                                                        {subscription.student_email && (
+                                                            <span className="text-[7px] font-black text-white/30 truncate max-w-[100px]" title={subscription.student_email}>
+                                                                {subscription.student_email}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -688,20 +715,23 @@ export default function Students() {
                                             <div className="flex-1 max-w-[110px] md:max-w-[130px]">
                                                 {(() => {
                                                     const isExpired = new Date(subscription.expiry_date) < new Date() || subscription.status === 'expired' || subscription.sessions_remaining <= 0;
-                                                    return isExpired ? (
-                                                        <div className="group/status flex items-center gap-1.5 md:gap-2.5 p-2 md:p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-lg md:rounded-xl hover:bg-rose-500/20 transition-all cursor-help" title={t('pt.renewalRequired')}>
-                                                            <div className="w-6 h-6 md:w-7 md:h-7 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-500 shadow-xl shadow-rose-500/10 relative">
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping absolute"></div>
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-rose-500 relative z-10"></div>
+                                                    if (isExpired) {
+                                                        return (
+                                                            <div className="group/status flex items-center gap-1.5 md:gap-2.5 p-2 md:p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-lg md:rounded-xl hover:bg-rose-500/20 transition-all cursor-help" title={t('pt.renewalRequired')}>
+                                                                <div className="w-6 h-6 md:w-7 md:h-7 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-500 shadow-xl shadow-rose-500/10 relative">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping absolute"></div>
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 relative z-10"></div>
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-[7px] md:text-[8px] font-black text-rose-500 uppercase tracking-wide md:tracking-wider truncate leading-tight">
+                                                                        {(subscription.sessions_remaining <= 0 || subscription.status === 'expired') ? t('pt.outOfSessions') : t('pt.expired')}
+                                                                    </p>
+                                                                    <p className="text-[6px] md:text-[7px] font-black text-rose-400/30 uppercase mt-0.5 truncate hidden md:block">{t('pt.renewalRequired')}</p>
+                                                                </div>
                                                             </div>
-                                                            <div className="min-w-0">
-                                                                <p className="text-[7px] md:text-[8px] font-black text-rose-500 uppercase tracking-wide md:tracking-wider truncate leading-tight">
-                                                                    {(subscription.sessions_remaining <= 0 || subscription.status === 'expired') ? t('pt.outOfSessions') : t('pt.expired')}
-                                                                </p>
-                                                                <p className="text-[6px] md:text-[7px] font-black text-rose-400/30 uppercase mt-0.5 truncate hidden md:block">{t('pt.renewalRequired')}</p>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
+                                                        )
+                                                    }
+                                                    return (
                                                         <div className="flex items-center gap-1.5 md:gap-2.5 p-2 md:p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg md:rounded-xl transition-all">
                                                             <div className="w-6 h-6 md:w-7 md:h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-xl shadow-emerald-500/10 relative">
                                                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse absolute"></div>
@@ -712,7 +742,7 @@ export default function Students() {
                                                                 <p className="text-[6px] md:text-[6.5px] font-black text-emerald-400/30 uppercase mt-0.5 truncate hidden md:block">Active</p>
                                                             </div>
                                                         </div>
-                                                    );
+                                                    )
                                                 })()}
                                             </div>
                                         </div>
@@ -1056,10 +1086,10 @@ export default function Students() {
                                                 <button
                                                     onClick={() => toggleStudentStatus(student.id, student.is_active)}
                                                     className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all duration-300 shadow-sm whitespace-nowrap ${!student.is_active
-                                                            ? 'bg-rose-500/10 border-rose-500/20 text-rose-500 shadow-lg shadow-rose-500/10'
-                                                            : subscriptionStatus.label === t('students.active')
-                                                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500 shadow-lg shadow-emerald-500/10'
-                                                                : 'bg-amber-500/10 border-amber-500/20 text-amber-500 shadow-lg shadow-amber-500/10'
+                                                        ? 'bg-rose-500/10 border-rose-500/20 text-rose-500 shadow-lg shadow-rose-500/10'
+                                                        : subscriptionStatus.label === t('students.active')
+                                                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500 shadow-lg shadow-emerald-500/10'
+                                                            : 'bg-amber-500/10 border-amber-500/20 text-amber-500 shadow-lg shadow-amber-500/10'
                                                         }`}
                                                 >
                                                     {!student.is_active ? t('common.inactive') : subscriptionStatus.label}
@@ -1220,33 +1250,39 @@ export default function Students() {
                 onSuccess={() => refetch()}
             />
 
-            {viewingProfileStudent && (
-                <GymnastProfileModal
-                    student={viewingProfileStudent}
-                    onClose={() => setViewingProfileStudent(null)}
-                />
-            )}
-            {studentForReport && (
-                <MonthlyReportModal
-                    isOpen={showReportModal}
-                    onClose={() => {
-                        setShowReportModal(false);
-                        setStudentForReport(null);
-                    }}
-                    student={studentForReport}
-                    currentUserRole={role}
-                />
-            )}
-            {showHistoryModal && selectedSub && (
-                <PremiumCalendarModal
-                    subscriptionId={selectedSub.id}
-                    studentName={selectedSub.students?.full_name || selectedSub.student_name || 'Student'}
-                    onClose={() => {
-                        setShowHistoryModal(false);
-                        setSelectedSub(null);
-                    }}
-                />
-            )}
-        </div >
+            {
+                viewingProfileStudent && (
+                    <GymnastProfileModal
+                        student={viewingProfileStudent}
+                        onClose={() => setViewingProfileStudent(null)}
+                    />
+                )
+            }
+            {
+                studentForReport && (
+                    <MonthlyReportModal
+                        isOpen={showReportModal}
+                        onClose={() => {
+                            setShowReportModal(false);
+                            setStudentForReport(null);
+                        }}
+                        student={studentForReport}
+                        currentUserRole={role}
+                    />
+                )
+            }
+            {
+                showHistoryModal && selectedSub && (
+                    <PremiumCalendarModal
+                        subscriptionId={selectedSub.id}
+                        studentName={selectedSub.students?.full_name || selectedSub.student_name || 'Student'}
+                        onClose={() => {
+                            setShowHistoryModal(false);
+                            setSelectedSub(null);
+                        }}
+                    />
+                )
+            }
+        </div>
     );
 }
