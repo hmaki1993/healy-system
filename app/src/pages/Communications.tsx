@@ -3493,8 +3493,6 @@ export default function Communications() {
                                         {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
                                     </button>
 
-                                    {/* Voice recorder */}
-                                    <VoiceRecorder onRecordingComplete={sendVoiceNote} />
                                 </div>
 
                                 {/* Text input container - Single layer pill - Glassy */}
@@ -3515,18 +3513,24 @@ export default function Communications() {
                                     />
                                 </div>
 
-                                {/* External Send Button */}
-                                <button
-                                    type="submit"
-                                    disabled={!text.trim() || isSending}
-                                    className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent hover:from-primary/90 hover:to-accent/90 disabled:from-white/5 disabled:to-white/5 disabled:border-white/5 disabled:text-white/10 text-white flex items-center justify-center transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 active:scale-90 flex-shrink-0 border border-white/10 group hover:scale-110"
-                                >
-                                    {isSending ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                {/* External Dynamic Button (Send or Record) */}
+                                <div className="flex-shrink-0 pb-1">
+                                    {text.trim() ? (
+                                        <button
+                                            type="submit"
+                                            disabled={isSending}
+                                            className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent hover:from-primary/90 hover:to-accent/90 disabled:from-white/5 disabled:to-white/5 disabled:border-white/5 disabled:text-white/10 text-white flex items-center justify-center transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 active:scale-90 flex-shrink-0 border border-white/10 group hover:scale-110 animate-premium-in"
+                                        >
+                                            {isSending ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <Send className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                            )}
+                                        </button>
                                     ) : (
-                                        <Send className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                        <VoiceRecorder onRecordingComplete={sendVoiceNote} />
                                     )}
-                                </button>
+                                </div>
                             </form>
                         </div>
                     </div>
