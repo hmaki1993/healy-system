@@ -259,7 +259,7 @@ export default function HeadCoachDashboard() {
                 {/* Trend Chart Card */}
                 <div
                     onClick={() => navigate('/app/finance')}
-                    className="glass-card p-6 sm:p-10 rounded-[3rem] border border-white/10 shadow-premium relative overflow-hidden bg-white/[0.01] cursor-pointer hover:bg-white/[0.03] transition-colors group"
+                    className="glass-card p-6 sm:p-10 rounded-[3rem] border border-white/10 shadow-premium relative overflow-hidden bg-white/[0.01] cursor-pointer transition-colors group"
                 >
                     <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-4">

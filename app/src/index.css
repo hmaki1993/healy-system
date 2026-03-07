@@ -22,8 +22,10 @@
   --color-input-bg: #0a0a0a;
 
   /* Precise Pastel Accent Tokens from Reference - Dynamic */
-  --color-pastel-mint: color-mix(in srgb, var(--color-primary, #10b981) 15%, white);
-  --color-pastel-yellow: color-mix(in srgb, var(--color-primary, #10b981) 15%, white);
+  --color-pastel-mint: color-mix(in srgb, var(--color-primary, #10b981) 12%, #fff);
+  --color-pastel-yellow: color-mix(in srgb, var(--color-accent, #34d399) 12%, #fff);
+  --color-pastel-coral: color-mix(in srgb, var(--color-primary, #10b981) 15%, var(--color-accent) 5%, #fff);
+  --color-pastel-blue: color-mix(in srgb, var(--color-accent, #34d399) 15%, var(--color-primary) 5%, #fff);
 
   --shadow-premium: 0 40px 80px -20px rgba(0, 0, 0, 0.8);
   --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
@@ -32,9 +34,9 @@
   /* Ultra-Rounded */
   --glass-opacity: 0.1;
   /* Theme Aware Variables */
-  --color-text-base: var(--color-text-base);
-  --color-text-muted: var(--color-text-muted);
-  --color-surface-border: var(--color-surface-border);
+  --color-text-base: #f8fafc;
+  --color-text-muted: rgba(255, 255, 255, 0.6);
+  --color-surface-border: rgba(255, 255, 255, 0.08);
 }
 
 :root {
@@ -67,17 +69,17 @@ body {
   PREMIUM UTILITIES 
 */
 .glass-card {
-  background: rgba(255, 255, 255, 0.03) !important;
+  background: var(--color-surface) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--color-hover-border) !important;
   border-radius: var(--radius) !important;
   box-shadow: var(--shadow-premium) !important;
   transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .no-border-card {
-  background: rgba(255, 255, 255, 0.03) !important;
+  background: var(--color-surface) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: none !important;
@@ -94,22 +96,98 @@ body {
 }
 
 .glass-card:hover {
-  background: rgba(255, 255, 255, 0.05) !important;
+  filter: brightness(1.1);
   transform: translateY(-2px);
+  background-color: var(--color-hover) !important;
+  box-shadow: 0 0 30px 10px color-mix(in srgb, var(--color-hover), transparent 70%) !important;
 }
 
 .pastel-card {
-  border-radius: var(--radius) !important;
+  border-radius: 2.5rem !important;
+  /* Harmonized with var(--radius) */
   padding: 2rem !important;
   transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
   color: #000000 !important;
   position: relative;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
 }
 
 .pastel-card:hover {
   transform: translateY(-6px) rotate(0.5deg);
   filter: brightness(1.02);
+  box-shadow: 0 0 30px 10px color-mix(in srgb, var(--color-hover), transparent 70%) !important;
+}
+
+/* 
+  DYNAMIC THEME OVERRIDES 
+  Ensures that hardcoded Tailwind glass classes respond to Palette Editor
+*/
+.bg-white\/3,
+.bg-white\/5,
+.bg-white\/10,
+.bg-white\/20,
+.bg-white\/\[0\.03\],
+.bg-white\/\[0\.05\],
+.bg-secondary-color,
+.hover\:bg-white\/5:hover,
+.hover\:bg-white\/10:hover,
+.hover\:bg-white\/20:hover {
+  background-color: var(--color-surface) !important;
+}
+
+/* For actual hover states, use var(--color-hover) */
+.hover\:bg-white\/5:hover,
+.hover\:bg-white\/10:hover,
+.hover\:bg-white\/20:hover,
+.hover\:bg-primary\/10:hover,
+.hover\:bg-white\/\[0\.02\]:hover,
+.hover\:bg-white\/\[0\.03\]:hover,
+.hover\:bg-white\/\[0\.05\]:hover,
+.group:hover .group-hover\:bg-white\/10,
+.group:hover .group-hover\:bg-white\/\[0\.05\] {
+  background-color: var(--color-hover) !important;
+}
+
+.border-white\/3,
+.border-white\/5,
+.border-white\/10,
+.border-white\/20,
+.border-white\/\[0\.05\],
+.border-white\/\[0\.08\],
+.hover\:border-white\/10:hover,
+.hover\:border-white\/20:hover {
+  border-color: var(--color-hover-border) !important;
+}
+
+/* 
+  PREMIUM HOVER EFFECTS 
+*/
+.hover-glow {
+  transition: all 0.3s ease;
+}
+
+.hover-glow:hover {
+  background-color: var(--color-hover) !important;
+  box-shadow: 0 0 20px color-mix(in srgb, var(--color-hover), transparent 50%) !important;
+}
+
+.hover-border:hover {
+  border-color: var(--color-hover-border) !important;
+}
+
+.pastel-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.pastel-card:hover::before {
+  opacity: 1;
 }
 
 .pastel-mint {
@@ -397,20 +475,24 @@ input[type=number] {
   border-radius: 9999px;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   background: transparent !important;
-  color: var(--color-text-muted);
+  color: var(--color-menu-icon, white) !important;
 }
 
 .nav-icon-container.active {
-  width: 1.75rem;
-  height: 1.75rem;
-  background-color: var(--color-primary) !important;
-  color: white;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 30%, transparent);
+  background: transparent !important;
+  color: var(--color-primary) !important;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary) 60%, transparent));
+  transform: scale(1.15);
+}
+
+.nav-icon-container svg {
+  color: inherit !important;
+  fill: none !important;
 }
 
 .nav-icon-container:hover:not(.active) {
   background: transparent !important;
-  color: var(--color-text-base);
+  color: var(--color-menu-icon, white) !important;
   transform: scale(1.1);
 }
 
@@ -534,36 +616,6 @@ input[type=number] {
     transform: translateY(0) scale(1);
     opacity: 1;
   }
-}
-
-/* Dashboard Stat Cards */
-.pastel-card {
-  border-radius: 2rem;
-  padding: 1.5rem;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
-  position: relative;
-  overflow: hidden;
-}
-
-.pastel-card:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.1);
-  filter: brightness(1.02);
-}
-
-.pastel-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), transparent);
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-
-.pastel-card:hover::before {
-  opacity: 1;
 }
 
 /* Global Login Glass Effect */

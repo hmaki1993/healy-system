@@ -39,6 +39,9 @@ export default function DashboardLayout() {
     const location = useLocation();
     const navigate = useNavigate();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [isHoveringSidebar, setIsHoveringSidebar] = useState(false);
+    const isChatView = location.pathname.includes('/communications');
+    const isSidebarRevealed = !isChatView || isHoveringSidebar;
 
     // Derived states from unified userProfile
     const userId = userProfile?.id || null; // Wait, I didn't add id to userProfile in ThemeContext. I should.
@@ -501,8 +504,21 @@ export default function DashboardLayout() {
                 />
             )}
 
+            {/* Hover Trigger Area for Chat View */}
+            {isChatView && (
+                <div
+                    className={`fixed inset-y-0 ${isRtl ? 'right-0' : 'left-0'} w-4 z-[45] pointer-events-auto`}
+                    onMouseEnter={() => setIsHoveringSidebar(true)}
+                />
+            )}
+
             {/* Sidebar Container */}
-            <aside className={`fixed inset-y-0 ${isRtl ? 'right-0' : 'left-0'} z-50 w-16 lg:w-20 bg-background/80 lg:bg-background backdrop-blur-2xl lg:backdrop-blur-none transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : isRtl ? 'translate-x-[110%]' : '-translate-x-full'}`} style={{ top: 0, height: '100%' }}>
+            <aside
+                onMouseEnter={() => setIsHoveringSidebar(true)}
+                onMouseLeave={() => setIsHoveringSidebar(false)}
+                className={`fixed inset-y-0 ${isRtl ? 'right-0' : 'left-0'} z-50 w-16 lg:w-20 bg-background/80 lg:bg-background backdrop-blur-2xl lg:backdrop-blur-none transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] transform ${isSidebarRevealed || sidebarOpen ? 'translate-x-0' : isRtl ? 'translate-x-full' : '-translate-x-full'}`}
+                style={{ top: 0, height: '100%' }}
+            >
                 <div className="h-full flex flex-col relative">
                     {/* Sidebar Header - Compact Logo */}
                     <div className="pt-4 pb-4 text-center">
@@ -514,7 +530,7 @@ export default function DashboardLayout() {
                             <img
                                 src={settings.logo_url || "/logo.png"}
                                 alt="Logo"
-                                className="relative z-10 h-14 w-14 object-contain rounded-full shadow-2xl transition-all hover:scale-105 duration-500 mx-auto cursor-pointer mix-blend-screen"
+                                className="relative z-10 h-24 w-24 object-contain transition-all hover:scale-105 duration-500 mx-auto cursor-pointer mix-blend-screen"
                             />
                         </button>
                     </div>
@@ -536,7 +552,10 @@ export default function DashboardLayout() {
                                         onMouseEnter={playHoverSound}
                                         className={`relative group flex items-center justify-center transition-all duration-300 ${isActive ? 'scale-105' : ''}`}
                                     >
-                                        <div className={`nav-icon-container ${isActive ? 'active' : isSettings ? 'settings-icon-dim' : ''}`}>
+                                        <div
+                                            className={`nav-icon-container ${isActive ? 'active' : ''} ${isSettings && !isActive ? 'bg-white/[0.03] backdrop-blur-md border border-white/[0.05] shadow-lg hover:bg-white/10 hover:border-white/20' : ''}`}
+                                            style={{ color: 'var(--color-menu-icon)' }}
+                                        >
                                             <Icon className="w-4 h-4" />
                                         </div>
 
@@ -578,7 +597,7 @@ export default function DashboardLayout() {
             </aside>
 
             {/* Main Content Area */}
-            <div className={`flex-1 flex flex-col min-w-0 h-[100dvh] transition-all duration-500 ${isRtl ? 'lg:mr-20' : 'lg:ml-20'}`}>
+            <div className={`flex-1 flex flex-col min-w-0 h-[100dvh] transition-all duration-500 ${isChatView && !isHoveringSidebar ? 'lg:m-0' : (isRtl ? 'lg:mr-20' : 'lg:ml-20')}`}>
                 {/* Header - Branding */}
                 {!location.pathname.includes('/communications') && (
                     <header className={`relative z-30 w-full pt-4 lg:pt-0 px-4 sm:px-6 lg:px-0 flex flex-col items-center lg:items-stretch`}>
@@ -601,23 +620,23 @@ export default function DashboardLayout() {
                             {/* Center Section - Premium Search Bar (Hidden on Mobile) */}
                             <div className="hidden lg:flex flex-1 justify-center px-4">
                                 <div className="w-full max-w-md group/search relative" ref={searchRef}>
-                                    <div className="flex items-center w-full px-0 py-2 bg-transparent transition-all duration-500">
-                                        <div className="flex items-center gap-3 ml-4">
-                                            <Search className={`w-3.5 h-3.5 ${isSearching ? 'text-primary animate-pulse' : 'text-white/20 group-focus-within/search:text-white/40'} transition-colors shrink-0`} strokeWidth={2} />
+                                    <div className="flex items-center gap-3 w-full px-0 py-2 transition-all duration-500">
+                                        <Search className={`w-3.5 h-3.5 ${isSearching ? 'text-primary animate-pulse' : 'text-white/20 group-focus-within/search:text-white/40'} transition-colors shrink-0`} strokeWidth={2.5} />
+                                        <div className="flex-1 flex items-center px-4 py-2 bg-white/[0.03] border border-white/5 rounded-xl group-focus-within/search:bg-white/[0.06] group-focus-within/search:border-white/10 transition-all duration-300">
                                             <input
                                                 type="text"
                                                 value={searchTerm}
                                                 onChange={(e) => setSearchTerm(e.target.value)}
                                                 onFocus={() => searchTerm.trim() && setShowResults(true)}
-                                                placeholder={t('dashboard.searchPlaceholder', 'Search for anything')}
-                                                className="bg-transparent border-none focus:ring-0 text-[10px] font-medium text-white placeholder:text-white/10 w-full text-left pl-0 h-auto"
+                                                placeholder=""
+                                                className="bg-transparent border-none focus:ring-0 text-[10px] font-medium text-white placeholder:text-white/10 w-full text-left p-0 h-auto"
                                             />
+                                            {searchTerm && (
+                                                <button onClick={() => setSearchTerm('')} className="ml-2 p-1 hover:bg-white/10 rounded-full transition-colors flex-shrink-0">
+                                                    <X className="w-3 h-3 text-white/20 hover:text-white" />
+                                                </button>
+                                            )}
                                         </div>
-                                        {searchTerm && (
-                                            <button onClick={() => setSearchTerm('')} className="p-1 hover:bg-white/10 rounded-full transition-colors">
-                                                <X className="w-3 h-3 text-white/20 hover:text-white" />
-                                            </button>
-                                        )}
                                     </div>
                                 </div>
                             </div>

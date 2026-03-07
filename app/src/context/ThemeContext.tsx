@@ -21,6 +21,7 @@ export interface GymSettings {
     hover_color?: string;
     hover_border_color?: string;
     input_bg_color?: string;
+    menu_icon_color?: string;
     clock_position?: 'dashboard' | 'header' | 'none';
     clock_integration?: boolean;
     weather_integration?: boolean;
@@ -134,6 +135,7 @@ export const applySettingsToRoot = (settings: GymSettings) => {
     root.style.setProperty('--color-hover', settings.hover_color || 'rgba(16, 185, 129, 0.8)');
     root.style.setProperty('--color-hover-border', settings.hover_border_color || 'rgba(16, 185, 129, 0.3)');
     root.style.setProperty('--color-input-bg', settings.input_bg_color || '#0f172a');
+    root.style.setProperty('--color-menu-icon', settings.menu_icon_color || '#ffffff');
     root.style.setProperty('--color-premium-badge', settings.premium_badge_color || settings.primary_color || '#A30000');
     root.style.setProperty('--color-brand-label', settings.brand_label_color || settings.primary_color || '#A30000');
 
@@ -218,6 +220,7 @@ export const defaultSettings: GymSettings = {
     hover_color: 'rgba(163, 0, 0, 0.4)',
     hover_border_color: 'rgba(163, 0, 0, 0.2)',
     input_bg_color: '#070D0B',
+    menu_icon_color: '#ffffff',
     clock_position: 'dashboard',
     clock_integration: true,
     weather_integration: true,
@@ -288,6 +291,9 @@ export const GYM_WIDE_KEYS: (keyof GymSettings)[] = [
     'academy_name', 'logo_url', 'gym_address', 'gym_phone',
     'primary_color', 'secondary_color', 'accent_color', 'surface_color',
     'input_bg_color', 'text_color_base', 'text_color_muted',
+    'hover_color', 'hover_border_color',
+    'brand_label_color', 'premium_badge_color', 'menu_icon_color',
+    'search_bg_color', 'search_text_color', 'search_icon_color', 'search_border_color',
     'login_bg_url', 'login_logo_url', 'login_card_opacity', 'login_card_color',
     'login_card_border_color', 'login_card_scale', 'login_show_logo',
     'login_text_color', 'login_accent_color', 'login_logo_opacity',
@@ -677,7 +683,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                         const SAFE_CORE_KEYS = ['id', 'primary_color', 'secondary_color', 'accent_color',
                             'font_family', 'font_scale', 'academy_name', 'logo_url', 'gym_address', 'gym_phone',
                             'surface_color', 'input_bg_color', 'text_color_base', 'text_color_muted',
-                            'hover_color', 'hover_border_color', 'brand_label_color',
+                            'hover_color', 'hover_border_color', 'brand_label_color', 'premium_badge_color',
+                            'menu_icon_color', 'search_icon_color', 'search_bg_color', 'search_text_color', 'search_border_color',
                         ];
                         const safePayload: any = {};
                         SAFE_CORE_KEYS.forEach(k => { if (k in gymPayload) safePayload[k] = gymPayload[k]; });

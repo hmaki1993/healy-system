@@ -4,11 +4,11 @@ import { X, Upload, Check, RefreshCw, Pipette, Sparkles, ChevronRight, Trash2, C
 import toast from 'react-hot-toast';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Role = 'primary' | 'secondary' | 'accent' | 'surface' | 'bg' | 'input' | 'text_base' | 'text_muted' | 'hover' | 'hover_border';
+type Role = 'primary' | 'secondary' | 'accent' | 'surface' | 'bg' | 'input' | 'menu_icon' | 'search_icon' | 'text_base' | 'text_muted' | 'hover' | 'hover_border';
 
 interface ExtractedColor { hex: string; count: number; }
 
-interface RolePalette { primary: string; secondary: string; accent: string; surface: string; bg: string; input: string; text_base: string; text_muted: string; hover: string; hover_border: string; }
+interface RolePalette { primary: string; secondary: string; accent: string; surface: string; bg: string; input: string; menu_icon: string; search_icon: string; text_base: string; text_muted: string; hover: string; hover_border: string; }
 
 interface SavedPalette {
     id: string;
@@ -20,6 +20,8 @@ interface SavedPalette {
 }
 
 interface Props { onClose: () => void; onApply: (p: RolePalette) => void; }
+
+import { useTheme } from '../context/ThemeContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function extractColors(img: HTMLImageElement, n = 8): ExtractedColor[] {
@@ -64,6 +66,15 @@ const applyAlpha = (hex: string, op: number) => {
     return base + toAlpha(op);
 };
 
+const normalizeHex = (hex: string | undefined | null) => {
+    if (!hex) return '';
+    // If it's a 3-char hex like #abc, expand it to #aabbcc
+    if (hex.length === 4) {
+        return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`.toLowerCase();
+    }
+    return hex.slice(0, 7).toLowerCase(); // Ignore alpha channel for strict color matching
+};
+
 function autoRoles(colors: ExtractedColor[]): Record<Role, string> {
     const byLum = [...colors].sort((a, b) => lum(a.hex) - lum(b.hex));
     const bySat = [...colors].sort((a, b) => {
@@ -74,7 +85,7 @@ function autoRoles(colors: ExtractedColor[]): Record<Role, string> {
     // Default fallback
     const def = colors[0]?.hex || '#1a1a2e';
     const out: Record<Role, string> = {
-        primary: def, accent: def, bg: def, secondary: def, surface: def, input: def,
+        primary: def, accent: def, bg: def, secondary: def, surface: def, input: def, menu_icon: '#ffffff', search_icon: '#ffffff',
         text_base: '#f8fafc', text_muted: '#ffffff99',
         hover: def + '33', hover_border: def + '66'
     };
@@ -98,6 +109,9 @@ function autoRoles(colors: ExtractedColor[]): Record<Role, string> {
     if (unused) out['input'] = unused.hex;
     else out['input'] = out['surface'];
 
+    out['menu_icon'] = '#ffffff';
+    out['search_icon'] = out.text_muted;
+
     // Text colors based on background luminance
     const isBgLight = lum(out.bg) > 0.6;
     out.text_base = isBgLight ? '#06060e' : '#f8fafc';
@@ -114,6 +128,7 @@ const ROLES: { role: Role; label: string }[] = [
     { role: 'primary', label: 'Primary' }, { role: 'accent', label: 'Accent' },
     { role: 'bg', label: 'Background' }, { role: 'secondary', label: 'Secondary' },
     { role: 'surface', label: 'Surface' }, { role: 'input', label: 'Input BG' },
+    { role: 'menu_icon', label: 'Menu Icons' }, { role: 'search_icon', label: 'Search Icons' },
     { role: 'text_base', label: 'Text Base' }, { role: 'text_muted', label: 'Text Muted' },
     { role: 'hover', label: 'Hover Glow' }, { role: 'hover_border', label: 'Hover Border' },
 ];
@@ -149,6 +164,122 @@ function ColorEditor({ colors, assignments, onAssign, activeRole, onSetActive, p
     const getHex = (role: Role) => assignments[role] || '#1a1a2e';
     const primaryHex = getHex('primary');
     const accentHex = getHex('accent');
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+    const [previewScale, setPreviewScale] = useState(0.26);
+    const [panX, setPanX] = useState(0);
+    const [panY, setPanY] = useState(0);
+    const isDragging = useRef(false);
+    const lastMouse = useRef({ x: 0, y: 0 });
+    const [isCursorGrabbing, setIsCursorGrabbing] = useState(false);
+
+    // Mouse wheel zoom on the live preview
+    const handlePreviewWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setPreviewScale(prev => Math.min(1.0, Math.max(0.1, prev - e.deltaY * 0.0005)));
+    };
+
+    // Drag to pan
+    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        isDragging.current = true;
+        lastMouse.current = { x: e.clientX, y: e.clientY };
+        setIsCursorGrabbing(true);
+    };
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!isDragging.current) return;
+        const dx = e.clientX - lastMouse.current.x;
+        const dy = e.clientY - lastMouse.current.y;
+        lastMouse.current = { x: e.clientX, y: e.clientY };
+        setPanX(prev => prev + dx);
+        setPanY(prev => prev + dy);
+    };
+    const handleMouseUp = () => {
+        isDragging.current = false;
+        setIsCursorGrabbing(false);
+    };
+
+    const [previewUrl, setPreviewUrl] = useState('/app');
+
+    // Apply palette colors to the real app's CSS variables in real-time via the iframe
+    useEffect(() => {
+        const iframe = iframeRef.current;
+        if (!iframe || !iframe.contentDocument) return;
+        const root = iframe.contentDocument.documentElement;
+        root.style.setProperty('--color-primary', assignments.primary);
+        root.style.setProperty('--color-secondary', assignments.secondary);
+        root.style.setProperty('--color-background', assignments.bg);
+        root.style.setProperty('--color-accent', assignments.accent);
+        root.style.setProperty('--color-surface', assignments.surface);
+        root.style.setProperty('--color-input-bg', assignments.input);
+        root.style.setProperty('--color-menu-icon', assignments.menu_icon);
+        root.style.setProperty('--color-search-icon', assignments.search_icon);
+        root.style.setProperty('--color-text-base', assignments.text_base);
+        root.style.setProperty('--color-text-muted', assignments.text_muted);
+        root.style.setProperty('--color-hover', assignments.hover);
+        root.style.setProperty('--color-hover-border', assignments.hover_border);
+    }, [assignments, previewUrl]);
+
+    // Highlight elements in the iframe based on the activeRole
+    useEffect(() => {
+        const iframe = iframeRef.current;
+        if (!iframe || !iframe.contentDocument) return;
+        const doc = iframe.contentDocument;
+        let style = doc.getElementById('palette-highlighter');
+        if (!style) {
+            style = doc.createElement('style');
+            style.id = 'palette-highlighter';
+            doc.head.appendChild(style);
+        }
+
+        if (!activeRole) {
+            style.textContent = '';
+            return;
+        }
+
+        const selectors: Record<Role, string> = {
+            primary: '.bg-primary, .text-primary, .border-primary, [style*="--color-primary"], .nav-icon-container.active, .text-primary-foreground',
+            secondary: '.bg-secondary, .text-secondary, [style*="--color-secondary"]',
+            accent: '.bg-accent, .text-accent, .border-accent, [style*="--color-accent"]',
+            bg: 'body, .bg-background, [style*="--color-background"], aside, .bg-secondary_color, .chat-bg',
+            surface: '.bg-surface, [style*="--color-surface"], .glass-card, .bg-white\\/5, .bg-white\\/10, .bg-white\\/20, .bg-white\\/3, .bg-white\\/\\[0\\.03\\], .bg-white\\/\\[0\\.05\\], .bg-white\\/\\[0\\.06\\], .bg-white\\/\\[0\\.08\\]',
+            input: 'input, textarea, select, [class*="bg-input"], [style*="--color-input-bg"]',
+            menu_icon: '.nav-icon-container:not(.active), [style*="--color-menu-icon"]',
+            search_icon: '[style*="--color-search-icon"], .search-icon',
+            text_base: 'h1, h2, h3, h4, .text-base, .text-white, [style*="--color-text-base"]',
+            text_muted: '.text-muted, [class*="text-white/40"], [style*="--color-text-muted"], .text-gray-400, .text-slate-400',
+            hover: '.hover-glow, [style*="--color-hover"], .hover\\:bg-white\\/5, .hover\\:bg-white\\/10, .hover\\:bg-primary\\/10, [class*="hover:bg-white"], .glass-card, .pastel-card, .group\\/call, .hover\\:bg-white\\/\\[0\\.08\\]',
+            hover_border: '[style*="--color-hover-border"], .hover\\:border-white\\/10, .hover\\:border-white\\/20, [class*="hover:border-white"], .border-white\\/10'
+        };
+
+        const selector = selectors[activeRole] || '';
+        const isHoverRole = activeRole === 'hover';
+
+        if (selector) {
+            style.textContent = `
+                @keyframes pulse-highlight {
+                    0% { outline: 4px solid #a855f7; outline-offset: 0px; box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+                    50% { outline: 4px solid #d8b4fe; outline-offset: 6px; box-shadow: 0 0 20px 10px rgba(168, 85, 247, 0); }
+                    100% { outline: 4px solid #a855f7; outline-offset: 0px; box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+                }
+                ${selector} {
+                    animation: ${isHoverRole ? 'none' : 'pulse-highlight 1.5s infinite ease-in-out'} !important;
+                    transition: all 0.3s !important;
+                    position: relative !important;
+                    z-index: 50 !important;
+                    ${isHoverRole ? `
+                        background-color: var(--color-hover) !important;
+                        box-shadow: 0 0 40px 10px color-mix(in srgb, var(--color-hover), transparent 60%) !important;
+                        transform: translateY(-8px) scale(1.02) !important;
+                        filter: brightness(1.2) !important;
+                        outline: 2px solid #a855f7 !important;
+                        outline-offset: 4px !important;
+                    ` : ''}
+                }
+            `;
+        } else {
+            style.textContent = '';
+        }
+    }, [activeRole]);
 
     return (
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -266,101 +397,88 @@ function ColorEditor({ colors, assignments, onAssign, activeRole, onSetActive, p
                     </div>
                 </div>
 
-                {/* ── RIGHT: Live App Preview ── */}
-                <div className="overflow-y-auto px-5 py-5 space-y-3">
-                    <p className="text-[10px] md:text-[12px] font-black text-white/15 uppercase tracking-[0.15em] md:tracking-[0.2em] flex items-center gap-2">
+                {/* ── RIGHT: Live Dashboard Preview ── */}
+                <div className="overflow-hidden flex flex-col gap-3 px-3 py-4">
+                    <p className="text-[10px] md:text-[12px] font-black text-white/15 uppercase tracking-[0.15em] md:tracking-[0.2em] flex items-center gap-2 flex-shrink-0">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
                         {activeRole
                             ? <span className="text-purple-400 animate-pulse">Highlighting: {activeRole.toUpperCase()}</span>
                             : 'Live Preview'}
+                        <div className="ml-auto flex items-center gap-1.5 p-0.5 bg-black/40 rounded-lg border border-white/5">
+                            {[
+                                { id: '/app', label: 'Home' },
+                                { id: '/app/communications', label: 'Chat' }
+                            ].map(site => (
+                                <button
+                                    key={site.id}
+                                    onClick={() => setPreviewUrl(site.id)}
+                                    className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all ${previewUrl === site.id ? 'bg-white/10 text-white' : 'text-white/20 hover:text-white'}`}
+                                >
+                                    {site.label}
+                                </button>
+                            ))}
+                        </div>
+                        <span className="ml-2 text-[9px] font-mono text-white/20">{Math.round(previewScale * 100)}% · scroll to zoom · drag to pan</span>
                     </p>
 
-                    {/* App mockup */}
-                    <div className={`rounded-2xl overflow-hidden border transition-all duration-500 shadow-2xl ${activeRole === 'bg' ? 'ring-2 ring-purple-500 ring-offset-2 ring-offset-black animate-pulse' : 'border-white/10'}`}
-                        style={{ backgroundColor: getHex('bg') }}>
-
-                        {/* Top bar */}
-                        <div className={`px-3 py-2 flex items-center justify-between border-b transition-all duration-300 ${activeRole === 'surface' ? 'border-purple-500 bg-purple-500/10 animate-pulse' : 'border-white/5'}`}
-                            style={{ backgroundColor: getHex('surface') }}>
-                            <div className="flex items-center gap-2">
-                                <div className={`w-4 h-4 rounded-md transition-all duration-300 ${activeRole === 'primary' ? 'ring-2 ring-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.5)]' : ''}`} style={{ backgroundColor: getHex('primary') }} />
-                                <div className="space-y-0.5">
-                                    <div className={`h-1.5 w-14 rounded-full transition-all duration-300 ${activeRole === 'primary' ? 'opacity-100 scale-x-105' : 'opacity-60'}`} style={{ backgroundColor: getHex('primary') }} />
-                                    <div className={`h-1 w-8 rounded-full transition-all duration-300 ${activeRole === 'text_muted' ? 'ring-1 ring-white scale-x-110 shadow-[0_0_5px_rgba(255,255,255,0.3)]' : ''}`} style={{ backgroundColor: getHex('text_muted') }} />
-                                </div>
-                            </div>
-                            <div className="flex gap-1">
-                                <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all duration-300 ${activeRole === 'input' ? 'border-purple-500 ring-2 ring-purple-500/50 scale-110 shadow-[0_0_10px_rgba(168,85,247,0.5)]' : 'border-white/10'}`} style={{ backgroundColor: getHex('input') }}>
-                                    <div className="w-2 h-0.5 rounded-full" style={{ backgroundColor: getHex('secondary') }} />
-                                </div>
-                                <div className={`w-5 h-5 rounded-full transition-all duration-300 ${activeRole === 'accent' ? 'ring-2 ring-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.5)]' : ''}`} style={{ backgroundColor: getHex('accent') }} />
-                            </div>
+                    {/* Real iframe - scaled-down live app */}
+                    <div
+                        className="relative rounded-xl overflow-hidden border border-white/10 shadow-2xl flex-1"
+                        style={{ minHeight: 300, cursor: isCursorGrabbing ? 'grabbing' : 'grab' }}
+                        onWheel={handlePreviewWheel}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                    >
+                        {/* Overlay label */}
+                        <div className="absolute top-2 left-2 z-20 px-2 py-0.5 rounded-md bg-black/60 border border-white/10 backdrop-blur-sm">
+                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Live App</span>
                         </div>
-
-                        {/* Sidebar + content */}
-                        <div className="flex" style={{ minHeight: 160 }}>
-                            {/* Sidebar */}
-                            <div className={`w-16 flex-shrink-0 border-r py-2 space-y-1 px-2 transition-all duration-300 ${activeRole === 'surface' ? 'border-purple-500/30' : 'border-white/5'}`} style={{ backgroundColor: getHex('surface') }}>
-                                {[0.8, 0.5, 0.4, 0.4, 0.3].map((op, i) => (
-                                    <div key={i} className={`h-5 rounded-lg flex items-center gap-1.5 px-1.5 transition-all duration-300 ${activeRole === 'primary' && i === 0 ? 'bg-white/10 ring-1 ring-white/20' : ''}`}
-                                        style={{ backgroundColor: i === 0 ? `${getHex('primary')}33` : 'transparent' }}>
-                                        <div className={`w-2 h-2 rounded-sm flex-shrink-0 transition-all duration-300 ${activeRole === 'primary' ? 'scale-110 shadow-[0_0_5px_rgba(255,255,255,0.3)]' : ''}`} style={{ backgroundColor: getHex('primary'), opacity: op }} />
-                                        <div className={`h-1 rounded-full flex-1 transition-all duration-300 ${activeRole === 'text_muted' ? 'ring-1 ring-white/30 scale-x-105' : ''}`} style={{ backgroundColor: getHex('text_muted'), opacity: op * 0.6 }} />
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Main area */}
-                            <div className="flex-1 p-3 space-y-2" style={{ backgroundColor: getHex('bg') }}>
-                                {/* Stats row */}
-                                <div className="grid grid-cols-3 gap-1.5">
-                                    {(['primary', 'secondary', 'accent'] as Role[]).map((role, i) => (
-                                        <div key={role} className={`rounded-xl p-2 border relative overflow-hidden transition-all duration-300 ${activeRole === role ? 'border-purple-500 ring-1 ring-purple-500/30 scale-105 shadow-[0_0_15px_rgba(168,85,247,0.2)]' : 'border-white/5'}`} style={{ backgroundColor: getHex('surface') }}>
-                                            <div className="text-[4px] font-black uppercase opacity-50 mb-1" style={{ color: getHex(role) }}>{role}</div>
-                                            <div className="text-[6px] font-black text-white/70">
-                                                {i === 0 ? '247' : i === 1 ? '18' : '96%'}
-                                            </div>
-                                            <div className={`absolute bottom-0 left-0 right-0 h-0.5 transition-all duration-300 ${activeRole === role ? 'h-1 opacity-100' : 'opacity-60'}`} style={{ backgroundColor: getHex(role) }} />
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Card */}
-                                {/* Card with Hover effect representation */}
-                                <div className={`rounded-xl p-2.5 border transition-all duration-300 
-                                    ${activeRole === 'surface' ? 'border-purple-500/30 bg-purple-500/5' : ''}
-                                    ${activeRole === 'hover' ? 'ring-2 ring-purple-500 ring-offset-2 ring-offset-black scale-[1.02] shadow-[0_0_20px_rgba(168,85,247,0.3)]' : ''}
-                                    ${activeRole === 'hover_border' ? 'border-purple-500 scale-[1.02] shadow-[0_0_15px_rgba(168,85,247,0.2)]' : 'border-white/5'}`}
-                                    style={{
-                                        backgroundColor: activeRole === 'hover' ? getHex('hover') : getHex('surface'),
-                                        borderColor: activeRole === 'hover_border' ? getHex('hover_border') : undefined
-                                    }}>
-                                    <div className={`h-1.5 w-16 rounded-full mb-1.5 transition-all duration-300 ${activeRole === 'text_base' ? 'ring-1 ring-white scale-x-110 shadow-[0_0_5px_rgba(255,255,255,0.3)]' : 'opacity-80'}`} style={{ backgroundColor: getHex('text_base') }} />
-                                    <div className={`h-1 w-24 rounded-full mb-1 transition-all duration-300 ${activeRole === 'text_muted' ? 'ring-1 ring-white/40 shadow-[0_0_5px_rgba(255,255,255,0.2)]' : 'opacity-40'}`} style={{ backgroundColor: getHex('text_muted') }} />
-                                    <div className={`h-1 w-20 rounded-full mb-3 transition-all duration-300 ${activeRole === 'text_muted' ? 'opacity-60' : 'opacity-25'}`} style={{ backgroundColor: getHex('text_muted') }} />
-                                    {/* Input */}
-                                    <div className={`h-5 rounded-lg border px-2 flex items-center mb-2 transition-all duration-300 ${activeRole === 'input' ? 'border-purple-500 ring-1 ring-purple-500/30 scale-105 shadow-[0_0_10px_rgba(168,85,247,0.3)]' : 'border-white/5'}`} style={{ backgroundColor: getHex('input') }}>
-                                        <div className={`h-1 w-10 rounded-full transition-all duration-300 ${activeRole === 'text_muted' ? 'opacity-60' : 'opacity-30'}`} style={{ backgroundColor: getHex('text_muted') }} />
-                                    </div>
-                                    {/* Button */}
-                                    <div className={`h-5 rounded-lg flex items-center justify-center gap-1 transition-all duration-300 ${activeRole === 'primary' || activeRole === 'accent' ? 'scale-105 shadow-[0_0_15px_rgba(168,85,247,0.4)] ring-1 ring-white/20' : ''}`} style={{ background: `linear-gradient(135deg, ${getHex('primary')}, ${getHex('accent')})` }}>
-                                        <div className="h-1 w-8 rounded-full opacity-80" style={{ backgroundColor: lum(getHex('primary')) > 0.4 ? '#000' : '#fff' }} />
-                                    </div>
-                                </div>
-
-                                {/* Bottom: accent badge */}
-                                <div className="flex items-center gap-2">
-                                    <div className={`h-4 rounded-full px-2 flex items-center transition-all duration-300 ${activeRole === 'accent' ? 'ring-2 ring-purple-500/50 scale-110 shadow-[0_0_10px_rgba(168,85,247,0.3)]' : ''}`} style={{ backgroundColor: `${getHex('accent')}33`, border: `1px solid ${getHex('accent')}44` }}>
-                                        <div className="h-0.5 w-6 rounded-full" style={{ backgroundColor: getHex('accent') }} />
-                                    </div>
-                                    <div className={`h-1 w-10 rounded-full transition-all duration-300 ${activeRole === 'text_muted' ? 'opacity-60' : 'opacity-20'}`} style={{ backgroundColor: getHex('text_muted') }} />
-                                </div>
-                            </div>
+                        {/* Non-interactive transparent cover - lets wheel events pass to parent */}
+                        <div className="absolute inset-0 z-10" style={{ pointerEvents: 'none' }} />
+                        {/* Scaled iframe wrapper */}
+                        <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+                            <iframe
+                                ref={iframeRef}
+                                src={previewUrl}
+                                title="Live App Preview"
+                                style={{
+                                    width: '1280px',
+                                    height: '900px',
+                                    border: 'none',
+                                    transform: `translate(${panX}px, ${panY}px) scale(${previewScale})`,
+                                    transformOrigin: 'top left',
+                                    pointerEvents: 'none',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    transition: isCursorGrabbing ? 'none' : 'transform 0.1s ease',
+                                    userSelect: 'none',
+                                }}
+                                onLoad={() => {
+                                    const iframe = iframeRef.current;
+                                    if (!iframe || !iframe.contentDocument) return;
+                                    const root = iframe.contentDocument.documentElement;
+                                    root.style.setProperty('--color-primary', assignments.primary);
+                                    root.style.setProperty('--color-secondary', assignments.secondary);
+                                    root.style.setProperty('--color-background', assignments.bg);
+                                    root.style.setProperty('--color-accent', assignments.accent);
+                                    root.style.setProperty('--color-surface', assignments.surface);
+                                    root.style.setProperty('--color-input-bg', assignments.input);
+                                    root.style.setProperty('--color-menu-icon', assignments.menu_icon);
+                                    root.style.setProperty('--color-search-icon', assignments.search_icon);
+                                    root.style.setProperty('--color-text', assignments.text_base);
+                                    root.style.setProperty('--color-text-muted', assignments.text_muted);
+                                    root.style.setProperty('--color-hover', assignments.hover);
+                                    root.style.setProperty('--color-hover-border', assignments.hover_border);
+                                }}
+                            />
                         </div>
                     </div>
 
                     {/* Role legend */}
-                    <div className="grid grid-cols-2 gap-1 pt-1">
+                    <div className="grid grid-cols-2 gap-1 flex-shrink-0">
                         {ROLES.map(({ role, label }) => (
                             <div key={role} className={`flex items-center gap-1.5 p-1 rounded-md transition-all cursor-pointer hover:bg-white/[0.03] ${activeRole === role ? 'bg-white/[0.05] ring-1 ring-white/10' : ''}`} onClick={() => onSetActive(role)}>
                                 <div className={`w-2 h-2 rounded-sm flex-shrink-0 border transition-all ${activeRole === role ? 'scale-125 border-white ring-2 ring-white/20' : 'border-white/10'}`} style={{ backgroundColor: getHex(role) }} />
@@ -403,6 +521,7 @@ function ColorEditor({ colors, assignments, onAssign, activeRole, onSetActive, p
 type View = 'saved' | 'new' | 'edit';
 
 export default function PaletteImportModal({ onClose, onApply }: Props) {
+    const { settings: currentTheme } = useTheme();
     const [view, setView] = useState<View>('saved');
     const [saved, setSaved] = useState<SavedPalette[]>([]);
 
@@ -412,7 +531,7 @@ export default function PaletteImportModal({ onClose, onApply }: Props) {
     const [colors, setColors] = useState<string[]>([]);
     const [assignments, setAssignments] = useState<Record<Role, string>>({
         primary: '#1a1a2e', secondary: '#1a1a2e', accent: '#1a1a2e',
-        surface: '#1a1a2e', bg: '#1a1a2e', input: '#1a1a2e',
+        surface: '#1a1a2e', bg: '#1a1a2e', input: '#1a1a2e', menu_icon: '#ffffff', search_icon: '#ffffff',
         text_base: '#f8fafc', text_muted: '#ffffff99',
         hover: '#1a1a2e33', hover_border: '#1a1a2e66'
     });
@@ -426,7 +545,7 @@ export default function PaletteImportModal({ onClose, onApply }: Props) {
     const [editColors, setEditColors] = useState<string[]>([]);
     const [editAssignments, setEditAssignments] = useState<Record<Role, string>>({
         primary: '#1a1a2e', secondary: '#1a1a2e', accent: '#1a1a2e',
-        surface: '#1a1a2e', bg: '#1a1a2e', input: '#1a1a2e',
+        surface: '#1a1a2e', bg: '#1a1a2e', input: '#1a1a2e', menu_icon: '#ffffff', search_icon: '#ffffff',
         text_base: '#f8fafc', text_muted: '#ffffff99',
         hover: '#1a1a2e33', hover_border: '#1a1a2e66'
     });
@@ -440,7 +559,7 @@ export default function PaletteImportModal({ onClose, onApply }: Props) {
     // Stores the original auto-detected assignments so the user can reset
     const initialAssignmentsRef = useRef<Record<Role, string>>({
         primary: '#1a1a2e', secondary: '#1a1a2e', accent: '#1a1a2e',
-        surface: '#1a1a2e', bg: '#1a1a2e', input: '#1a1a2e',
+        surface: '#1a1a2e', bg: '#1a1a2e', input: '#1a1a2e', menu_icon: '#ffffff', search_icon: '#ffffff',
         text_base: '#f8fafc', text_muted: '#ffffff99',
         hover: '#1a1a2e33', hover_border: '#1a1a2e66'
     });
@@ -468,7 +587,7 @@ export default function PaletteImportModal({ onClose, onApply }: Props) {
     const loadImage = useCallback((src: string) => {
         setColors([]); setAssignments({
             primary: '#1a1a2e', secondary: '#1a1a2e', accent: '#1a1a2e',
-            surface: '#1a1a2e', bg: '#1a1a2e', input: '#1a1a2e',
+            surface: '#1a1a2e', bg: '#1a1a2e', input: '#1a1a2e', menu_icon: '#ffffff', search_icon: '#ffffff',
             text_base: '#f8fafc', text_muted: '#ffffff99',
             hover: '#1a1a2e33', hover_border: '#1a1a2e66'
         }); setActiveRole(null);
@@ -493,7 +612,7 @@ export default function PaletteImportModal({ onClose, onApply }: Props) {
     const buildPalette = (asgn: Record<Role, string>): RolePalette => ({
         primary: asgn.primary, secondary: asgn.secondary,
         accent: asgn.accent, surface: asgn.surface,
-        bg: asgn.bg, input: asgn.input,
+        bg: asgn.bg, input: asgn.input, menu_icon: asgn.menu_icon, search_icon: asgn.search_icon,
         text_base: asgn.text_base, text_muted: asgn.text_muted,
         hover: asgn.hover, hover_border: asgn.hover_border
     });
@@ -533,8 +652,16 @@ export default function PaletteImportModal({ onClose, onApply }: Props) {
         setEditTarget(p);
         setEditColors((p.extractedColors?.length ? p.extractedColors : Object.values(p.colors)));
 
-        const asgn = { ...p.colors };
-        initialAssignmentsRef.current = { ...asgn }; // Store for reset
+        const asgn = { ...p.colors, search_icon: p.colors.search_icon || p.colors.text_muted };
+
+        // Setup initial detection state so "Reset Detection" returns to original extracted colors
+        if (p.extractedColors && p.extractedColors.length > 0) {
+            // Reconstruct a dummy ExtractedColor array with fake counts based on order
+            const reconstructed = p.extractedColors.map((hex, i) => ({ hex, count: 100 - i }));
+            initialAssignmentsRef.current = autoRoles(reconstructed);
+        } else {
+            initialAssignmentsRef.current = { ...asgn }; // Fallback to current colors
+        }
 
         setEditAssignments(asgn);
         setEditName(p.name);
@@ -618,43 +745,53 @@ export default function PaletteImportModal({ onClose, onApply }: Props) {
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 auto-rows-min">
-                                    {saved.map(p => (
-                                        <div key={p.id} className="group bg-white/[0.02] rounded-xl border border-white/[0.04] overflow-hidden hover:border-purple-500/20 hover:bg-white/[0.04] transition-all duration-300 cursor-pointer shadow-lg active:scale-95"
-                                            onClick={() => openEdit(p)}>
-                                            {/* Color strip */}
-                                            <div className="h-14 flex relative overflow-hidden bg-black/20">
-                                                {p.imageThumb && <img src={p.imageThumb} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30 grayscale group-hover:grayscale-0 transition-all duration-500" />}
-                                                <div className="absolute inset-0 flex">
-                                                    {Object.values(p.colors).map((hex, i) => (
-                                                        <div key={i} className="flex-1 h-full shadow-[inset_0_0_10px_rgba(0,0,0,0.1)]" style={{ backgroundColor: hex }} />
-                                                    ))}
-                                                </div>
-                                                {/* Edit icon overlay */}
-                                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-purple-900/40 backdrop-blur-[2px] flex items-center justify-center">
-                                                    <Pencil className="w-3.5 h-3.5 text-white" />
-                                                </div>
-                                            </div>
-                                            <div className="p-2.5 space-y-1.5">
-                                                {/* Inline rename */}
-                                                {renamingId === p.id ? (
-                                                    <input autoFocus value={renamingVal} onChange={e => setRenamingVal(e.target.value)}
-                                                        onBlur={() => renameInList(p.id, renamingVal)}
-                                                        onKeyDown={e => { if (e.key === 'Enter') renameInList(p.id, renamingVal); if (e.key === 'Escape') setRenamingId(null); }}
-                                                        className="w-full bg-white/10 border border-purple-500/40 rounded px-1.5 py-0.5 text-[7px] font-black text-white uppercase outline-none" />
-                                                ) : (
-                                                    <p className="text-[12px] font-black text-white/50 uppercase tracking-widest truncate group-hover:text-purple-400 transition-colors"
-                                                        onDoubleClick={e => { e.stopPropagation(); setRenamingId(p.id); setRenamingVal(p.name); }}>{p.name}</p>
+                                    {saved.map(p => {
+                                        const isActiveTheme = normalizeHex(currentTheme?.primary_color) === normalizeHex(p.colors.primary)
+                                            && normalizeHex(currentTheme?.accent_color) === normalizeHex(p.colors.accent);
+                                        return (
+                                            <div key={p.id} className={`group bg-white/[0.02] rounded-xl border relative overflow-hidden transition-all duration-300 cursor-pointer shadow-lg active:scale-95 ${isActiveTheme ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)] bg-emerald-500/5 ring-1 ring-emerald-500/20' : 'border-white/[0.04] hover:border-purple-500/20 hover:bg-white/[0.04]'}`}
+                                                onClick={() => openEdit(p)}>
+                                                {/* Active Badge */}
+                                                {isActiveTheme && (
+                                                    <div className="absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg border border-emerald-400">
+                                                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                                                    </div>
                                                 )}
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-[11px] text-white/10 font-bold uppercase tracking-widest">{new Date(p.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
-                                                    <button onClick={e => { e.stopPropagation(); deletePalette(p.id); }}
-                                                        className="w-5 h-5 rounded-lg bg-red-500/0 hover:bg-red-500/20 flex items-center justify-center text-red-500/0 group-hover:text-red-500/40 hover:text-red-500 transition-all">
-                                                        <Trash2 className="w-2.5 h-2.5" />
-                                                    </button>
+                                                {/* Color strip */}
+                                                <div className="h-14 flex relative overflow-hidden bg-black/20">
+                                                    {p.imageThumb && <img src={p.imageThumb} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30 grayscale group-hover:grayscale-0 transition-all duration-500" />}
+                                                    <div className="absolute inset-0 flex">
+                                                        {Object.values(p.colors).map((hex, i) => (
+                                                            <div key={i} className="flex-1 h-full shadow-[inset_0_0_10px_rgba(0,0,0,0.1)]" style={{ backgroundColor: hex }} />
+                                                        ))}
+                                                    </div>
+                                                    {/* Edit icon overlay */}
+                                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-purple-900/40 backdrop-blur-[2px] flex items-center justify-center">
+                                                        <Pencil className="w-3.5 h-3.5 text-white" />
+                                                    </div>
+                                                </div>
+                                                <div className="p-2.5 space-y-1.5">
+                                                    {/* Inline rename */}
+                                                    {renamingId === p.id ? (
+                                                        <input autoFocus value={renamingVal} onChange={e => setRenamingVal(e.target.value)}
+                                                            onBlur={() => renameInList(p.id, renamingVal)}
+                                                            onKeyDown={e => { if (e.key === 'Enter') renameInList(p.id, renamingVal); if (e.key === 'Escape') setRenamingId(null); }}
+                                                            className="w-full bg-white/10 border border-purple-500/40 rounded px-1.5 py-0.5 text-[7px] font-black text-white uppercase outline-none" />
+                                                    ) : (
+                                                        <p className="text-[12px] font-black text-white/50 uppercase tracking-widest truncate group-hover:text-purple-400 transition-colors"
+                                                            onDoubleClick={e => { e.stopPropagation(); setRenamingId(p.id); setRenamingVal(p.name); }}>{p.name}</p>
+                                                    )}
+                                                    <div className="flex items-center justify-between">
+                                                        <p className="text-[11px] text-white/10 font-bold uppercase tracking-widest">{new Date(p.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+                                                        <button onClick={e => { e.stopPropagation(); deletePalette(p.id); }}
+                                                            className="w-5 h-5 rounded-lg bg-red-500/0 hover:bg-red-500/20 flex items-center justify-center text-red-500/0 group-hover:text-red-500/40 hover:text-red-500 transition-all">
+                                                            <Trash2 className="w-2.5 h-2.5" />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        )
+                                    })}
                                     {/* + New card */}
                                     <button onClick={() => setView('new')}
                                         className="h-24 border border-dashed border-white/[0.04] rounded-xl hover:border-purple-500/30 hover:bg-purple-500/5 transition-all flex flex-col items-center justify-center gap-1.5 text-white/15 hover:text-purple-400">

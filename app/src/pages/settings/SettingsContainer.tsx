@@ -176,7 +176,8 @@ export default function Settings() {
                 'hover_color', 'hover_border_color', 'input_bg_color',
                 'text_color_base', 'text_color_muted',
                 'brand_label_color', 'premium_badge_color',
-                'search_bg_color', 'search_text_color', 'search_icon_color', 'search_border_color',
+                'menu_icon_color', 'search_icon_color',
+                'search_bg_color', 'search_text_color', 'search_border_color',
                 'login_card_color', 'login_card_border_color', 'login_accent_color', 'login_text_color',
                 'login_mobile_card_color', 'login_mobile_card_border_color', 'login_mobile_accent_color', 'login_mobile_text_color'
             ];
@@ -186,6 +187,11 @@ export default function Settings() {
                     sanitized[key] = toSafeHex(sanitized[key]);
                 }
             });
+
+            // Ensure menu_icon_color has a valid, visible default if missing or fully transparent
+            if (!sanitized.menu_icon_color || sanitized.menu_icon_color === '#00000000' || sanitized.menu_icon_color.endsWith('00')) {
+                sanitized.menu_icon_color = sanitized.primary_color || '#ffffff';
+            }
 
             setDraftSettings(sanitized);
             setHasSynced(true);
@@ -385,7 +391,7 @@ export default function Settings() {
         }));
     };
 
-    const handlePaletteImport = async (palette: { primary: string; secondary: string; accent: string; surface: string; bg: string; input: string; text_base: string; text_muted: string; hover: string; hover_border: string }) => {
+    const handlePaletteImport = async (palette: { primary: string; secondary: string; accent: string; surface: string; bg: string; input: string; text_base: string; text_muted: string; hover: string; hover_border: string; menu_icon?: string; search_icon?: string }) => {
         const newSettings = {
             ...draftSettings,
             primary_color: palette.primary,
@@ -401,8 +407,9 @@ export default function Settings() {
             premium_badge_color: palette.primary,
             search_bg_color: palette.bg + '1a',
             search_text_color: palette.text_base,
-            search_icon_color: palette.text_muted,
+            search_icon_color: palette.search_icon || palette.text_muted,
             search_border_color: palette.text_muted + '33',
+            menu_icon_color: palette.menu_icon || palette.primary,
         };
 
         setDraftSettings(newSettings);
@@ -996,6 +1003,8 @@ export default function Settings() {
                                                     <PremiumColorPicker label="Hover Border" value={draftSettings.hover_border_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, hover_border_color: val })} />
                                                     <PremiumColorPicker label="Search Bg" value={draftSettings.search_bg_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, search_bg_color: val })} />
                                                     <PremiumColorPicker label="Brand Label" value={draftSettings.brand_label_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, brand_label_color: val })} />
+                                                    <PremiumColorPicker label="Menu Icons" value={draftSettings.menu_icon_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, menu_icon_color: val })} />
+                                                    <PremiumColorPicker label="Search Icons" value={draftSettings.search_icon_color || ''} onChange={(val) => setDraftSettings({ ...draftSettings, search_icon_color: val })} />
                                                 </div>
                                             </div>
                                         </div>

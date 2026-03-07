@@ -85,9 +85,9 @@ export default function FinancialProgressChart({ data, currencyCode }: Financial
                                 y1={y}
                                 x2={width - paddingX}
                                 y2={y}
-                                stroke="#000"
-                                strokeWidth="0.5"
-                                strokeOpacity="0.03"
+                                stroke="var(--color-surface-border)"
+                                strokeWidth="1"
+                                strokeOpacity="0.5"
                             />
                         );
                     })}
@@ -118,14 +118,14 @@ export default function FinancialProgressChart({ data, currencyCode }: Financial
                                     <circle cx={getX(i)} cy={getY(d.profit)} r="8" fill="var(--color-primary)" fillOpacity="0.15" className="animate-pulse" />
                                     {/* Final Point Value Badge (Always visible on last) */}
                                     <rect x={getX(i) - 35} y={getY(d.profit) - 35} width="70" height="24" rx="12" fill="var(--color-primary)" />
-                                    <text x={getX(i)} y={getY(d.profit) - 19} fill="white" textAnchor="middle" className="text-[10px] font-black tracking-tight">{d.profit.toLocaleString()}</text>
+                                    <text x={getX(i)} y={getY(d.profit) - 19} fill="var(--color-primary-foreground, white)" textAnchor="middle" className="text-[10px] font-black tracking-tight">{d.profit.toLocaleString()}</text>
                                 </g>
                             )}
                             <text
                                 x={getX(i)}
                                 y={height - 5}
-                                fill="currentColor"
-                                fillOpacity="0.4"
+                                fill="var(--color-text-base)"
+                                fillOpacity="0.6"
                                 textAnchor="middle"
                                 className="text-[10px] font-black uppercase tracking-widest"
                             >
