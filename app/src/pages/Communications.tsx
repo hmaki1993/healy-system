@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import AgoraRTC, { IAgoraRTCClient, ILocalVideoTrack, ILocalAudioTrack, IRemoteVideoTrack, IRemoteAudioTrack } from 'agora-rtc-sdk-ng';
 import {
     MessageSquare, Search, Phone, Video, MoreVertical, Send,
@@ -6,13 +7,16 @@ import {
     PhoneCall, PhoneOff, PhoneMissed, Volume2, VolumeX,
     Camera, Users, Plus, ArrowLeft, Smile, Play, Pause,
     Loader2, Download, MicOff, VideoOff, Reply, Pin, Trash2,
-    Archive, CheckSquare, Minimize2, Maximize2, RotateCcw, Type, Pencil,
-    ArrowDownLeft, ArrowUpRight, UserPlus, Settings
+    Archive, CheckSquare, Minimize2, Maximize2, RotateCcw, Type, Pencil, Crop,
+    ArrowDownLeft, ArrowUpRight, UserPlus, Settings, ChevronLeft, Lock
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../context/ThemeContext';
 import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
+import Picker from '@emoji-mart/react';
+import data from '@emoji-mart/data';
+import { playRecordStartSound, playMessageSentSound, playTypingTick } from '../utils/sounds';
 
 const AGORA_APP_ID = import.meta.env.VITE_AGORA_APP_ID as string;
 
@@ -62,11 +66,14 @@ interface Conversation {
 }
 
 // ─── Voice Note Player Component ───────────────────────────────────────────────
-const VoiceNotePlayer = ({ url, duration }: { url: string; duration?: number }) => {
+const VoiceNotePlayer = ({ url, duration, sender, isOwn }: { url: string; duration?: number; sender?: Profile; isOwn: boolean }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [progress, setProgress] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
     const audioRef = useRef<HTMLAudioElement>(null);
+    const progressRef = useRef(0);
+    const requestRef = useRef<number>();
 
     const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
@@ -80,43 +87,166 @@ const VoiceNotePlayer = ({ url, duration }: { url: string; duration?: number }) 
         setIsPlaying(!isPlaying);
     };
 
+    // Stable waveform generation based on the URL
+    const waveform = useMemo(() => {
+        const bars = 35;
+        const heights = [];
+        let seed = 0;
+        for (let i = 0; i < url.length; i++) {
+            seed = (seed << 5) - seed + url.charCodeAt(i);
+            seed |= 0;
+        }
+        const pseudoRandom = () => {
+            seed = (seed * 16807) % 2147483647;
+            return (seed - 1) / 2147483646;
+        };
+        for (let i = 0; i < bars; i++) {
+            heights.push(20 + pseudoRandom() * 80);
+        }
+        return heights;
+    }, [url]);
+
+    // Smooth progress update loop
+    const updateProgress = useCallback(() => {
+        if (!audioRef.current || isDragging) return;
+        const audio = audioRef.current;
+        if (!audio.duration || isNaN(audio.duration)) {
+            requestRef.current = requestAnimationFrame(updateProgress);
+            return;
+        }
+        const currentProgress = (audio.currentTime / audio.duration) * 100;
+        progressRef.current = currentProgress;
+        setProgress(currentProgress);
+        setCurrentTime(audio.currentTime);
+        if (isPlaying) {
+            requestRef.current = requestAnimationFrame(updateProgress);
+        }
+    }, [isPlaying, isDragging]);
+
+    useEffect(() => {
+        if (isPlaying && !isDragging) {
+            requestRef.current = requestAnimationFrame(updateProgress);
+        } else {
+            if (requestRef.current) cancelAnimationFrame(requestRef.current);
+        }
+        return () => {
+            if (requestRef.current) cancelAnimationFrame(requestRef.current);
+        };
+    }, [isPlaying, isDragging, updateProgress]);
+
+    const handleScrub = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
+        const container = document.getElementById(`waveform-${url}`);
+        if (!container) return;
+        const rect = container.getBoundingClientRect();
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        const newProgress = ratio * 100;
+        setProgress(newProgress);
+        if (audioRef.current && audioRef.current.duration) {
+            setCurrentTime(ratio * audioRef.current.duration);
+        }
+    };
+
+    useEffect(() => {
+        if (!isDragging) return;
+        const onMove = (e: MouseEvent | TouchEvent) => handleScrub(e);
+        const onEnd = () => {
+            setIsDragging(false);
+            if (audioRef.current && audioRef.current.duration) {
+                audioRef.current.currentTime = (progress / 100) * audioRef.current.duration;
+            }
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchmove', onMove);
+        window.addEventListener('touchend', onEnd);
+        return () => {
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onEnd);
+            window.removeEventListener('touchmove', onMove);
+            window.removeEventListener('touchend', onEnd);
+        };
+    }, [isDragging, progress]);
+
     useEffect(() => {
         const audio = audioRef.current;
         if (!audio) return;
-        const onTime = () => {
-            setCurrentTime(audio.currentTime);
-            setProgress(audio.duration ? (audio.currentTime / audio.duration) * 100 : 0);
+        const onEnd = () => {
+            setIsPlaying(false);
+            setProgress(0);
+            setCurrentTime(0);
         };
-        const onEnd = () => setIsPlaying(false);
-        audio.addEventListener('timeupdate', onTime);
         audio.addEventListener('ended', onEnd);
+        audio.addEventListener('play', () => setIsPlaying(true));
+        audio.addEventListener('pause', () => setIsPlaying(false));
         return () => {
-            audio.removeEventListener('timeupdate', onTime);
             audio.removeEventListener('ended', onEnd);
+            audio.removeEventListener('play', () => setIsPlaying(true));
+            audio.removeEventListener('pause', () => setIsPlaying(false));
         };
     }, []);
 
     return (
-        <div className="flex items-center gap-3 min-w-[200px]">
+        <div className="flex items-center gap-4 min-w-[280px]">
             <audio ref={audioRef} src={url} preload="metadata" />
+
+            <div className="relative flex-shrink-0">
+                <div className="w-12 h-12 rounded-full overflow-hidden bg-white/10 flex items-center justify-center">
+                    {sender?.avatar_url ? (
+                        <img src={sender.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                        <UserPlus className="w-6 h-6 text-white/50" />
+                    )}
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-transparent flex items-center justify-center">
+                    <Mic className="w-3 h-3 text-white" />
+                </div>
+            </div>
+
             <button
                 onClick={togglePlay}
-                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all flex-shrink-0"
+                className="w-10 h-10 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 flex-shrink-0"
             >
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+                {isPlaying ? (
+                    <Pause className="w-8 h-8 text-white/90 fill-current" />
+                ) : (
+                    <Play className="w-8 h-8 text-white/90 fill-current ml-1" />
+                )}
             </button>
-            <div className="flex-1">
+
+            <div className="flex-1 flex flex-col justify-center min-w-[150px]">
                 <div
-                    className="h-1 bg-white/20 rounded-full cursor-pointer relative"
-                    onClick={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const ratio = (e.clientX - rect.left) / rect.width;
-                        if (audioRef.current) audioRef.current.currentTime = ratio * audioRef.current.duration;
-                    }}
+                    id={`waveform-${url}`}
+                    className="h-8 flex items-center cursor-pointer relative group gap-[2px] touch-none"
+                    onMouseDown={(e) => { setIsDragging(true); handleScrub(e); }}
+                    onTouchStart={(e) => { setIsDragging(true); handleScrub(e); }}
                 >
-                    <div className="h-full bg-white rounded-full transition-all" style={{ width: `${progress}%` }} />
+                    {waveform.map((h, i) => {
+                        const barProgress = (i / (waveform.length - 1)) * 100;
+                        const isActive = progress >= barProgress;
+                        return (
+                            <div
+                                key={i}
+                                className={`w-[2.5px] rounded-full transition-colors duration-200`}
+                                style={{
+                                    height: `${h}%`,
+                                    backgroundColor: isActive ? '#60a5fa' : 'rgba(255,255,255,0.2)'
+                                }}
+                            />
+                        );
+                    })}
+
+                    <div
+                        className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-blue-400 rounded-full shadow-md z-10 transition-transform active:scale-150 ${isDragging ? 'scale-150' : 'group-hover:scale-125'}`}
+                        style={{ left: `calc(${progress}% - 7px)` }}
+                    />
                 </div>
-                <span className="text-[10px] opacity-60 mt-0.5 block">{formatTime(currentTime)} / {formatTime(duration || 0)}</span>
+
+                <div className="flex items-center justify-between mt-1">
+                    <span className="text-[11px] text-white/70 font-medium tracking-wide">
+                        {formatTime(currentTime)}
+                    </span>
+                </div>
             </div>
         </div>
     );
@@ -286,9 +416,9 @@ const MessageBubble = ({
                 </div>
             )}
 
-            {/* Avatar */}
+            {/* Avatar - Hide for voice notes since it's rendered inside the VoiceNotePlayer */}
             <div className="w-7 h-7 flex-shrink-0">
-                {!isOwn && (
+                {!isOwn && msg.type !== 'voice' && (
                     <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-[10px] font-black text-white overflow-hidden shadow-sm">
                         {msg.sender?.avatar_url ? (
                             <img src={msg.sender.avatar_url} className="w-full h-full object-cover" alt="" />
@@ -366,8 +496,18 @@ const MessageBubble = ({
                         </div>
                     )}
                     {msg.type === 'voice' && msg.media_url && (
-                        <div className={`px-4 py-3 relative text-white transition-all duration-300 ${isOwn ? 'bg-gradient-to-br from-primary to-accent' : 'bg-white/[0.06] border border-white/10'} ${bubbleRadius}`}>
-                            <VoiceNotePlayer url={msg.media_url} duration={msg.media_duration} />
+                        <div className={`px-2 py-2 relative text-white transition-all duration-300 ${isOwn ? 'bg-[#005c4b]' : 'bg-[#202c33] border border-white/5'} ${bubbleRadius}`}>
+                            <VoiceNotePlayer
+                                url={msg.media_url}
+                                duration={msg.media_duration}
+                                sender={msg.sender}
+                                isOwn={isOwn}
+                            />
+                            {/* Inner Bubble Timestamp for Voice Notes to match WhatsApp layout precisely */}
+                            <div className="absolute bottom-1 right-2 flex items-center gap-1">
+                                <span className="text-[10px] text-white/60 font-medium">{timeStr}</span>
+                                {isOwn && <CheckCheck className="w-3.5 h-3.5 text-blue-400" />}
+                            </div>
                             {msg.is_pinned && (
                                 <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-yellow-500 flex items-center justify-center shadow-lg">
                                     <Pin className="w-2 h-2 text-white fill-current" />
@@ -377,10 +517,13 @@ const MessageBubble = ({
                     )}
                 </div>
 
-                <span className={`text-[9px] text-white/20 font-black uppercase tracking-widest mt-1 animate-premium-in ${isOwn ? 'flex items-center gap-1.5 ml-auto' : 'mr-auto'}`}>
-                    {timeStr}
-                    {isOwn && <CheckCheck className="w-3.5 h-3.5 text-primary/40" />}
-                </span>
+                {/* Hide global timestamp for voice messages since it's rendered inside the bubble */}
+                {msg.type !== 'voice' && (
+                    <span className={`text-[9px] text-white/20 font-black uppercase tracking-widest mt-1 animate-premium-in ${isOwn ? 'flex items-center gap-1.5 ml-auto' : 'mr-auto'}`}>
+                        {timeStr}
+                        {isOwn && <CheckCheck className="w-3.5 h-3.5 text-primary/40" />}
+                    </span>
+                )}
             </div>
         </div>
     );
@@ -703,122 +846,451 @@ const ActiveCallModal = ({
 };
 
 // ─── Voice Recorder Component ──────────────────────────────────────────────────
-const VoiceRecorder = ({ onRecordingComplete }: { onRecordingComplete: (blob: Blob, duration: number) => void }) => {
+// ─── Voice Recorder Component ──────────────────────────────────────────────────
+const VoiceRecorder = ({ onRecordingComplete, onRecordingStateChange, portalTarget }: { onRecordingComplete: (blob: Blob, duration: number) => void; onRecordingStateChange?: (isRecording: boolean) => void; portalTarget?: HTMLElement | null }) => {
     const [isRecording, setIsRecording] = useState(false);
-    const [duration, setDuration] = useState(0);
-    const [slideX, setSlideX] = useState(0);
-    const [isCancelled, setIsCancelled] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const [dragOffset, setDragOffset] = useState(0);
+    const [dragOffsetY, setDragOffsetY] = useState(0);
+    const [isCancellingMode, setIsCancellingMode] = useState(false);
+    const [isLocked, setIsLocked] = useState(false);
+    const [showLockUI, setShowLockUI] = useState(false);
+    const durationRef = useRef(0);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
-    const startTimeRef = useRef<number>(0);
-    const startPosRef = useRef<number>(0);
-    const recordingThreshold = 80; // px to cancel
+    const startXRef = useRef<number | null>(null);
+    const startYRef = useRef<number | null>(null);
+    const isCancelledRef = useRef(false);
+    const isLockedRef = useRef(false);
+    const isStopRequestedRef = useRef(false);
 
-    const startRecording = async (clientX: number) => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-            chunksRef.current = [];
-            recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
-            recorder.onstop = () => {
-                // If cancelled OR duration is 0 (very short tap), don't send
-                const finalDur = Math.floor((Date.now() - startTimeRef.current) / 1000);
-                if (!isCancelled && finalDur > 0) {
-                    const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-                    onRecordingComplete(blob, finalDur);
-                }
-                stream.getTracks().forEach(t => t.stop());
+    // Audio visualization refs
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const analyserRef = useRef<AnalyserNode | null>(null);
+    const animationFrameRef = useRef<number | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    // Maximum distance user can drag before triggering action
+    const CANCEL_THRESHOLD = -120;
+    const LOCK_THRESHOLD = -60;
+
+    const startTimeRef = useRef<number | null>(null);
+
+    const stopRecording = useCallback((e?: React.MouseEvent | React.TouchEvent | Event) => {
+        if (e && 'cancelable' in e && e.cancelable) e.preventDefault();
+
+        setIsRecording(curr => {
+            if (!curr) return false;
+
+            console.log('Stopping recording, isCancelled:', isCancelledRef.current);
+            isStopRequestedRef.current = true;
+
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+            if (audioContextRef.current) audioContextRef.current.close();
+
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                console.log('Stopping mediaRecorder');
+                mediaRecorderRef.current.stop();
+            }
+
+            const cleanup = () => {
+                setIsRecording(false);
+                onRecordingStateChange?.(false);
+                setRecordingTime(0);
+                setDragOffset(0);
+                setDragOffsetY(0);
+                setIsCancellingMode(false);
+                isCancelledRef.current = false;
+                setIsLocked(false);
+                isLockedRef.current = false;
+                setShowLockUI(false);
             };
 
-            // Set state BEFORE starting recorder to ensure cancellation logic works
-            startTimeRef.current = Date.now();
-            startPosRef.current = clientX;
-            setIsRecording(true);
-            setIsCancelled(false);
-            setSlideX(0);
-            setDuration(0);
+            if (isCancelledRef.current) {
+                // Give time for the CSS animation of the trash can "eating" the mic
+                setTimeout(cleanup, 300);
+            } else {
+                cleanup();
+            }
+            startXRef.current = null;
+            startYRef.current = null;
+            return false;
+        });
+    }, [onRecordingStateChange]);
+
+    const handleDragMove = useCallback((clientX: number, clientY: number) => {
+        if (startXRef.current === null || startYRef.current === null || isLockedRef.current) return;
+
+        const newOffsetX = clientX - startXRef.current;
+        const newOffsetY = clientY - startYRef.current;
+
+        // Swipe up to lock
+        if (newOffsetY < -10 && Math.abs(newOffsetX) < 30) {
+            setDragOffsetY(newOffsetY);
+            setShowLockUI(true);
+            if (newOffsetY <= LOCK_THRESHOLD) {
+                isLockedRef.current = true;
+                setIsLocked(true);
+                if ('vibrate' in navigator) navigator.vibrate(50);
+                setDragOffsetY(0);
+                setDragOffset(0);
+                setTimeout(() => setShowLockUI(false), 800);
+            }
+        }
+        // Swipe left to cancel
+        else if (newOffsetX < 0 && Math.abs(newOffsetY) < 30) {
+            setDragOffset(newOffsetX);
+
+            // Highlight the trash can if close to the threshold
+            if (newOffsetX <= CANCEL_THRESHOLD + 20) {
+                if (!isCancellingMode) {
+                    if ('vibrate' in navigator) navigator.vibrate(50);
+                }
+                setIsCancellingMode(true);
+            } else {
+                setIsCancellingMode(false);
+            }
+
+            // Check if cancelled
+            if (newOffsetX <= CANCEL_THRESHOLD) {
+                isCancelledRef.current = true;
+                if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]); // stronger vibration for trash
+
+                // Animate trash eating by dropping the mic into it
+                stopRecording();
+            }
+        }
+    }, [isCancellingMode, stopRecording]);
+
+    useEffect(() => {
+        if (!isRecording) return;
+
+        const onMouseMove = (e: MouseEvent) => handleDragMove(e.clientX, e.clientY);
+        const onMouseUp = () => { if (!isLockedRef.current) stopRecording(); };
+        const onTouchMove = (e: TouchEvent) => handleDragMove(e.touches[0].clientX, e.touches[0].clientY);
+        const onTouchEnd = () => { if (!isLockedRef.current) stopRecording(); };
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+        window.addEventListener('touchmove', onTouchMove, { passive: false });
+        window.addEventListener('touchend', onTouchEnd);
+
+        return () => {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+            window.removeEventListener('touchmove', onTouchMove);
+            window.removeEventListener('touchend', onTouchEnd);
+        };
+    }, [isRecording, handleDragMove, stopRecording]);
+
+    const handleDrag = (e: React.MouseEvent | React.TouchEvent) => {
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        handleDragMove(clientX, clientY);
+    };
+
+    const startRecording = async (e: React.MouseEvent | React.TouchEvent) => {
+        if (e.cancelable) e.preventDefault();
+
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        startXRef.current = clientX;
+        startYRef.current = clientY;
+        isCancelledRef.current = false;
+        isLockedRef.current = false;
+        isStopRequestedRef.current = false;
+        setIsLocked(false);
+        setIsRecording(true); // Set true immediately to register window event listeners
+        onRecordingStateChange?.(true);
+        setShowLockUI(true);
+        setDragOffset(0);
+        setDragOffsetY(0);
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            if (isStopRequestedRef.current) {
+                stream.getTracks().forEach(t => t.stop());
+                return;
+            }
+
+            // Audio Visualization Setup
+            const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
+            const audioCtx = new AudioContextClass();
+            const analyser = audioCtx.createAnalyser();
+            const source = audioCtx.createMediaStreamSource(stream);
+            analyser.fftSize = 64; // Smaller for fewer bars
+            source.connect(analyser);
+
+            audioContextRef.current = audioCtx;
+            analyserRef.current = analyser;
+
+            const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            chunksRef.current = [];
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    chunksRef.current.push(e.data);
+                }
+            };
+            recorder.onstop = () => {
+                console.log('Recorder stopped. Chunks count:', chunksRef.current.length);
+                const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+
+                // Calculate final duration
+                const finalDuration = startTimeRef.current
+                    ? Math.round((Date.now() - startTimeRef.current) / 1000)
+                    : durationRef.current;
+
+                // Get exact milliseconds for accurate discard check
+                const exactDurationMs = startTimeRef.current
+                    ? Date.now() - startTimeRef.current
+                    : finalDuration * 1000;
+
+                console.log('Blob size:', blob.size, 'Final Duration:', finalDuration);
+                stream.getTracks().forEach(t => t.stop());
+
+                // Only complete recording if not cancelled AND duration is >= 1 second (1000ms)
+                if (!isCancelledRef.current && exactDurationMs >= 1000 && chunksRef.current.length > 0) {
+                    onRecordingComplete(blob, Math.max(1, finalDuration));
+                } else {
+                    console.log('Recording discarded:', {
+                        isCancelled: isCancelledRef.current,
+                        exactDurationMs,
+                        chunks: chunksRef.current.length
+                    });
+                }
+                durationRef.current = 0;
+                startTimeRef.current = null;
+            };
 
             recorder.start(100);
             mediaRecorderRef.current = recorder;
-            timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+
+            playRecordStartSound();
+            setRecordingTime(0);
+            durationRef.current = 0;
+            startTimeRef.current = Date.now();
+
+            timerRef.current = setInterval(() => {
+                durationRef.current += 1;
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+
+            // Draw Waveform (Scrolling Bars like WhatsApp)
+            const barWidth = 2.5;
+            const gap = 2;
+            const step = barWidth + gap;
+
+            // To be safe with canvas width 80
+            const maxBars = Math.ceil(80 / step) + 1;
+            const history = new Array(maxBars).fill(0);
+
+            let lastTime = performance.now();
+            let scrollOffset = 0;
+            const scrollSpeed = 25; // pixels per second
+
+            const draw = (time: number) => {
+                if (!canvasRef.current || !analyserRef.current) return;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                const dt = (time - lastTime) / 1000;
+                lastTime = time;
+
+                // Move forward but clamp max dt to avoid jumps when the tab is inactive
+                if (dt > 0 && dt < 0.1) {
+                    scrollOffset += scrollSpeed * dt;
+                }
+
+                const bufferLength = analyserRef.current.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                analyserRef.current.getByteFrequencyData(dataArray);
+
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                }
+                const currentVolume = (sum / bufferLength) / 255.0;
+
+                // When offset reaches a full step, we "commit" the bar and slide the array
+                if (scrollOffset >= step) {
+                    scrollOffset -= step;
+                    history.push(currentVolume);
+                    history.shift();
+                } else {
+                    // Update the head (rightmost bar) to the maximum volume hit during its "entry" phase
+                    history[history.length - 1] = Math.max(history[history.length - 1], currentVolume);
+                }
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ef4444'; // Red matching mic
+
+                for (let i = 0; i < history.length; i++) {
+                    const volume = history[i];
+                    // Enhance lower volumes slightly so it's not totally flat, curve the high end
+                    const boostedVolume = Math.min(1, volume * 1.5 + 0.1);
+                    const height = Math.max(2.5, boostedVolume * (canvas.height - 4));
+
+                    // x position: i is index. 0 is oldest (leftmost), max is newest (rightmost)
+                    const x = i * step - scrollOffset;
+                    const y = (canvas.height - height) / 2;
+
+                    ctx.beginPath();
+                    if (ctx.roundRect) {
+                        ctx.roundRect(x, y, barWidth, height, barWidth / 2);
+                    } else {
+                        ctx.rect(x, y, barWidth, height);
+                    }
+                    ctx.fill();
+                }
+
+                animationFrameRef.current = requestAnimationFrame(draw);
+            };
+            animationFrameRef.current = requestAnimationFrame(draw);
 
             if ('vibrate' in navigator) navigator.vibrate(50);
         } catch (err) {
             console.error('Mic error:', err);
             toast.error('Microphone access denied');
+            setIsRecording(false);
+            onRecordingStateChange?.(false);
         }
     };
 
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (!isRecording) return;
-        const deltaX = e.clientX - startPosRef.current;
-        const slide = Math.min(0, deltaX);
-        setSlideX(slide);
 
-        if (Math.abs(slide) > recordingThreshold && !isCancelled) {
-            setIsCancelled(true);
-            if ('vibrate' in navigator) navigator.vibrate([30, 30]);
-            toast('Cancelled', { icon: '🚫', duration: 1000 });
-        }
-    };
-
-    const stopRecording = () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-            mediaRecorderRef.current.stop();
-        }
-        setIsRecording(false);
-        setSlideX(0);
-    };
 
     return (
-        <div className="relative">
-            {isRecording && (
+        <div className="relative flex items-center h-full">
+            {isRecording && portalTarget && createPortal(
+                <div className="absolute inset-0 z-50 flex items-center px-3 rounded-full animate-premium-in bg-transparent justify-between">
+                    <div className="flex items-center gap-2.5 flex-shrink-0">
+                        {!isLocked && (
+                            <>
+                                <div className="relative">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#ef4444] shadow-[0_0_12px_rgba(239,68,68,0.8)] animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]" />
+                                </div>
+                                <span className="text-white font-mono text-sm min-w-[45px] tabular-nums tracking-wider">
+                                    {Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}
+                                </span>
+                            </>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-3 pr-2 flex-1 justify-end min-w-0">
+                        {isLocked ? (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        isCancelledRef.current = true;
+                                        stopRecording();
+                                    }}
+                                    className="w-8 h-8 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500/20 transition-all shadow-[0_0_15px_rgba(239,68,68,0.2)] flex-shrink-0"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                                <div className="flex items-center gap-2.5 flex-shrink-0 mr-1">
+                                    <div className="relative">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-[#ef4444] shadow-[0_0_12px_rgba(239,68,68,0.8)] animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]" />
+                                    </div>
+                                    <span className="text-white font-mono text-sm min-w-[45px] tabular-nums tracking-wider">
+                                        {Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}
+                                    </span>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex items-center gap-1.5 min-w-0">
+                                <span
+                                    className="text-white/40 font-semibold tracking-wider text-[10px] sm:text-xs uppercase flex items-center gap-1.5 whitespace-nowrap overflow-hidden transition-all duration-300"
+                                    style={{
+                                        opacity: Math.max(0, 1 - Math.abs(dragOffset) / 60),
+                                        transform: `translateX(${dragOffset * 0.2}px)`
+                                    }}
+                                >
+                                    <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-pulse opacity-70 flex-shrink-0" />
+                                    <span className="truncate">slide to cancel</span>
+                                </span>
+                            </div>
+                        )}
+                        <div className="h-6 w-[80px] flex items-center overflow-hidden flex-shrink-0">
+                            <canvas ref={canvasRef} width="80" height="20" className="opacity-90" />
+                        </div>
+                    </div>
+                </div>,
+                portalTarget
+            )}
+
+            {/* Trash Bin that appears when actively swiping near X threshold */}
+            {isRecording && !isLocked && Math.abs(dragOffset) > 20 && (
                 <div
-                    className="absolute bottom-0 right-0 flex items-center gap-4 pl-4 pr-0 py-0 bg-transparent z-50 pointer-events-none"
-                    style={{ transform: `translateX(${slideX * 0.5}px)` }} // Slight parallax
+                    className={`absolute right-full mr-4 z-[100] text-red-500 transition-all duration-300 ease-out flex items-center justify-center pointer-events-none`}
+                    style={{
+                        transform: `scale(${isCancelledRef.current ? 1.5 : (Math.abs(dragOffset) / Math.abs(CANCEL_THRESHOLD))})`,
+                        opacity: isCancelledRef.current ? 1 : Math.min(1, Math.abs(dragOffset) / 40 - 0.5),
+                        left: -Math.abs(CANCEL_THRESHOLD) - 10
+                    }}
                 >
-                    <div className={`flex items-center gap-2 ${isCancelled ? 'opacity-20 grayscale transition-all' : ''}`}>
-                        <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                        <span className="text-white text-sm font-black tabular-nums">
-                            {String(Math.floor(duration / 60)).padStart(2, '0')}:{String(duration % 60).padStart(2, '0')}
-                        </span>
-                    </div>
-
-                    <div className="flex-1 relative overflow-hidden h-10 flex items-center justify-end">
-                        <span
-                            className={`text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap
-                            ${isCancelled ? 'text-rose-500 transform scale-110' : 'text-white/30'}`}
-                        >
-                            {isCancelled ? 'Release to cancel' : '< Slide to cancel'}
-                        </span>
-                    </div>
-
-                    <div className="w-10 h-10 rounded-full bg-transparent flex items-center justify-center text-white/40">
-                        <Mic className={`w-5 h-5 ${!isCancelled ? 'text-rose-500 animate-pulse' : ''}`} />
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isCancelledRef.current ? 'bg-red-500/20 shadow-[0_0_30px_rgba(239,68,68,0.3)]' : 'bg-white/5'}`}>
+                        <Trash2 className={`w-6 h-6 ${isCancelledRef.current ? 'animate-bounce fill-red-500/20' : ''}`} />
                     </div>
                 </div>
             )}
 
-            <button
-                onPointerDown={(e) => {
-                    e.preventDefault();
-                    (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId);
-                    startRecording(e.clientX);
-                }}
-                onPointerMove={handlePointerMove}
-                onPointerUp={(e) => {
-                    (e.currentTarget as HTMLButtonElement).releasePointerCapture(e.pointerId);
-                    stopRecording();
-                }}
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all touch-none select-none z-10
-                    ${isRecording ? 'opacity-0 scale-0' : 'text-white/40 hover:text-white hover:bg-white/10 hover:scale-110 active:scale-95'}
-                `}
-                title="Hold to record"
-            >
-                <Mic className="w-5 h-5" />
-            </button>
+            {/* Swipe to lock animation container */}
+            {isRecording && showLockUI && !isCancelledRef.current && !isLocked && (
+                <div
+                    className="absolute bottom-[100%] left-0 w-full flex justify-center pb-4 pointer-events-none transition-all duration-300 z-[100]"
+                    style={{
+                        opacity: dragOffsetY < -10 ? Math.max(0, 1 - (Math.abs(dragOffsetY) / Math.abs(LOCK_THRESHOLD))) : 0,
+                    }}
+                >
+                    <div
+                        className="bg-[#1a1c1e] backdrop-blur-md border border-white/10 rounded-full p-3 shadow-[0_0_20px_rgba(0,0,0,0.5)] flex flex-col items-center gap-4 transition-transform duration-75"
+                        style={{
+                            transform: `translateY(${Math.min(0, dragOffsetY + 20)}px)`
+                        }}
+                    >
+                        <Lock className="w-4 h-4 text-white/50 animate-bounce" />
+                        <div className="flex flex-col gap-1.5 opacity-50">
+                            <div className="w-1.5 h-1.5 rounded-full bg-white/40 animate-pulse" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-white/30 animate-pulse delay-75" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse delay-150" />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isLocked ? (
+                <button
+                    type="button"
+                    onClick={stopRecording}
+                    className="w-10 h-10 rounded-full flex items-center justify-center bg-primary text-white shadow-[0_0_15px_rgba(var(--primary),0.5)] transition-all hover:scale-110 active:scale-95 z-50 animate-in fade-in zoom-in-50"
+                    title="Send Voice Note"
+                >
+                    <Send className="w-4 h-4 ml-0.5" />
+                </button>
+            ) : (
+                <button
+                    type="button"
+                    onMouseDown={startRecording}
+                    onTouchStart={startRecording}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95 flex-shrink-0 border touch-none z-50 relative
+                        ${isRecording
+                            ? (isCancelledRef.current
+                                ? 'duration-300 scale-0 opacity-0 rotate-180 bg-red-500 text-white border-red-500' // Trash eating animation
+                                : (isCancellingMode
+                                    ? 'duration-75 bg-red-500 text-white border-red-600 scale-[1.25] shadow-[0_0_25px_rgba(239,68,68,0.6)] animate-pulse' // Danger zone
+                                    : 'duration-75 bg-[#991b1b] text-[#fca5a5] border-[#dc2626] scale-[1.15] shadow-[0_0_15px_rgba(220,38,38,0.4)]')) // Safe zone
+                            : 'duration-300 bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10' // Idle
+                        }`}
+                    style={isRecording && !isCancelledRef.current ? { transform: `translate(${dragOffset}px, ${dragOffsetY}px) scale(${isCancellingMode ? 1.25 : 1.15})` } : (isCancelledRef.current ? { transform: `translate(${CANCEL_THRESHOLD}px, 0px) scale(0) rotate(-45deg)` } : {})}
+                    title="Hold to record, slide left to cancel, slide up to lock"
+                >
+                    <Mic className="w-5 h-5 flex-shrink-0" />
+                </button>
+            )}
         </div>
     );
 };
@@ -1133,7 +1605,7 @@ const ImageEditorModal = ({
                 ctx.fillStyle = '#000000';
                 ctx.fillRect(0, cropH, cropW, captionPadding);
                 ctx.fillStyle = '#ffffff';
-                ctx.font = `bold ${fontSize}px sans-serif`;
+                ctx.font = `bold ${fontSize} px sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(caption.trim(), cropW / 2, cropH + captionPadding / 2, cropW - 20);
@@ -1163,13 +1635,13 @@ const ImageEditorModal = ({
                     <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 border border-white/10">
                         <button
                             onClick={() => setMode('crop')}
-                            className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${mode === 'crop' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                            className={`px - 3 py - 1.5 rounded - lg text - [11px] font - black uppercase tracking - widest transition - all ${mode === 'crop' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white'} `}
                         >
                             ✂️ Crop
                         </button>
                         <button
                             onClick={() => setMode('draw')}
-                            className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${mode === 'draw' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                            className={`px - 3 py - 1.5 rounded - lg text - [11px] font - black uppercase tracking - widest transition - all ${mode === 'draw' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white'} `}
                         >
                             ✏️ Draw
                         </button>
@@ -1201,7 +1673,7 @@ const ImageEditorModal = ({
                             <button
                                 key={s}
                                 onClick={() => setBrushSize(s)}
-                                className={`flex items-center justify-center w-8 h-8 rounded-full transition-all ${brushSize === s ? 'bg-primary/20 border border-primary' : 'bg-white/5 border border-white/10'}`}
+                                className={`flex items - center justify - center w - 8 h - 8 rounded - full transition - all ${brushSize === s ? 'bg-primary/20 border border-primary' : 'bg-white/5 border border-white/10'} `}
                             >
                                 <div className="rounded-full bg-white" style={{ width: s, height: s }} />
                             </button>
@@ -1260,14 +1732,14 @@ const ImageEditorModal = ({
                                 <div className="absolute top-1/3 h-px w-full bg-white" />
                                 <div className="absolute top-2/3 h-px w-full bg-white" />
                             </div>
-                            <div className={`${hClass} -top-3 -left-3 cursor-nw-resize`} onMouseDown={onPointerDown('nw')} onTouchStart={onPointerDown('nw')} />
-                            <div className={`${hClass} -top-3 -right-3 cursor-ne-resize`} onMouseDown={onPointerDown('ne')} onTouchStart={onPointerDown('ne')} />
-                            <div className={`${hClass} -bottom-3 -left-3 cursor-sw-resize`} onMouseDown={onPointerDown('sw')} onTouchStart={onPointerDown('sw')} />
-                            <div className={`${hClass} -bottom-3 -right-3 cursor-se-resize`} onMouseDown={onPointerDown('se')} onTouchStart={onPointerDown('se')} />
-                            <div className={`${hClass} -top-3 left-1/2 -translate-x-1/2 cursor-n-resize`} onMouseDown={onPointerDown('n')} onTouchStart={onPointerDown('n')} />
-                            <div className={`${hClass} -bottom-3 left-1/2 -translate-x-1/2 cursor-s-resize`} onMouseDown={onPointerDown('s')} onTouchStart={onPointerDown('s')} />
-                            <div className={`${hClass} top-1/2 -left-3 -translate-y-1/2 cursor-w-resize`} onMouseDown={onPointerDown('w')} onTouchStart={onPointerDown('w')} />
-                            <div className={`${hClass} top-1/2 -right-3 -translate-y-1/2 cursor-e-resize`} onMouseDown={onPointerDown('e')} onTouchStart={onPointerDown('e')} />
+                            <div className={`${hClass} -top - 3 - left - 3 cursor - nw - resize`} onMouseDown={onPointerDown('nw')} onTouchStart={onPointerDown('nw')} />
+                            <div className={`${hClass} -top - 3 - right - 3 cursor - ne - resize`} onMouseDown={onPointerDown('ne')} onTouchStart={onPointerDown('ne')} />
+                            <div className={`${hClass} -bottom - 3 - left - 3 cursor - sw - resize`} onMouseDown={onPointerDown('sw')} onTouchStart={onPointerDown('sw')} />
+                            <div className={`${hClass} -bottom - 3 - right - 3 cursor - se - resize`} onMouseDown={onPointerDown('se')} onTouchStart={onPointerDown('se')} />
+                            <div className={`${hClass} -top - 3 left - 1 / 2 - translate - x - 1 / 2 cursor - n - resize`} onMouseDown={onPointerDown('n')} onTouchStart={onPointerDown('n')} />
+                            <div className={`${hClass} -bottom - 3 left - 1 / 2 - translate - x - 1 / 2 cursor - s - resize`} onMouseDown={onPointerDown('s')} onTouchStart={onPointerDown('s')} />
+                            <div className={`${hClass} top - 1 / 2 - left - 3 - translate - y - 1 / 2 cursor - w - resize`} onMouseDown={onPointerDown('w')} onTouchStart={onPointerDown('w')} />
+                            <div className={`${hClass} top - 1 / 2 - right - 3 - translate - y - 1 / 2 cursor - e - resize`} onMouseDown={onPointerDown('e')} onTouchStart={onPointerDown('e')} />
                         </div>
                     )}
                 </div>
@@ -1420,7 +1892,7 @@ const ImageViewerModal = ({ url, onClose, onEdit }: { url: string; onClose: () =
                     <div className="flex items-center gap-4">
                         <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Zoom</span>
                         <div className="w-32 h-1.5 bg-white/10 rounded-full relative">
-                            <div className="absolute top-0 left-0 h-full bg-primary rounded-full" style={{ width: `${((zoom - 1) / 4) * 100}%` }} />
+                            <div className="absolute top-0 left-0 h-full bg-primary rounded-full" style={{ width: `${((zoom - 1) / 4) * 100}% ` }} />
                         </div>
                         <span className="text-[11px] font-black text-white min-w-[30px]">{Math.round(zoom * 100)}%</span>
                     </div>
@@ -1445,18 +1917,22 @@ export default function Communications() {
     const [isUploading, setIsUploading] = useState(false);
     const [showNewChat, setShowNewChat] = useState(false);
     const [replyTo, setReplyTo] = useState<Message | null>(null);
+    const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+    const [isSendingVoice, setIsSendingVoice] = useState(false);
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
     const [longPressConvoId, setLongPressConvoId] = useState<string | null>(null);
     const [longPressActive, setLongPressActive] = useState<string | null>(null);
     const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set());
     const [showForwardModal, setShowForwardModal] = useState(false);
-    const [pendingImage, setPendingImage] = useState<string | null>(null);
+    const [pendingImages, setPendingImages] = useState<string[]>([]);
     const [imageToView, setImageToView] = useState<string | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [activeTab, setActiveTab] = useState<'chats' | 'calls' | 'settings'>('chats');
     const [callLogs, setCallLogs] = useState<Message[]>([]);
     const [editingImage, setEditingImage] = useState<string | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showAttachMenu, setShowAttachMenu] = useState(false);
 
     // Call state
     const [activeCall, setActiveCall] = useState<{ type: 'audio' | 'video'; otherUser: Profile; channelId: string; conversationId: string } | null>(null);
@@ -1505,7 +1981,41 @@ export default function Communications() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const clearedAtRef = useRef<string | null>(null);
-    const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const emojiPickerRef = useRef<HTMLDivElement>(null);
+    const attachMenuRef = useRef<HTMLDivElement>(null);
+    const galleryInputRef = useRef<HTMLInputElement>(null);
+    const documentInputRef = useRef<HTMLInputElement>(null);
+    const audioInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
+    const attachToggleRef = useRef<HTMLButtonElement>(null);
+    const emojiToggleRef = useRef<HTMLButtonElement>(null);
+    const pillRef = useRef<HTMLDivElement>(null); // Initial load: Fetch contacts and initial communications
+
+    // Close emoji picker when clicking outside
+    useEffect(() => {
+        if (!showEmojiPicker) return;
+        const handler = (e: MouseEvent) => {
+            const isToggleClick = emojiToggleRef.current && emojiToggleRef.current.contains(e.target as Node);
+            if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node) && !isToggleClick) {
+                setShowEmojiPicker(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [showEmojiPicker]);
+
+    // Close attach menu when clicking outside
+    useEffect(() => {
+        if (!showAttachMenu) return;
+        const handler = (e: MouseEvent) => {
+            const isToggleClick = attachToggleRef.current && attachToggleRef.current.contains(e.target as Node);
+            if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node) && !isToggleClick) {
+                setShowAttachMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [showAttachMenu]);
 
     // ─── Presence Section Tracking ───────────────────────────────────────────────
     useEffect(() => {
@@ -1543,7 +2053,7 @@ export default function Communications() {
         const textarea = textareaRef.current;
         if (!textarea) return;
         textarea.style.height = 'auto';
-        textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+        textarea.style.height = `${Math.min(textarea.scrollHeight, 200)} px`;
     }, [text]);
 
     // ─── Selection Actions ────────────────────────────────────────────────────────
@@ -1605,6 +2115,7 @@ export default function Communications() {
             toast.error('Failed to delete messages');
         }
     };
+
 
     const deleteSelectedMessages = async () => {
         // This is now replaced by handleDeleteClick and the modal choices
@@ -1849,7 +2360,7 @@ export default function Communications() {
 
     const initiateCall = async (callType: 'audio' | 'video') => {
         if (!activeConvo || !currentUserId || !activeConvo.otherUser) return;
-        const channelId = `call_${activeConvo.id}_${Date.now()}`;
+        const channelId = `call_${activeConvo.id}_${Date.now()} `;
 
         const { error } = await supabase.from('call_records').insert({
             conversation_id: activeConvo.id,
@@ -2321,7 +2832,7 @@ export default function Communications() {
         if (!currentUserId) return;
 
         const channel = supabase
-            .channel(`calls:${currentUserId}`)
+            .channel(`calls:${currentUserId} `)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'call_records' },
                 async (payload) => {
                     const call = payload.new as any;
@@ -2410,49 +2921,152 @@ export default function Communications() {
         return () => { supabase.removeChannel(channel); };
     }, [currentUserId, activeConvo?.otherUser?.id]);
 
-    // ─── Send text message ─────────────────────────────────────────────────────────
+    // ─── Send text message (and pending images) ────────────────────────────────────
     const sendMessage = async (e?: React.FormEvent) => {
         e?.preventDefault();
-        if (!text.trim() || !activeConvo || !currentUserId) return;
-        setIsSending(true);
-        const content = text.trim();
-        const msgReplyToId = replyTo?.id;
-        setText('');
-        setReplyTo(null);
 
-        // Reset textarea height after sending
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
+        const hasText = text.trim().length > 0;
+        const hasImages = pendingImages.length > 0;
+
+        if (!activeConvo || !currentUserId || (!hasText && !hasImages)) return;
+
+        setIsSending(true);
+
+        // Send media first if any exist
+        if (hasImages) {
+            try {
+                // Convert base64 data URLs back to Blobs for uploading
+                const mediaBlobs = await Promise.all(pendingImages.map(async (dataUrl) => {
+                    const res = await fetch(dataUrl);
+                    return await res.blob();
+                }));
+
+                // Clear the preview immediately for better UX
+                const mediaToSend = [...mediaBlobs];
+                setPendingImages([]);
+
+                await sendMedia(mediaToSend);
+            } catch (err) {
+                console.error("Failed to process media for sending:", err);
+                toast.error("Failed to send some media.");
+            }
         }
 
-        await supabase.from('messages').insert({
-            conversation_id: activeConvo.id,
-            sender_id: currentUserId,
-            content,
-            type: 'text',
-            reply_to_id: msgReplyToId
-        });
+        // Send text message if any exists
+        if (hasText) {
+            const content = text.trim();
+            const msgReplyToId = replyTo?.id;
+            setText('');
+            setReplyTo(null);
 
-        await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConvo.id);
-        loadConversations();
+            // Reset textarea height after sending
+            if (textareaRef.current) {
+                textareaRef.current.style.height = 'auto';
+            }
+
+            await supabase.from('messages').insert({
+                conversation_id: activeConvo.id,
+                sender_id: currentUserId,
+                content,
+                type: 'text',
+                reply_to_id: msgReplyToId
+            });
+
+            await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConvo.id);
+            playMessageSentSound();
+            loadConversations();
+        }
+
         setIsSending(false);
     };
 
-    // ─── Send image ────────────────────────────────────────────────────────────────
-    const sendImage = async (file: Blob | File) => {
-        if (!activeConvo || !currentUserId) return;
+    // ─── Send media ───────────────────────────────────────────────────────────────
+    const sendMedia = async (files: (Blob | File)[]) => {
+        if (!activeConvo || !currentUserId || files.length === 0) return;
         setIsUploading(true);
         try {
-            // Compress image if it's a File (raw upload)
-            let finalImage: Blob | File = file;
-            if (file instanceof File) {
-                finalImage = await imageCompression(file, { maxSizeMB: 0.3, maxWidthOrHeight: 1280, useWebWorker: true });
+            const uploadedMedia: { url: string; size: number; type: string }[] = [];
+
+            for (const file of files) {
+                const isImage = file.type.startsWith('image/');
+                const isVideo = file.type.startsWith('video/');
+                const isAudio = file.type.startsWith('audio/');
+
+                let finalFile: Blob | File = file;
+                let ext = 'bin';
+
+                if (isImage) {
+                    finalFile = await imageCompression(file as File, { maxSizeMB: 0.3, maxWidthOrHeight: 1280, useWebWorker: true });
+                    ext = 'jpg';
+                } else if (isVideo) {
+                    ext = 'mp4';
+                } else if (isAudio) {
+                    ext = 'mp3';
+                }
+
+                const path = `${currentUserId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+
+                const { error: uploadError } = await supabase.storage.from('chat-media').upload(path, finalFile, {
+                    upsert: true,
+                    contentType: file.type
+                });
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage.from('chat-media').getPublicUrl(path);
+
+                let msgType = 'image';
+                if (isVideo) msgType = 'video';
+                else if (isAudio) msgType = 'audio';
+
+                uploadedMedia.push({ url: publicUrl, size: finalFile.size, type: msgType });
             }
 
-            const ext = 'jpg';
-            const path = `${currentUserId}/${Date.now()}.${ext}`;
+            const messagesToInsert = uploadedMedia.map(({ url, size, type }) => ({
+                conversation_id: activeConvo.id,
+                sender_id: currentUserId,
+                type: type,
+                media_url: url,
+                media_size: size
+            }));
 
-            const { error: uploadError } = await supabase.storage.from('chat-media').upload(path, finalImage, { upsert: true });
+            await supabase.from('messages').insert(messagesToInsert);
+            await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConvo.id);
+            loadConversations();
+            setPendingImages([]);
+        } catch (err) {
+            console.error('Send media error:', err);
+            toast.error('Failed to send media');
+        }
+        setIsUploading(false);
+    };
+
+    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+
+        const readFiles = files.map(file => {
+            return new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.readAsDataURL(file);
+            });
+        });
+
+        const results = await Promise.all(readFiles);
+        setPendingImages(prev => [...prev, ...results]);
+    };
+
+    // ─── Send voice note ───────────────────────────────────────────────────────────
+    const sendVoiceNote = async (blob: Blob, duration: number) => {
+        if (!activeConvo || !currentUserId) return;
+        setIsSendingVoice(true);
+        try {
+            const fileName = `voice_${Date.now()}.webm`;
+            const path = `${currentUserId}/${fileName}`;
+            const { error: uploadError } = await supabase.storage.from('chat-media').upload(path, blob, {
+                contentType: 'audio/webm',
+                upsert: true
+            });
             if (uploadError) throw uploadError;
 
             const { data: { publicUrl } } = supabase.storage.from('chat-media').getPublicUrl(path);
@@ -2460,50 +3074,22 @@ export default function Communications() {
             await supabase.from('messages').insert({
                 conversation_id: activeConvo.id,
                 sender_id: currentUserId,
-                type: 'image',
-                media_url: publicUrl,
-                media_size: finalImage.size
-            });
-            await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConvo.id);
-            loadConversations();
-            setPendingImage(null);
-        } catch (err) {
-            toast.error('Failed to send image');
-        }
-        setIsUploading(false);
-    };
-
-    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => setPendingImage(reader.result as string);
-        reader.readAsDataURL(file);
-    };
-
-    // ─── Send voice note ───────────────────────────────────────────────────────────
-    const sendVoiceNote = async (blob: Blob, duration: number) => {
-        if (!activeConvo || !currentUserId) return;
-        setIsUploading(true);
-        try {
-            const path = `${currentUserId}/voice_${Date.now()}.webm`;
-            const { error } = await supabase.storage.from('chat-media').upload(path, blob, { contentType: 'audio/webm', upsert: true });
-            if (error) throw error;
-
-            const { data: { publicUrl } } = supabase.storage.from('chat-media').getPublicUrl(path);
-            await supabase.from('messages').insert({
-                conversation_id: activeConvo.id,
-                sender_id: currentUserId,
                 type: 'voice',
                 media_url: publicUrl,
                 media_duration: duration
             });
+
             await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConvo.id);
+            playMessageSentSound();
             loadConversations();
-        } catch {
+
+            // Animation for "Sending..." feedback
+            setTimeout(() => setIsSendingVoice(false), 800);
+        } catch (err) {
+            console.error('Send voice note error:', err);
             toast.error('Failed to send voice note');
+            setIsSendingVoice(false);
         }
-        setIsUploading(false);
     };
 
     // ─── Start a new conversation ──────────────────────────────────────────────────
@@ -2648,25 +3234,16 @@ export default function Communications() {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background z-0 touch-none h-full" style={{ overscrollBehavior: 'none' }}>
             <div className="flex-1 flex overflow-hidden touch-auto h-full">
 
-                {/* ── Image Editor Overlay ── */}
-                {pendingImage && (
-                    <ImageEditorModal
-                        image={pendingImage}
-                        onCancel={() => setPendingImage(null)}
-                        onSave={sendImage}
-                        isProcessing={isUploading}
-                    />
-                )}
 
                 {/* ── Image Viewer Overlay ── */}
-                {imageToView && (
+                {imageToView && pendingImages.length === 0 && (
                     <ImageViewerModal
                         url={imageToView}
                         onClose={() => setImageToView(null)}
                         onEdit={(imgUrl) => {
                             setImageToView(null);
                             // Pre-load the URL into the editor (treated as pending image)
-                            setPendingImage(imgUrl);
+                            setPendingImages(prev => [...prev, imgUrl]);
                         }}
                     />
                 )}
@@ -3269,7 +3846,7 @@ export default function Communications() {
                                         }
                                     </div>
                                 </div>
-                                <div className="hidden sm:block">
+                                <div className="block">
                                     {(() => {
                                         const prof = activeConvo.otherUser;
                                         if (!prof) return null;
@@ -3369,30 +3946,152 @@ export default function Communications() {
                             </div>
                         </div>
 
-                        {/* Messages area */}
-                        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-0.5">
-                            {messages.length === 0 && (
-                                <div className="flex flex-col items-center justify-center h-full gap-3 text-center opacity-40">
-                                    <MessageSquare className="w-10 h-10 text-white/20" />
-                                    <p className="text-white/30 font-bold text-sm">Start the conversation!</p>
+                        {/* Conditional Rendering: Media Preview vs Messages Area */}
+                        {pendingImages.length > 0 ? (
+                            <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#0F1115] animate-in fade-in duration-200">
+                                {/* Top Tools Bar */}
+                                <div className="flex items-center justify-between p-4 border-b border-white/5 bg-background/50 backdrop-blur-md flex-shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setPendingImages([]); setImageToView(null); }}
+                                        className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-all"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+
+                                    <div className="flex items-center gap-2">
+                                        <button type="button" className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/15 text-white flex items-center justify-center transition-all group" title="Undo (Coming Soon)">
+                                            <RotateCcw className="w-4 h-4 group-hover:-rotate-45 transition-transform" />
+                                        </button>
+                                        <button type="button" className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/15 text-white flex items-center justify-center transition-all group" title="Crop (Coming Soon)">
+                                            <Crop className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                        </button>
+                                        <div className="w-px h-6 bg-white/10 mx-1" />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const currentImg = imageToView || pendingImages[pendingImages.length - 1];
+                                                const next = pendingImages.filter(img => img !== currentImg);
+                                                setPendingImages(next);
+                                                setImageToView(null);
+                                            }}
+                                            className="w-10 h-10 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 flex items-center justify-center transition-all group mt-0"
+                                            title="Delete Media"
+                                        >
+                                            <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                        </button>
+                                    </div>
                                 </div>
-                            )}
-                            {groupedMessages.map((msg) => (
-                                <MessageBubble
-                                    key={msg.id}
-                                    msg={msg}
-                                    isOwn={msg.sender_id === currentUserId}
-                                    currentUserId={currentUserId || undefined}
-                                    onReply={setReplyTo}
-                                    onPin={m => togglePinMessage(m.id, !!m.is_pinned)}
-                                    isSelected={selectedMessageIds.has(msg.id)}
-                                    isSelectionMode={selectedMessageIds.size > 0}
-                                    onSelect={toggleMessageSelection}
-                                    onImageClick={setImageToView}
-                                />
-                            ))}
-                            <div ref={messagesEndRef} />
-                        </div>
+
+                                {/* Main Preview */}
+                                <div className="flex-1 flex items-center justify-center p-6 min-h-0 relative">
+                                    {(() => {
+                                        const url = imageToView || pendingImages[pendingImages.length - 1];
+                                        if (!url) return null;
+
+                                        const isVideo = url.startsWith('data:video/');
+                                        const isAudio = url.startsWith('data:audio/');
+
+                                        if (isVideo) {
+                                            return (
+                                                <video
+                                                    src={url}
+                                                    controls
+                                                    className="max-w-full max-h-full rounded-2xl object-contain drop-shadow-2xl ring-1 ring-white/10 shadow-[0_0_60px_rgba(0,0,0,0.5)]"
+                                                />
+                                            );
+                                        }
+
+                                        if (isAudio) {
+                                            return (
+                                                <div className="flex flex-col items-center gap-6 p-8 w-full max-w-sm bg-white/5 rounded-3xl border border-white/10 backdrop-blur-xl animate-premium-up">
+                                                    <div className="w-24 h-24 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20 shadow-2xl animate-pulse">
+                                                        <Volume2 className="w-10 h-10 text-amber-500" />
+                                                    </div>
+                                                    <div className="w-full space-y-4 text-center">
+                                                        <p className="text-white font-black text-lg tracking-tight">Audio Preview</p>
+                                                        <audio src={url} controls className="w-full h-10 filter invert brightness-100 opacity-80" />
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <img
+                                                src={url}
+                                                alt="Preview"
+                                                className="max-w-full max-h-full rounded-2xl object-contain drop-shadow-2xl ring-1 ring-white/10 shadow-[0_0_60px_rgba(0,0,0,0.5)]"
+                                            />
+                                        );
+                                    })()}
+                                </div>
+
+                                {/* Thumbnails Gallery */}
+                                <div className="flex-shrink-0 p-4 border-t border-white/5 bg-background/50 backdrop-blur-md">
+                                    <div className="max-w-3xl mx-auto flex gap-3 overflow-x-auto pb-2 scrollbar-none items-center justify-center px-2">
+                                        {pendingImages.map((imgUrl, idx) => {
+                                            const isSelected = (imageToView || pendingImages[pendingImages.length - 1]) === imgUrl;
+                                            const isVideo = imgUrl.startsWith('data:video/');
+                                            const isAudio = imgUrl.startsWith('data:audio/');
+
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    onClick={() => setImageToView(imgUrl)}
+                                                    className={`relative w-16 h-16 shrink-0 rounded-xl overflow-hidden cursor-pointer transition-all border-2 ${isSelected ? 'border-primary scale-110 shadow-lg shadow-primary/20 z-10' : 'border-transparent opacity-50 hover:opacity-100 hover:scale-105'}`}
+                                                >
+                                                    {isVideo ? (
+                                                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center relative">
+                                                            <video src={imgUrl} className="w-full h-full object-cover opacity-50" />
+                                                            <Play className="w-5 h-5 text-white/40 absolute" strokeWidth={3} />
+                                                        </div>
+                                                    ) : isAudio ? (
+                                                        <div className="w-full h-full bg-amber-500/10 flex items-center justify-center">
+                                                            <Volume2 className="w-6 h-6 text-amber-500/40" />
+                                                        </div>
+                                                    ) : (
+                                                        <img src={imgUrl} alt={`Thumb ${idx}`} className="w-full h-full object-cover" />
+                                                    )}
+                                                    {isSelected && <div className="absolute inset-0 bg-primary/10 transition-colors pointer-events-none" />}
+                                                </div>
+                                            );
+                                        })}
+                                        {/* Add More Button */}
+                                        <button
+                                            type="button"
+                                            onClick={() => galleryInputRef.current?.click()}
+                                            className="w-16 h-16 shrink-0 rounded-xl border-2 border-dashed border-white/20 hover:border-primary/50 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-1 text-white/50 hover:text-primary transition-all group"
+                                        >
+                                            <Plus className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-0.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                                {messages.length === 0 && (
+                                    <div className="flex flex-col items-center justify-center h-full gap-3 text-center opacity-40">
+                                        <MessageSquare className="w-10 h-10 text-white/20" />
+                                        <p className="text-white/30 font-bold text-sm">Start the conversation!</p>
+                                    </div>
+                                )}
+                                {groupedMessages.map((msg) => (
+                                    <MessageBubble
+                                        key={msg.id}
+                                        msg={msg}
+                                        isOwn={msg.sender_id === currentUserId}
+                                        currentUserId={currentUserId || undefined}
+                                        onReply={setReplyTo}
+                                        onPin={m => togglePinMessage(m.id, !!m.is_pinned)}
+                                        isSelected={selectedMessageIds.has(msg.id)}
+                                        isSelectionMode={selectedMessageIds.size > 0}
+                                        onSelect={toggleMessageSelection}
+                                        onImageClick={setImageToView}
+                                    />
+                                ))}
+                                <div ref={messagesEndRef} />
+                            </div>
+                        )}
 
                         {/* Forward Modal */}
                         {showForwardModal && (
@@ -3452,7 +4151,7 @@ export default function Communications() {
                         <div className="flex-shrink-0 p-4 bg-transparent backdrop-blur-3xl" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}>
                             {/* Reply Preview */}
                             {replyTo && (
-                                <div className="mb-3 p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between group animate-premium-up shadow-2xl backdrop-blur-3xl">
+                                <div className="mb-3 p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between group animate-premium-up shadow-2xl backdrop-blur-3xl mx-2 max-w-5xl md:mx-auto">
                                     <div className="flex items-center gap-3 min-w-0">
                                         <div className="w-1 h-8 rounded-full bg-primary" />
                                         <div className="min-w-0">
@@ -3467,75 +4166,279 @@ export default function Communications() {
                                     </button>
                                 </div>
                             )}
+
+                            {/* Main Input Form */}
                             <form onSubmit={sendMessage} className="max-w-5xl mx-auto flex items-end gap-3 px-2">
                                 <div className="flex items-center gap-1.5 pb-1">
-                                    {/* File input */}
+                                    {/* Specialized File Inputs */}
                                     <input
-                                        ref={fileInputRef}
+                                        ref={galleryInputRef}
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/*,video/*"
+                                        multiple // Allows selecting multiple photos/videos
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                            const files = Array.from(e.target.files || []);
+                                            if (!files.length) return;
+
+                                            const readFiles = files.map(file => {
+                                                return new Promise<string>((resolve) => {
+                                                    const reader = new FileReader();
+                                                    reader.onload = () => resolve(reader.result as string);
+                                                    reader.readAsDataURL(file);
+                                                });
+                                            });
+
+                                            const results = await Promise.all(readFiles);
+                                            setPendingImages(prev => [...prev, ...results]);
+                                            e.target.value = '';
+                                            setShowAttachMenu(false);
+                                            // Ensure we scroll to the bottom to see the preview
+                                            setTimeout(() => {
+                                                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                                            }, 100);
+                                        }}
+                                    />
+                                    <input
+                                        ref={cameraInputRef}
+                                        type="file"
+                                        accept="image/*,video/*"
+                                        capture="environment" // Hint to mobile devices to use back camera
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+
+                                            const reader = new FileReader();
+                                            reader.onload = () => {
+                                                setPendingImages(prev => [...prev, reader.result as string]);
+                                            };
+                                            reader.readAsDataURL(file);
+
+                                            e.target.value = '';
+                                            setShowAttachMenu(false);
+                                        }}
+                                    />
+                                    <input
+                                        ref={documentInputRef}
+                                        type="file"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
                                         className="hidden"
                                         onChange={e => {
                                             const file = e.target.files?.[0];
                                             if (!file) return;
-                                            const reader = new FileReader();
-                                            reader.onload = () => setPendingImage(reader.result as string);
-                                            reader.readAsDataURL(file);
-                                            // Reset input so same file can be re-selected
+                                            // Handle document (todo depending on pendingImage type support)
                                             e.target.value = '';
+                                            setShowAttachMenu(false);
+                                            toast.success('Document selected (preview not yet implemented for docs)');
                                         }}
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="w-10 h-10 rounded-2xl flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all flex-shrink-0 border border-white/5 bg-white/5/10 shadow-sm hover:scale-110 active:scale-95"
-                                    >
-                                        {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                                    </button>
+                                    <input
+                                        ref={audioInputRef}
+                                        type="file"
+                                        accept="audio/*"
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                            const files = Array.from(e.target.files || []);
+                                            if (!files.length) return;
 
+                                            const readFiles = files.map(file => {
+                                                return new Promise<string>((resolve) => {
+                                                    const reader = new FileReader();
+                                                    reader.onload = () => resolve(reader.result as string);
+                                                    reader.readAsDataURL(file);
+                                                });
+                                            });
+
+                                            const results = await Promise.all(readFiles);
+                                            setPendingImages(prev => [...prev, ...results]);
+                                            e.target.value = '';
+                                            setShowAttachMenu(false);
+                                            toast.success('Audio file added to preview');
+
+                                            // Ensure we scroll to the bottom
+                                            setTimeout(() => {
+                                                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                                            }, 100);
+                                        }}
+                                    />
+                                    {/* No padding on the left anymore, replaced by spacing in the pill */}
                                 </div>
+
 
                                 {/* Text input container - Single layer pill - Glassy */}
-                                <div className="flex-1 bg-white/[0.03] border border-white/5 rounded-2xl focus-within:border-primary/30 focus-within:bg-white/[0.05] transition-all shadow-inner">
-                                    <textarea
-                                        ref={textareaRef}
-                                        value={text}
-                                        onChange={e => setText(e.target.value)}
-                                        placeholder="Message..."
-                                        rows={1}
-                                        className="w-full px-5 py-3 !bg-transparent text-sm text-white placeholder:text-white/20 font-medium !outline-none transition-all resize-none overflow-hidden !border-none !ring-0 !shadow-none"
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                sendMessage(e as any);
-                                            }
-                                        }}
-                                    />
+                                <div ref={pillRef} className="flex-1 min-w-0 relative bg-white/[0.03] border border-white/5 rounded-full focus-within:border-primary/30 focus-within:bg-white/[0.05] transition-all shadow-inner flex items-center min-h-[44px]">
+
+                                    {isSendingVoice && (
+                                        <div className="flex-1 flex items-center gap-3 px-4 animate-premium-in">
+                                            <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)] animate-pulse" />
+                                            <span className="text-white/80 font-bold text-xs uppercase tracking-widest">Sending Voice Note...</span>
+                                        </div>
+                                    )}
+
+                                    {!isVoiceRecording && !isSendingVoice && (
+                                        <>
+                                            {/* Emoji Picker Popover */}
+                                            {showEmojiPicker && (
+                                                <div ref={emojiPickerRef} className="absolute bottom-14 left-0 z-50 shadow-2xl rounded-2xl overflow-hidden">
+                                                    <Picker
+                                                        data={data}
+                                                        onEmojiSelect={(emoji: any) => {
+                                                            setText(prev => prev + emoji.native);
+                                                            setShowEmojiPicker(false);
+                                                            textareaRef.current?.focus();
+                                                        }}
+                                                        theme="dark"
+                                                        previewPosition="none"
+                                                        skinTonePosition="none"
+                                                        maxFrequentRows={1}
+                                                    />
+                                                </div>
+                                            )}
+                                            <div className="flex items-center pl-2">
+                                                <button
+                                                    ref={emojiToggleRef}
+                                                    type="button"
+                                                    onClick={() => setShowEmojiPicker(prev => !prev)}
+                                                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all flex-shrink-0 hover:scale-110 active:scale-95 ${showEmojiPicker
+                                                        ? 'text-primary bg-primary/10'
+                                                        : 'text-white/40 hover:text-white hover:bg-white/10'
+                                                        }`}
+                                                    title="Emojis"
+                                                >
+                                                    <Smile className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                            <textarea
+                                                ref={textareaRef}
+                                                value={text}
+                                                onChange={e => {
+                                                    setText(e.target.value);
+                                                    if (e.target.value.length > text.length) {
+                                                        playTypingTick();
+                                                    }
+                                                }}
+                                                placeholder="type a message"
+                                                rows={1}
+                                                className="flex-1 min-w-0 px-2 py-3 !bg-transparent text-sm text-white placeholder:text-white/40 font-bold !outline-none transition-all resize-none overflow-hidden placeholder:whitespace-nowrap !border-none !ring-0 !shadow-none h-11 flex items-center translate-y-0.5"
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                                        e.preventDefault();
+                                                        if (text.trim() || pendingImages.length > 0) {
+                                                            sendMessage();
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                            <div className="flex items-center gap-0.5 pr-2 relative">
+                                                {/* Attach Menu Popup */}
+                                                {showAttachMenu && (
+                                                    <div
+                                                        ref={attachMenuRef}
+                                                        className="absolute bottom-12 right-0 bg-[#252525] border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col gap-4 z-50 animate-premium-in w-[240px]"
+                                                    >
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => documentInputRef.current?.click()}
+                                                                className="flex flex-col items-center gap-2 group"
+                                                            >
+                                                                <div className="w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center group-hover:scale-110 group-hover:bg-indigo-500 group-hover:text-white transition-all">
+                                                                    <Type className="w-5 h-5" />
+                                                                </div>
+                                                                <span className="text-xs text-white/70 group-hover:text-white transition-colors">Document</span>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => cameraInputRef.current?.click()}
+                                                                className="flex flex-col items-center gap-2 group"
+                                                            >
+                                                                <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center group-hover:scale-110 group-hover:bg-rose-500 group-hover:text-white transition-all">
+                                                                    <Camera className="w-5 h-5" />
+                                                                </div>
+                                                                <span className="text-xs text-white/70 group-hover:text-white transition-colors">Camera</span>
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => galleryInputRef.current?.click()}
+                                                                className="flex flex-col items-center gap-2 group"
+                                                            >
+                                                                <div className="w-12 h-12 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-500 group-hover:text-white transition-all">
+                                                                    <ImageIcon className="w-5 h-5" />
+                                                                </div>
+                                                                <span className="text-xs text-white/70 group-hover:text-white transition-colors">Gallery</span>
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => audioInputRef.current?.click()}
+                                                                className="flex flex-col items-center gap-2 group"
+                                                            >
+                                                                <div className="w-12 h-12 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-white transition-all">
+                                                                    <Phone className="w-5 h-5" /> {/* Using Phone as audio icon fallback, but could use Mic if preferred */}
+                                                                </div>
+                                                                <span className="text-xs text-white/70 group-hover:text-white transition-colors">Audio</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <div className="flex items-center">
+                                                    <button
+                                                        ref={attachToggleRef}
+                                                        type="button"
+                                                        onClick={() => setShowAttachMenu(prev => !prev)}
+                                                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all flex-shrink-0 hover:scale-110 active:scale-95 ${showAttachMenu
+                                                            ? 'bg-primary/20 text-primary rotate-45'
+                                                            : 'text-white/40 hover:text-white hover:bg-white/10'
+                                                            }`}
+                                                        title="Attach"
+                                                    >
+                                                        <Plus className="w-5 h-5 transition-transform" />
+                                                    </button>
+                                                    {!text.trim() && pendingImages.length === 0 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => cameraInputRef.current?.click()}
+                                                            className="w-9 h-9 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all flex-shrink-0 hover:scale-110 active:scale-95 animate-premium-in"
+                                                            title="Take photo"
+                                                        >
+                                                            <Camera className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
-                                {/* External Dynamic Button (Send or Record) */}
-                                <div className="flex-shrink-0 pb-1">
-                                    {text.trim() ? (
+                                {/* External Dynamic Button (Send or Record) - Back OUTSIDE the pill */}
+                                <div className="flex-shrink-0">
+                                    {text.trim() || pendingImages.length > 0 ? (
                                         <button
                                             type="submit"
                                             disabled={isSending}
-                                            className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent hover:from-primary/90 hover:to-accent/90 disabled:from-white/5 disabled:to-white/5 disabled:border-white/5 disabled:text-white/10 text-white flex items-center justify-center transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 active:scale-90 flex-shrink-0 border border-white/10 group hover:scale-110 animate-premium-in"
+                                            className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary to-accent hover:from-primary/90 hover:to-accent/90 disabled:from-white/5 disabled:to-white/5 disabled:border-white/5 disabled:text-white/10 text-white flex items-center justify-center transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 active:scale-90 flex-shrink-0 border border-white/10 group hover:scale-110 animate-premium-in"
                                         >
                                             {isSending ? (
-                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                <Loader2 className="w-5 h-5 animate-spin" />
                                             ) : (
-                                                <Send className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                                <Send className="w-5 h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                                             )}
                                         </button>
                                     ) : (
-                                        <VoiceRecorder onRecordingComplete={sendVoiceNote} />
+                                        <VoiceRecorder
+                                            onRecordingComplete={sendVoiceNote}
+                                            onRecordingStateChange={setIsVoiceRecording}
+                                            portalTarget={pillRef.current}
+                                        />
                                     )}
                                 </div>
                             </form>
                         </div>
                     </div>
                 ) : (
-                    // Empty state
                     <div className="hidden md:flex flex-1 items-center justify-center">
                         <div className="text-center space-y-4">
                             <div className="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto">
@@ -3620,6 +4523,7 @@ export default function Communications() {
                     );
                 })()
             }
-        </div>
+        </div >
     );
-}
+};
+
