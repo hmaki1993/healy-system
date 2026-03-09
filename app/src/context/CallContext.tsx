@@ -84,30 +84,59 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
     const activeCallRef = useRef<ActiveCallInfo | null>(null);
     const callDurationRef = useRef(0);
     const wakeLockRef = useRef<any>(null);
-    const silentAudioRef = useRef<HTMLAudioElement | null>(null);
 
-    // ─── Silent Audio Management (HTML5 trick to keep session alive) ────────────
+    // Web AudioContext refs for "keep-alive" oscillator (silent audio)
+    const audioCtxRef = useRef<AudioContext | null>(null);
+    const silentOscRef = useRef<OscillatorNode | null>(null);
+    const gainNodeRef = useRef<GainNode | null>(null);
+    const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    // ─── Web Audio Keep-Alive (AudioContext + silent oscillator) ───────────────
+    // This is the most reliable technique: an AudioContext playing a 0-gain oscillator
+    // keeps the audio pipeline open on mobile even when the tab is backgrounded.
     const startSilentAudio = useCallback(() => {
         try {
-            if (silentAudioRef.current) return;
-            const audio = new Audio();
-            // 1-second silent WAV base64
-            audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAHAAcAAgAC';
-            audio.loop = true;
-            audio.volume = 0.01; // Not absolute zero to avoid browser optimization
-            audio.play().catch(err => console.warn('[Call] Silent audio autoplay blocked:', err));
-            silentAudioRef.current = audio;
-            console.log('[Call] Persistent silent audio session started');
+            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') return;
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            audioCtxRef.current = ctx;
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            gain.gain.value = 0.00001; // Near zero but not zero - prevents browser optimization
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+
+            silentOscRef.current = osc;
+            gainNodeRef.current = gain;
+            console.log('[Call] AudioContext keep-alive started, state:', ctx.state);
         } catch (err) {
-            console.error('[Call] Persistent silent audio failed:', err);
+            console.error('[Call] AudioContext keep-alive failed:', err);
         }
     }, []);
 
     const stopSilentAudio = useCallback(() => {
-        if (silentAudioRef.current) {
-            silentAudioRef.current.pause();
-            silentAudioRef.current.src = "";
-            silentAudioRef.current = null;
+        try {
+            silentOscRef.current?.stop();
+            silentOscRef.current?.disconnect();
+            gainNodeRef.current?.disconnect();
+            audioCtxRef.current?.close();
+        } catch (_) { }
+        silentOscRef.current = null;
+        gainNodeRef.current = null;
+        audioCtxRef.current = null;
+    }, []);
+
+    // Resume AudioContext if the browser suspended it (common on mobile background)
+    const resumeAudioContext = useCallback(async () => {
+        const ctx = audioCtxRef.current;
+        if (ctx && ctx.state === 'suspended') {
+            try {
+                await ctx.resume();
+                console.log('[Call] AudioContext resumed from suspended state');
+            } catch (e) {
+                console.warn('[Call] Failed to resume AudioContext:', e);
+            }
         }
     }, []);
 
@@ -206,58 +235,93 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
         }
     }, []);
 
-    // Re-request wake lock and resume audio if tab becomes visible again
+    // ─── Visibility Change: Full Audio Recovery ────────────────────────────────
+    // When user returns from background/screen-off, we must:
+    // 1. Re-request wake lock (it's released when screen off)
+    // 2. Resume the suspended AudioContext
+    // 3. Re-subscribe and replay ALL remote audio tracks (Agora suspends them)
+    // 4. Verify local mic track is live and hasn't been muted by OS
     useEffect(() => {
         const handleVisibilityChange = async () => {
-            if (activeCall && document.visibilityState === 'visible') {
-                console.log('[Call] Tab visible - Resuming tracks and session');
-                await requestWakeLock();
+            if (!activeCallRef.current) return;
 
-                // Re-play silent audio if it stopped
-                if (silentAudioRef.current && silentAudioRef.current.paused) {
-                    silentAudioRef.current.play().catch(() => { });
+            if (document.visibilityState === 'visible') {
+                console.log('[Call] Returning from background - full audio recovery...');
+                await requestWakeLock();
+                await resumeAudioContext();
+
+                // Re-subscribe & replay all remote audio tracks
+                const client = agoraClientRef.current;
+                if (client) {
+                    client.remoteUsers.forEach(user => {
+                        if (user.audioTrack) {
+                            try {
+                                user.audioTrack.stop();
+                                user.audioTrack.play();
+                                console.log('[Call] Remote audio track replayed for user:', user.uid);
+                            } catch (e) {
+                                console.warn('[Call] Failed to replay remote audio for user:', user.uid, e);
+                            }
+                        }
+                    });
                 }
 
-                // Explicitly re-enable local track - Toggle it to force browser state update
+                // Check if local audio track is still alive (OS may have revoked mic permission)
                 if (localAudioRef.current) {
                     try {
-                        await localAudioRef.current.setEnabled(false);
-                        await localAudioRef.current.setEnabled(true);
-                        console.log('[Call] Local audio track kickstarted');
+                        const enabled = localAudioRef.current.enabled;
+                        if (!enabled && !isMuted) {
+                            // Track was disabled by OS (not by user), re-enable it
+                            await localAudioRef.current.setEnabled(true);
+                            console.log('[Call] Local audio re-enabled after OS suspension');
+                        }
                     } catch (e) {
-                        console.error('[Call] Failed to resume/kickstart local audio:', e);
+                        console.warn('[Call] Could not check/restore local audio track:', e);
                     }
                 }
+            } else if (document.visibilityState === 'hidden') {
+                console.log('[Call] Going to background - AudioContext state:', audioCtxRef.current?.state);
             }
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, [activeCall, requestWakeLock]);
+    }, [activeCall, requestWakeLock, resumeAudioContext, isMuted]);
 
-    // ─── Background Heartbeat ──────────────────────────────────────────────────
+    // ─── Background Heartbeat: AudioContext Health Check ──────────────────────
+    // Instead of the glitchy setEnabled(false)/setEnabled(true) toggle,
+    // we simply keep the AudioContext alive and log health. Agora manages its own
+    // connection stability; the real risk is the AudioContext being suspended.
     useEffect(() => {
-        if (!activeCall) return;
-
-        const heartbeat = setInterval(async () => {
-            console.log('[Call] Heartbeat - Checking audio track state');
-            if (localAudioRef.current) {
-                try {
-                    // Re-poke the track to prevent OS suspension
-                    await localAudioRef.current.setEnabled(false);
-                    await localAudioRef.current.setEnabled(true);
-                    console.log('[Call] Heartbeat - Local audio track poked');
-                } catch (e) {
-                    console.error('[Call] Heartbeat - Failed to poke track:', e);
-                }
+        if (!activeCall) {
+            if (heartbeatIntervalRef.current) {
+                clearInterval(heartbeatIntervalRef.current);
+                heartbeatIntervalRef.current = null;
             }
-            // Ensure silent audio is still playing
-            if (silentAudioRef.current && silentAudioRef.current.paused) {
-                silentAudioRef.current.play().catch(() => { });
-            }
-        }, 15000); // Every 15 seconds
+            return;
+        }
 
-        return () => clearInterval(heartbeat);
-    }, [activeCall]);
+        heartbeatIntervalRef.current = setInterval(async () => {
+            const ctx = audioCtxRef.current;
+            if (!ctx) return;
+
+            if (ctx.state === 'suspended') {
+                console.warn('[Call] Heartbeat: AudioContext suspended, resuming...');
+                await resumeAudioContext();
+            }
+
+            // Re-request wake lock if it was released (e.g., screen turned off briefly)
+            if (!wakeLockRef.current && 'wakeLock' in navigator) {
+                await requestWakeLock();
+            }
+        }, 10000); // Every 10 seconds
+
+        return () => {
+            if (heartbeatIntervalRef.current) {
+                clearInterval(heartbeatIntervalRef.current);
+                heartbeatIntervalRef.current = null;
+            }
+        };
+    }, [activeCall, resumeAudioContext, requestWakeLock]);
 
     // ─── Call Timer Management ────────────────────────────────────────────────
     useEffect(() => {
