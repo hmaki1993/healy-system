@@ -1,83 +1,150 @@
-// Service Worker for handling Background Call Push Notifications
+// ─── Healy Service Worker v2 ───────────────────────────────────────────────
+// Industrial-grade background call handling & persistent notifications
 
-self.addEventListener('push', function (event) {
-    if (!event.data) return;
+let activeCallKeepaliveTimer = null;
 
-    try {
-        const data = event.data.json();
-        console.log('[Service Worker] Push Received.', data);
+// ─── Persistent Call State ─────────────────────────────────────────────────
+// We'll try to keep track of the active call status in the SW itself.
+let swActiveCall = null;
 
-        if (data.type === 'incoming_call') {
-            const title = `Incoming ${data.call_type} call`;
-            const options = {
-                body: `${data.caller_name} is calling you.`,
-                icon: data.caller_avatar || '/logo.png',
-                badge: '/logo.png',
-                vibrate: [200, 100, 200, 100, 200, 100, 200],
-                tag: 'incoming-call',
-                renotify: true,
-                requireInteraction: true,
-                data: {
-                    conversation_id: data.conversation_id,
-                    url: '/app/communications'
-                },
-                actions: [
-                    { action: 'answer', title: 'Answer' },
-                    { action: 'decline', title: 'Decline' }
-                ]
-            };
+function broadcastToClients(msg) {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+        clients.forEach(client => client.postMessage(msg));
+    });
+}
 
-            event.waitUntil(self.registration.showNotification(title, options));
-        } else if (data.type === 'call_ended') {
-            // Close active call notifications
-            event.waitUntil(
-                self.registration.getNotifications({ tag: 'incoming-call' }).then((notifications) => {
-                    notifications.forEach(notification => notification.close());
-                })
-            );
+// ─── Active Call Notification ─────────────────────────────────────────────
+function showActiveCallNotification(callerName, callType) {
+    swActiveCall = { callerName, callType };
+    return self.registration.showNotification(`📞 Call in Progress: ${callerName}`, {
+        body: `Tap to return to your ${callType || 'audio'} call`,
+        icon: '/logo.png',
+        badge: '/logo.png',
+        tag: 'active-call',
+        renotify: false,
+        requireInteraction: true,   // Essential for background stability
+        silent: true,
+        data: { url: '/app/communications', type: 'active_call' }
+    });
+}
+
+function startKeepalive() {
+    if (activeCallKeepaliveTimer) return;
+    activeCallKeepaliveTimer = setInterval(() => {
+        self.clients.matchAll().then(c => {
+            if (c.length === 0 && swActiveCall) {
+                console.log('[SW] No active clients during call! Attempting to keep alive...');
+            }
+        });
+    }, 4000);
+}
+
+function stopKeepalive() {
+    if (activeCallKeepaliveTimer) {
+        clearInterval(activeCallKeepaliveTimer);
+        activeCallKeepaliveTimer = null;
+    }
+    swActiveCall = null;
+}
+
+// ─── Push Handler: The Core ───────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+    console.log('[SW] Push received', event);
+
+    let data = {};
+    if (event.data) {
+        try {
+            data = event.data.json();
+            console.log('[SW] Push Payload:', data);
+        } catch (e) {
+            console.warn('[SW] Push payload not JSON, using raw text:', event.data.text());
+            data = { type: 'incoming_call', caller_name: 'Someone' };
         }
-    } catch (e) {
-        console.error('[Service Worker] Error parsing push data', e);
+    } else {
+        console.warn('[SW] Push received with NO data! Showing generic alert.');
+        data = { type: 'incoming_call', caller_name: 'Healy System' };
+    }
+
+    const type = data.type || data.action || 'incoming_call';
+
+    if (type === 'incoming_call' || type === 'incoming') {
+        const title = `Incoming Call: ${data.caller_name || 'Someone'}`;
+        const options = {
+            body: `You have an incoming ${data.call_type || 'audio'} call.`,
+            icon: data.caller_avatar || '/logo.png',
+            badge: '/logo.png',
+            tag: 'incoming-call',
+            renotify: true,
+            requireInteraction: true,
+            vibrate: [500, 100, 500, 100, 500, 100, 500],
+            data: {
+                url: '/app/communications',
+                conversation_id: data.conversation_id
+            },
+            actions: [
+                { action: 'answer', title: '✅ Answer' },
+                { action: 'decline', title: '❌ Decline' }
+            ]
+        };
+
+        event.waitUntil(self.registration.showNotification(title, options));
+
+    } else if (type === 'call_ended' || type === 'ended') {
+        event.waitUntil(
+            self.registration.getNotifications().then(notifications => {
+                notifications.forEach(n => {
+                    if (n.tag === 'incoming-call' || n.tag === 'active-call') n.close();
+                });
+            })
+        );
+        stopKeepalive();
     }
 });
 
-self.addEventListener('notificationclick', function (event) {
-    console.log('[Service Worker] Notification click Received.', event);
+// ─── Message Handler ───────────────────────────────────────────────────────
+self.addEventListener('message', (event) => {
+    const data = event.data;
+    if (!data) return;
 
+    if (data.type === 'CALL_STARTED') {
+        showActiveCallNotification(data.callerName, data.callType);
+        startKeepalive();
+    } else if (data.type === 'CALL_ENDED') {
+        self.registration.getNotifications({ tag: 'active-call' }).then(n => n.forEach(x => x.close()));
+        stopKeepalive();
+    }
+});
+
+// ─── Notification Clicks ───────────────────────────────────────────────────
+self.addEventListener('notificationclick', (event) => {
+    console.log('[SW] Clicked:', event.action);
     event.notification.close();
 
-    const urlToOpen = new URL(event.notification.data.url || '/app/communications', self.location.origin).href;
+    const urlToOpen = new URL(event.notification.data?.url || '/app/communications', self.location.origin).href;
 
-    const promiseChain = clients.matchAll({
-        type: 'window',
-        includeUncontrolled: true
-    }).then((windowClients) => {
-        let matchingClient = null;
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+            let target = windowClients.find(c => c.url.includes('/app/'));
 
-        for (let i = 0; i < windowClients.length; i++) {
-            const windowClient = windowClients[i];
-            if (windowClient.url === urlToOpen) {
-                matchingClient = windowClient;
-                break;
+            if (target) {
+                target.focus();
+                if (event.action === 'answer') target.postMessage({ type: 'ACCEPT_CALL_ACTION' });
+                else if (event.action === 'decline') target.postMessage({ type: 'REJECT_CALL_ACTION' });
+                else if (event.notification.tag === 'active-call') target.postMessage({ type: 'FOCUS_CALL' });
+            } else {
+                let finalUrl = urlToOpen;
+                if (event.action === 'answer') finalUrl += '#action=answer';
+                return self.clients.openWindow(finalUrl);
             }
-        }
-
-        if (matchingClient) {
-            matchingClient.focus();
-            // Send action to client if needed
-            if (event.action === 'answer') {
-                matchingClient.postMessage({ type: 'ACCEPT_CALL_ACTION' });
-            } else if (event.action === 'decline') {
-                matchingClient.postMessage({ type: 'REJECT_CALL_ACTION' });
-            }
-        } else {
-            // Include action as hash/query param so the app knows what to do when it boots
-            let finalUrl = urlToOpen;
-            if (event.action === 'answer') finalUrl += '#action=answer';
-            if (event.action === 'decline') finalUrl += '#action=decline';
-            return clients.openWindow(finalUrl);
-        }
-    });
-
-    event.waitUntil(promiseChain);
+        })
+    );
 });
+
+self.addEventListener('fetch', (event) => {
+    if (event.request.url.includes('/__sw_keepalive')) {
+        event.respondWith(new Response('ok', { status: 200 }));
+    }
+});
+
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));

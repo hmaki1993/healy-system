@@ -90,28 +90,106 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
     const silentOscRef = useRef<OscillatorNode | null>(null);
     const gainNodeRef = useRef<GainNode | null>(null);
     const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const swKeepaliveIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const pinnedAudioRef = useRef<HTMLAudioElement | null>(null);
 
-    // ─── Web Audio Keep-Alive (AudioContext + silent oscillator) ───────────────
-    // This is the most reliable technique: an AudioContext playing a 0-gain oscillator
-    // keeps the audio pipeline open on mobile even when the tab is backgrounded.
+    // ─── Notification Permission Check ────────────────────────────────────────
+    useEffect(() => {
+        // Warning for HTTP testing on mobile (192.168.x.x)
+        const isSecureOrLocalhost = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+        if (!isSecureOrLocalhost) {
+            console.warn('[Call] Insecure origin detected. Service Workers and Push Notifications are blocked by mobile browsers.');
+            toast.error('أنت بتستخدم رابط HTTP مش آمن. الإشعارات ومكالمات الخلفية مش هتشتغل على الموبايل غير لو استخدمت HTTPS.', { duration: 6000 });
+            return;
+        }
+
+        if ('Notification' in window && Notification.permission !== 'granted') {
+            const hasAsked = localStorage.getItem('healy_notif_asked');
+            if (!hasAsked) {
+                Notification.requestPermission();
+                localStorage.setItem('healy_notif_asked', 'true');
+            } else if (Notification.permission === 'denied') {
+                console.warn('[Call] Notifications are blocked.');
+                toast.error('علشان يوصلك رنّة لما الموبايل يكون مقفول، لازم توافق على الإشعارات من إعدادات المتصفح.');
+            }
+        }
+    }, []);
+
+
+    // ─── Service Worker Notification Helpers ───────────────────────────────────
+    // Sending messages to the SW so it can show a persistent "Call in Progress"
+    // notification. The persistent notification keeps the SW alive, which in turn
+    // prevents the browser from fully suspending the tab when the screen is off.
+    const notifySwCallStarted = useCallback((callerName: string, callType: string) => {
+        if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
+        navigator.serviceWorker.controller.postMessage({
+            type: 'CALL_STARTED',
+            callerName,
+            callType
+        });
+        // Also run periodic fetch-based keepalive pings (backup for SW keepalive)
+        if (swKeepaliveIntervalRef.current) clearInterval(swKeepaliveIntervalRef.current);
+        swKeepaliveIntervalRef.current = setInterval(() => {
+            // Fetch a local SW keepalive endpoint. This prevents Android from
+            // killing the SW process when the tab is backgrounded.
+            fetch('/__sw_keepalive', { method: 'GET', cache: 'no-store' }).catch(() => { });
+        }, 8000);
+        console.log('[Call] SW notified of call start');
+    }, []);
+
+    const notifySwCallEnded = useCallback(() => {
+        if (swKeepaliveIntervalRef.current) {
+            clearInterval(swKeepaliveIntervalRef.current);
+            swKeepaliveIntervalRef.current = null;
+        }
+        if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
+        navigator.serviceWorker.controller.postMessage({ type: 'CALL_ENDED' });
+        console.log('[Call] SW notified of call end');
+    }, []);
+
+
     const startSilentAudio = useCallback(() => {
         try {
+            // 1. Web Audio oscillator ("keep-alive" heartbeat)
             if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') return;
             const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
             audioCtxRef.current = ctx;
 
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
-            gain.gain.value = 0.00001; // Near zero but not zero - prevents browser optimization
+            gain.gain.value = 0.00001;
             osc.connect(gain);
             gain.connect(ctx.destination);
             osc.start();
 
             silentOscRef.current = osc;
             gainNodeRef.current = gain;
-            console.log('[Call] AudioContext keep-alive started, state:', ctx.state);
+
+            // 2. Physical "Pinned" Audio (Industrial-grade for Android Background)
+            if (!pinnedAudioRef.current) {
+                const audio = new Audio();
+                // 5-second silent MP3 (Properly formatted for better browser compatibility)
+                audio.src = 'data:audio/mp3;base64,SUQzBAAAAAABAFRYWFgAAAASAAADbWFqb3JfYnJhbmQAZGFzaABUWFhYAAAAEQAAA21pbm9yX3ZlcnNpb24AMABUWFhYAAAAHAAAA2NvbXBhdGlibGVfYnJhbmRzAGlzbzZtcDQxAFRTU0UAAAAPAAADTGF2ZjYwLjMuMTAwAAAAAAAAAAAAAAD/80MUAAAAAANIAAAAAExYdmY2MC4zLjEwMAD/80MUZAAAAANIAAAAAExYdmY2MC4zLjEwMAD/80MUlAAAAANIAAAAAExYdmY2MC4zLjEwMAD/80MU5AAAAANIAAAAAExYdmY2MC4zLjEwMAD/80MVAfAAAAANIAAAAAExYdmY2MC4zLjEwMA==';
+                audio.loop = true;
+                audio.volume = 0.01;
+                audio.play().catch(err => console.warn('[Call] Pinned audio blocked:', err));
+                pinnedAudioRef.current = audio;
+            }
+
+            // 3. Media Session Metadata (Critical for Android/iOS lock screen)
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: 'Active Voice Call',
+                    artist: 'Healy System',
+                    album: 'Communications',
+                    artwork: [{ src: '/logo.png', sizes: '512x512', type: 'image/png' }]
+                });
+                navigator.mediaSession.playbackState = 'playing';
+            }
+
+            console.log('[Call] Industrial persistence (WebAudio + Pinned + MediaSession) started');
         } catch (err) {
-            console.error('[Call] AudioContext keep-alive failed:', err);
+            console.error('[Call] Persistent sessions failed:', err);
         }
     }, []);
 
@@ -121,6 +199,12 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
             silentOscRef.current?.disconnect();
             gainNodeRef.current?.disconnect();
             audioCtxRef.current?.close();
+
+            if (pinnedAudioRef.current) {
+                pinnedAudioRef.current.pause();
+                pinnedAudioRef.current.src = "";
+                pinnedAudioRef.current = null;
+            }
         } catch (_) { }
         silentOscRef.current = null;
         gainNodeRef.current = null;
@@ -235,22 +319,17 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
         }
     }, []);
 
-    // ─── Visibility Change: Full Audio Recovery ────────────────────────────────
-    // When user returns from background/screen-off, we must:
-    // 1. Re-request wake lock (it's released when screen off)
-    // 2. Resume the suspended AudioContext
-    // 3. Re-subscribe and replay ALL remote audio tracks (Agora suspends them)
-    // 4. Verify local mic track is live and hasn't been muted by OS
+    // ─── Visibility Change: Aggressive Audio Recovery ───────────────────────
     useEffect(() => {
         const handleVisibilityChange = async () => {
             if (!activeCallRef.current) return;
 
             if (document.visibilityState === 'visible') {
-                console.log('[Call] Returning from background - full audio recovery...');
+                console.log('[Call] Resuming from background - re-pinking session...');
                 await requestWakeLock();
                 await resumeAudioContext();
 
-                // Re-subscribe & replay all remote audio tracks
+                // Re-play remote tracks
                 const client = agoraClientRef.current;
                 if (client) {
                     client.remoteUsers.forEach(user => {
@@ -258,68 +337,57 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
                             try {
                                 user.audioTrack.stop();
                                 user.audioTrack.play();
-                                console.log('[Call] Remote audio track replayed for user:', user.uid);
+                                console.log('[Call] Re-playing remote audio for:', user.uid);
                             } catch (e) {
-                                console.warn('[Call] Failed to replay remote audio for user:', user.uid, e);
+                                console.warn('[Call] Failed to re-play remote audio:', e);
                             }
                         }
                     });
                 }
 
-                // Check if local audio track is still alive (OS may have revoked mic permission)
-                if (localAudioRef.current) {
+                // Re-play pinned audio
+                if (pinnedAudioRef.current && pinnedAudioRef.current.paused) {
+                    pinnedAudioRef.current.play().catch(() => { });
+                }
+
+                // Force mic state refresh
+                if (localAudioRef.current && !isMuted) {
                     try {
-                        const enabled = localAudioRef.current.enabled;
-                        if (!enabled && !isMuted) {
-                            // Track was disabled by OS (not by user), re-enable it
+                        const isEnabled = localAudioRef.current.enabled;
+                        if (!isEnabled) {
                             await localAudioRef.current.setEnabled(true);
-                            console.log('[Call] Local audio re-enabled after OS suspension');
                         }
                     } catch (e) {
-                        console.warn('[Call] Could not check/restore local audio track:', e);
+                        console.warn('[Call] Failed to refresh mic state:', e);
                     }
                 }
-            } else if (document.visibilityState === 'hidden') {
-                console.log('[Call] Going to background - AudioContext state:', audioCtxRef.current?.state);
             }
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, [activeCall, requestWakeLock, resumeAudioContext, isMuted]);
 
-    // ─── Background Heartbeat: AudioContext Health Check ──────────────────────
-    // Instead of the glitchy setEnabled(false)/setEnabled(true) toggle,
-    // we simply keep the AudioContext alive and log health. Agora manages its own
-    // connection stability; the real risk is the AudioContext being suspended.
+    // ─── Background Heartbeat ───────────────────────────────────────────────
     useEffect(() => {
-        if (!activeCall) {
-            if (heartbeatIntervalRef.current) {
-                clearInterval(heartbeatIntervalRef.current);
-                heartbeatIntervalRef.current = null;
-            }
-            return;
-        }
+        if (!activeCall) return;
 
         heartbeatIntervalRef.current = setInterval(async () => {
             const ctx = audioCtxRef.current;
-            if (!ctx) return;
-
-            if (ctx.state === 'suspended') {
-                console.warn('[Call] Heartbeat: AudioContext suspended, resuming...');
+            if (ctx && ctx.state === 'suspended') {
                 await resumeAudioContext();
             }
 
-            // Re-request wake lock if it was released (e.g., screen turned off briefly)
-            if (!wakeLockRef.current && 'wakeLock' in navigator) {
-                await requestWakeLock();
+            if (pinnedAudioRef.current && pinnedAudioRef.current.paused) {
+                pinnedAudioRef.current.play().catch(() => { });
             }
-        }, 10000); // Every 10 seconds
+
+            if (!wakeLockRef.current && 'wakeLock' in navigator) {
+                requestWakeLock();
+            }
+        }, 10000);
 
         return () => {
-            if (heartbeatIntervalRef.current) {
-                clearInterval(heartbeatIntervalRef.current);
-                heartbeatIntervalRef.current = null;
-            }
+            if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
         };
     }, [activeCall, resumeAudioContext, requestWakeLock]);
 
@@ -446,6 +514,11 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
     // ─── Initiate Call ────────────────────────────────────────────────────────
     const initiateCall = async (callType: 'audio' | 'video', otherUser: CallProfile, conversationId: string) => {
         if (!currentUserId) return;
+
+        // CRITICAL: startSilentAudio MUST be called before any awaits to ensure 
+        // the AudioContext is unlocked by the user's direct click/gesture.
+        startSilentAudio();
+
         const channelId = `call_${conversationId}_${Date.now()}`;
 
         const { error } = await supabase.from('call_records').insert({
@@ -504,12 +577,25 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
         await requestWakeLock();
         startSilentAudio();
         updateMediaSession(otherUser);
+
+        // Notify SW to show persistent "Call in Progress" notification.
+        // If the SW isn't controlling the tab yet, we'll try again in a moment.
+        if (navigator.serviceWorker.controller) {
+            notifySwCallStarted(otherUser.full_name, callType);
+        } else {
+            console.warn('[Call] SW not ready for notification, retrying...');
+            setTimeout(() => notifySwCallStarted(otherUser.full_name, callType), 1000);
+        }
     };
 
     // ─── Accept Call ──────────────────────────────────────────────────────────
     const acceptCall = async () => {
         if (!incomingCall) return;
         const call = incomingCall;
+
+        // CRITICAL: startSilentAudio MUST be called before any awaits to ensure 
+        // the AudioContext is unlocked by the user's direct click/gesture.
+        startSilentAudio();
 
         await supabase.from('call_records').update({ status: 'answered' }).eq('id', call.callId);
 
@@ -525,6 +611,14 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
         await requestWakeLock();
         startSilentAudio();
         updateMediaSession(call.caller);
+
+        // Notify SW to show persistent "Call in Progress" notification
+        if (navigator.serviceWorker.controller) {
+            notifySwCallStarted(call.caller.full_name, call.type);
+        } else {
+            console.warn('[Call] SW not ready for notification, retrying...');
+            setTimeout(() => notifySwCallStarted(call.caller.full_name, call.type), 1000);
+        }
     };
 
     // ─── Reject Call ──────────────────────────────────────────────────────────
@@ -554,6 +648,7 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
         await releaseWakeLock();
         stopSilentAudio();
         clearMediaSession();
+        notifySwCallEnded(); // Clear SW persistent notification + stop keepalive pings
         await leaveAgoraChannel();
 
         setActiveCall(null);
@@ -676,6 +771,35 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
 
         return () => { supabase.removeChannel(channel); };
     }, [currentUserId, hangupCall, stopAllAudio]);
+
+    // ─── Service Worker Message Listener ──────────────────────────────────────
+    // Listens for actions from background notifications (Answer/Decline/Focus)
+    useEffect(() => {
+        if (!('serviceWorker' in navigator)) return;
+
+        const handleMessage = (event: MessageEvent) => {
+            const { type } = event.data;
+            console.log('[CallContext] Message from SW:', type);
+
+            switch (type) {
+                case 'ACCEPT_CALL_ACTION':
+                    acceptCall();
+                    break;
+                case 'REJECT_CALL_ACTION':
+                    rejectCall();
+                    break;
+                case 'FOCUS_CALL':
+                    setIsCallMinimized(false);
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        navigator.serviceWorker.addEventListener('message', handleMessage);
+        return () => navigator.serviceWorker.removeEventListener('message', handleMessage);
+    }, [acceptCall, rejectCall]);
+
 
     return (
         <CallContext.Provider value={{
