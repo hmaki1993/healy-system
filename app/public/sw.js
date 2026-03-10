@@ -1,4 +1,4 @@
-// ─── Healy Service Worker v2.1 (Fix: Cold Start Call Recovery) ───────────────
+// ─── Healy Service Worker v2.2 (Fix: Rich Background Notifications) ───────────
 // Industrial-grade background call handling & persistent notifications
 
 let activeCallKeepaliveTimer = null;
@@ -73,6 +73,7 @@ self.addEventListener('push', (event) => {
             body: `You have an incoming ${data.call_type || 'audio'} call.`,
             icon: data.caller_avatar || '/logo.png', // Premium Caller Avatar
             badge: '/logo.png', // Branded Badge for Status Bar
+            image: data.caller_avatar || null, // BIG picture for the notification (on supported Android versions)
             tag: 'incoming-call',
             renotify: true,
             requireInteraction: true,

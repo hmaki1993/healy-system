@@ -594,6 +594,12 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
                     ringingAudioRef.current.loop = false;
                 }
                 ringingAudioRef.current.play().catch(() => { });
+
+                // Add vibration for outgoing ringing
+                if ('vibrate' in navigator) {
+                    navigator.vibrate([4000, 2000]); // Sync with 4s play / 2s pause
+                }
+
                 ringTimeoutRef.current = setTimeout(() => {
                     if (ringingAudioRef.current) { ringingAudioRef.current.pause(); ringingAudioRef.current.currentTime = 0; }
                     if (activeCallRef.current) ringTimeoutRef.current = setTimeout(playAndSchedule, 2000);
@@ -864,6 +870,28 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
         }
         recoverCall();
     }, [currentUserId, incomingCall, activeCall]);
+
+    // ─── Incoming Call Vibration ─────────────────────────────────────────────
+    useEffect(() => {
+        let vibrationInterval: NodeJS.Timeout | null = null;
+
+        if (incomingCall && !activeCall) {
+            // Start vibration pattern: 1000ms vibrate, 500ms pause
+            const playVibration = () => {
+                if ('vibrate' in navigator) {
+                    navigator.vibrate([1000, 500]);
+                }
+            };
+
+            playVibration();
+            vibrationInterval = setInterval(playVibration, 1500);
+        }
+
+        return () => {
+            if (vibrationInterval) clearInterval(vibrationInterval);
+            if ('vibrate' in navigator) navigator.vibrate(0); // Stop immediately
+        };
+    }, [incomingCall, activeCall]);
 
     // ─── Incoming Call Subscription ───────────────────────────────────────────
     useEffect(() => {

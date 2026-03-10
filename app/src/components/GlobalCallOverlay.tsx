@@ -18,9 +18,6 @@ export default function GlobalCallOverlay() {
         toggleMute,
         toggleCamera,
         setIsCallMinimized,
-        realtimeStatus,
-        pushReady,
-        sendTestPush,
     } = useCall();
 
     const localVideoRef = useRef<HTMLDivElement>(null);
@@ -28,37 +25,6 @@ export default function GlobalCallOverlay() {
 
     const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-    // ─── Diagnostic Footer ────────────────────────────────────────────────────
-    const renderDiagnostic = () => {
-        if (activeCall) return null;
-        return (
-            <div className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-2 pointer-events-none">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-white/10 backdrop-blur-md">
-                    <div className={`w-2 h-2 rounded-full ${realtimeStatus === 'SUBSCRIBED' ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-red-500 animate-pulse'}`} />
-                    <span className="text-[10px] font-black text-white/60 uppercase tracking-tighter">
-                        RT: {realtimeStatus}
-                    </span>
-                    <div className="w-[1px] h-3 bg-white/10 mx-1" />
-                    <div className={`w-2 h-2 rounded-full ${pushReady ? 'bg-blue-500 shadow-[0_0_8px_#3b82f6]' : 'bg-white/20'}`} />
-                    <span className="text-[10px] font-black text-white/60 uppercase tracking-tighter">
-                        Push: {pushReady ? 'Ready' : 'Off'}
-                    </span>
-                </div>
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        sendTestPush();
-                    }}
-                    className={`pointer-events-auto px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${pushReady
-                        ? 'bg-blue-600 text-white shadow-[0_10px_20px_rgba(59,130,246,0.3)] hover:bg-blue-500'
-                        : 'bg-white/10 text-white/30 cursor-not-allowed'
-                        }`}
-                >
-                    Test Push Alert
-                </button>
-            </div>
-        );
-    };
 
     // ─── Incoming Call Banner (Premium Floating Card) ─────────────────────────
     if (incomingCall && !activeCall) {
@@ -114,13 +80,12 @@ export default function GlobalCallOverlay() {
                         </div>
                     </div>
                 </div>
-                {renderDiagnostic()}
             </div>
         );
     }
 
     // ─── Active Call UI ───────────────────────────────────────────────────────
-    if (!activeCall) return renderDiagnostic();
+    if (!activeCall) return null;
 
     const otherUser = activeCall.otherUser;
     const isConnected = callStatus === 'connected';
