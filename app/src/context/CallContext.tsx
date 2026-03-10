@@ -102,6 +102,7 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
     const activeCallRef = useRef<ActiveCallInfo | null>(null);
     const callDurationRef = useRef(0);
     const wakeLockRef = useRef<any>(null);
+    const audioUnlockedRef = useRef(false);
 
     // Web AudioContext refs for "keep-alive" oscillator (silent audio)
     const audioCtxRef = useRef<AudioContext | null>(null);
@@ -110,6 +111,66 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
     const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const swKeepaliveIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const pinnedAudioRef = useRef<HTMLAudioElement | null>(null);
+
+    // ─── Audio Unlock on First User Gesture ──────────────────────────────────
+    // Mobile browsers block audio autoplay until the user has interacted with
+    // the page at least once. We pre-create and "touch" an Audio element on
+    // the very first touch/click so that later calls to play() succeed even
+    // when they are triggered programmatically (i.e. no direct gesture).
+    useEffect(() => {
+        const unlockAudio = () => {
+            if (audioUnlockedRef.current) return;
+            audioUnlockedRef.current = true;
+
+            // Pre-create & prime the incoming ringtone audio element
+            const ringtoneUrl = localStorage.getItem('healy_ringtone_url') || '/ringtone.mp3';
+            try {
+                const primer = new Audio(ringtoneUrl);
+                primer.volume = 0;
+                primer.muted = true;
+                const primPlay = primer.play();
+                if (primPlay) {
+                    primPlay.then(() => {
+                        primer.pause();
+                        primer.currentTime = 0;
+                        primer.volume = 1;
+                        primer.muted = false;
+                        primer.loop = true;
+                        incomingRingtoneRef.current = primer;
+                        console.log('[Call] Audio pre-unlocked and ringtone primed ✓');
+                    }).catch(() => {
+                        // Couldn't unlock even with gesture – will retry on next gesture
+                        audioUnlockedRef.current = false;
+                    });
+                }
+            } catch (e) {
+                console.warn('[Call] Audio unlock failed:', e);
+            }
+
+            // Unlock WebAudio context too
+            try {
+                const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                const buf = ctx.createBuffer(1, 1, 22050);
+                const src = ctx.createBufferSource();
+                src.buffer = buf;
+                src.connect(ctx.destination);
+                src.start(0);
+                setTimeout(() => ctx.close(), 500);
+            } catch (_) { }
+        };
+
+        document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+        document.addEventListener('touchend', unlockAudio, { once: true, passive: true });
+        document.addEventListener('click', unlockAudio, { once: true });
+        document.addEventListener('keydown', unlockAudio, { once: true });
+
+        return () => {
+            document.removeEventListener('touchstart', unlockAudio);
+            document.removeEventListener('touchend', unlockAudio);
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('keydown', unlockAudio);
+        };
+    }, []);
 
     // ─── Notification Permission Check ────────────────────────────────────────
     useEffect(() => {
@@ -463,7 +524,9 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
     const stopAllAudio = useCallback(() => {
         if (ringTimeoutRef.current) { clearTimeout(ringTimeoutRef.current); ringTimeoutRef.current = null; }
         if (ringingAudioRef.current) { ringingAudioRef.current.pause(); ringingAudioRef.current.currentTime = 0; ringingAudioRef.current = null; }
-        if (incomingRingtoneRef.current) { incomingRingtoneRef.current.pause(); incomingRingtoneRef.current.currentTime = 0; incomingRingtoneRef.current = null; }
+        if (incomingRingtoneRef.current) { incomingRingtoneRef.current.pause(); incomingRingtoneRef.current.currentTime = 0; }
+        // Stop vibration
+        if ('vibrate' in navigator) navigator.vibrate(0);
     }, []);
 
     // ─── Fetch Agora Token ────────────────────────────────────────────────────
@@ -856,12 +919,7 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
                     sessionStorage.removeItem('healy_pending_call');
                     console.log('[CallContext] Recovery Stage - Success!');
 
-                    const ringtoneUrl = localStorage.getItem('healy_ringtone_url') || 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3';
-                    if (!incomingRingtoneRef.current) {
-                        incomingRingtoneRef.current = new Audio(ringtoneUrl);
-                        incomingRingtoneRef.current.loop = true;
-                    }
-                    incomingRingtoneRef.current.play().catch(() => { });
+                    // Ringtone is now handled by the incomingCall useEffect below
                 }
             } catch (err) {
                 console.error('[CallContext] Recovery Stage - Error:', err);
@@ -871,25 +929,54 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
         recoverCall();
     }, [currentUserId, incomingCall, activeCall]);
 
-    // ─── Incoming Call Vibration ─────────────────────────────────────────────
+    // ─── Incoming Call Vibration & Ringtone ──────────────────────────────────
     useEffect(() => {
-        let vibrationInterval: NodeJS.Timeout | null = null;
+        if (!incomingCall || activeCall) return;
 
-        if (incomingCall && !activeCall) {
-            // Start vibration pattern: 1000ms vibrate, 500ms pause
-            const playVibration = () => {
-                if ('vibrate' in navigator) {
-                    navigator.vibrate([1000, 500]);
-                }
-            };
+        // ── Ringtone ──
+        const playRingtone = () => {
+            if (!incomingRingtoneRef.current) {
+                const url = localStorage.getItem('healy_ringtone_url') || '/ringtone.mp3';
+                incomingRingtoneRef.current = new Audio(url);
+                incomingRingtoneRef.current.loop = true;
+            }
+            incomingRingtoneRef.current.currentTime = 0;
+            incomingRingtoneRef.current.play().catch((e) => {
+                console.warn('[Call] Ringtone autoplay blocked (will retry on next gesture):', e);
+                // Retry once on the next user event
+                const retry = () => {
+                    incomingRingtoneRef.current?.play().catch(() => { });
+                    document.removeEventListener('touchstart', retry);
+                    document.removeEventListener('click', retry);
+                };
+                document.addEventListener('touchstart', retry, { once: true, passive: true });
+                document.addEventListener('click', retry, { once: true });
+            });
+        };
+        playRingtone();
 
-            playVibration();
-            vibrationInterval = setInterval(playVibration, 1500);
-        }
+        // ── Vibration (Android/Chrome only — iOS does not support vibrate) ──
+        // Use a long repeating pattern via the Vibration API
+        const vibrateIfSupported = () => {
+            if ('vibrate' in navigator) {
+                // 800ms on, 400ms off — repeat 10 times in one call
+                navigator.vibrate([
+                    800, 400, 800, 400, 800, 400, 800, 400, 800, 400,
+                    800, 400, 800, 400, 800, 400, 800, 400, 800, 400
+                ]);
+            }
+        };
+        vibrateIfSupported();
+        // Re-fire every ~13s (total pattern above = 12 * 10 = 12s)
+        const vibInterval = setInterval(vibrateIfSupported, 13000);
 
         return () => {
-            if (vibrationInterval) clearInterval(vibrationInterval);
-            if ('vibrate' in navigator) navigator.vibrate(0); // Stop immediately
+            clearInterval(vibInterval);
+            if (incomingRingtoneRef.current) {
+                incomingRingtoneRef.current.pause();
+                incomingRingtoneRef.current.currentTime = 0;
+            }
+            if ('vibrate' in navigator) navigator.vibrate(0);
         };
     }, [incomingCall, activeCall]);
 
@@ -933,13 +1020,8 @@ export function CallProvider({ children, currentUserId }: { children: React.Reac
                             conversationId: call.conversation_id
                         });
 
-                        // Play incoming ringtone
-                        const ringtoneUrl = localStorage.getItem('healy_ringtone_url') || 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3';
-                        if (!incomingRingtoneRef.current) {
-                            incomingRingtoneRef.current = new Audio(ringtoneUrl);
-                            incomingRingtoneRef.current.loop = true;
-                        }
-                        incomingRingtoneRef.current.play().catch(() => { });
+                        // Ringtone is now handled by the incomingCall useEffect above
+                        // (no-op here to avoid double-play)
                     }
                 }
             )

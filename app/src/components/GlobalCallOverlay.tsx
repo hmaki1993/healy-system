@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCall } from '../context/CallContext';
 import { Phone, PhoneOff, Video, Mic, MicOff, VideoOff, Minimize2, Maximize2 } from 'lucide-react';
 
@@ -22,13 +22,129 @@ export default function GlobalCallOverlay() {
 
     const localVideoRef = useRef<HTMLDivElement>(null);
     const remoteVideoRef = useRef<HTMLDivElement>(null);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
 
     const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-
-    // ─── Incoming Call Banner (Premium Floating Card) ─────────────────────────
+    // ─── Incoming Call UI ─────────────────────────────────────────────────────
     if (incomingCall && !activeCall) {
         const caller = incomingCall.caller;
+
+        // ── Mobile: Full-Screen native-style call screen ──
+        if (isMobile) {
+            return (
+                <div
+                    className="fixed inset-0 z-[10000] flex flex-col items-center justify-between overflow-hidden"
+                    style={{
+                        background: 'linear-gradient(160deg, #0a0f14 0%, #0d1f1a 40%, #061a12 100%)',
+                    }}
+                >
+                    {/* Ambient glow blobs */}
+                    <div
+                        className="absolute top-[-80px] left-1/2 -translate-x-1/2 w-[340px] h-[340px] rounded-full opacity-20 pointer-events-none"
+                        style={{ background: 'radial-gradient(circle, #10b981 0%, transparent 70%)' }}
+                    />
+                    <div
+                        className="absolute bottom-[-60px] right-[-40px] w-[260px] h-[260px] rounded-full opacity-10 pointer-events-none"
+                        style={{ background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)' }}
+                    />
+
+                    {/* Top section – status */}
+                    <div className="relative z-10 flex flex-col items-center pt-16 px-6 w-full">
+                        <p className="text-emerald-400 text-xs font-black uppercase tracking-[0.25em] mb-1 animate-pulse">
+                            {incomingCall.type === 'video' ? '📹 Incoming Video Call' : '📞 Incoming Call'}
+                        </p>
+                    </div>
+
+                    {/* Center – Avatar + Name */}
+                    <div className="relative z-10 flex flex-col items-center gap-5 flex-1 justify-center pb-4">
+                        {/* Pulsing rings */}
+                        <div className="relative flex items-center justify-center">
+                            <div
+                                className="absolute w-40 h-40 rounded-full border border-emerald-500/20 animate-ping"
+                                style={{ animationDuration: '1.8s' }}
+                            />
+                            <div
+                                className="absolute w-32 h-32 rounded-full border border-emerald-500/30 animate-ping"
+                                style={{ animationDuration: '1.4s', animationDelay: '0.3s' }}
+                            />
+                            {/* Avatar */}
+                            <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-white/10 shadow-2xl bg-[#121417]">
+                                {caller?.avatar_url
+                                    ? <img src={caller.avatar_url} className="w-full h-full object-cover" alt="" />
+                                    : (
+                                        <div className="w-full h-full bg-gradient-to-br from-emerald-500 to-blue-600 flex items-center justify-center text-white font-black text-5xl">
+                                            {caller?.full_name?.[0] || 'G'}
+                                        </div>
+                                    )
+                                }
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-1 text-center">
+                            <p className="text-white font-black text-3xl tracking-tight leading-tight">
+                                {caller?.full_name || 'Unknown Caller'}
+                            </p>
+                            {caller?.role && (
+                                <p className="text-white/40 text-sm font-semibold">{caller.role}</p>
+                            )}
+                            {/* Animated dots */}
+                            <div className="flex items-center gap-1.5 mt-2">
+                                {[0, 1, 2].map(i => (
+                                    <div
+                                        key={i}
+                                        className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce"
+                                        style={{ animationDelay: `${i * 0.18}s` }}
+                                    />
+                                ))}
+                                <span className="text-white/30 text-xs font-bold ml-1 uppercase tracking-widest">Ringing</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom – Accept / Decline buttons */}
+                    <div className="relative z-10 w-full flex items-center justify-around px-12 pb-16">
+                        {/* Decline */}
+                        <div className="flex flex-col items-center gap-3">
+                            <button
+                                onClick={rejectCall}
+                                className="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 active:scale-90 text-white flex items-center justify-center transition-all"
+                                style={{ boxShadow: '0 0 40px rgba(239,68,68,0.5)' }}
+                                aria-label="Decline"
+                            >
+                                <PhoneOff className="w-8 h-8" />
+                            </button>
+                            <span className="text-white/50 text-xs font-bold uppercase tracking-widest">Decline</span>
+                        </div>
+
+                        {/* Accept */}
+                        <div className="flex flex-col items-center gap-3">
+                            <button
+                                onClick={acceptCall}
+                                className="w-20 h-20 rounded-full bg-emerald-500 hover:bg-emerald-400 active:scale-90 text-white flex items-center justify-center transition-all animate-[pulse_1.5s_ease-in-out_infinite]"
+                                style={{ boxShadow: '0 0 50px rgba(16,185,129,0.6)' }}
+                                aria-label="Answer"
+                            >
+                                {incomingCall.type === 'video'
+                                    ? <Video className="w-8 h-8 fill-white" />
+                                    : <Phone className="w-8 h-8 fill-white" />
+                                }
+                            </button>
+                            <span className="text-white/50 text-xs font-bold uppercase tracking-widest">Answer</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ── Desktop: Floating top banner (unchanged premium style) ──
         return (
             <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] w-[95%] max-w-[400px] animate-in slide-in-from-top duration-500 ease-out">
                 <div className="relative group overflow-hidden rounded-[2rem] bg-black/40 border border-white/10 backdrop-blur-3xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] transition-all hover:bg-black/50">

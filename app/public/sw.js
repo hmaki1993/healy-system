@@ -71,17 +71,17 @@ self.addEventListener('push', (event) => {
         const title = `Incoming Call: ${data.caller_name || 'Someone'}`;
         const options = {
             body: `You have an incoming ${data.call_type || 'audio'} call.`,
-            icon: data.caller_avatar || '/logo.png', // Premium Caller Avatar
-            badge: '/logo.png', // Branded Badge for Status Bar
-            image: data.caller_avatar || null, // BIG picture for the notification (on supported Android versions)
+            icon: data.caller_avatar || '/logo.png',
+            badge: '/logo.png',
+            image: data.caller_avatar || null,
             tag: 'incoming-call',
             renotify: true,
             requireInteraction: true,
-            silent: false, // Ensure it makes sound/vibration
-            sound: '/ringtone.mp3', // Premium Custom Sound (if supported)
+            silent: false,
+            // Aggressive vibration: 800ms on, 400ms off × 10 pulses
             vibrate: [
-                1000, 500, 1000, 500, 1000, 500, 1000, 500, // Long Ringer Pattern
-                1000, 500, 1000, 500, 1000, 500, 1000
+                800, 400, 800, 400, 800, 400, 800, 400, 800, 400,
+                800, 400, 800, 400, 800, 400, 800, 400, 800, 400
             ],
             data: {
                 url: '/app/communications',
@@ -91,8 +91,8 @@ self.addEventListener('push', (event) => {
                 call_type: data.call_type || 'audio'
             },
             actions: [
-                { action: 'answer', title: '✅ Answer' },
-                { action: 'decline', title: '❌ Decline' }
+                { action: 'answer', title: '✅ Answer', icon: '/logo.png' },
+                { action: 'decline', title: '❌ Decline', icon: '/logo.png' }
             ]
         };
 
